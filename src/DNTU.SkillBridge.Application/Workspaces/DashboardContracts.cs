@@ -1,6 +1,6 @@
 using DNTU.SkillBridge.Domain.Workspaces;
 
-namespace DNTU.SkillBridge.Api.Workspaces;
+namespace DNTU.SkillBridge.Application.Workspaces;
 
 public sealed record ProjectProgressResponse(
     Guid ProjectId,

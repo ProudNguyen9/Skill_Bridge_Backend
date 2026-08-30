@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
-using DNTU.SkillBridge.Api.Workspaces;
+using DNTU.SkillBridge.Application.Workspaces;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Domain.Identity;
 using Microsoft.AspNetCore.Authorization;
@@ -13,7 +13,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}")]
 [Authorize]
 [Produces("application/json")]
-public sealed class DashboardsController(DashboardService dashboardService, ICurrentUser currentUser) : ControllerBase
+public sealed class DashboardsController(IDashboardService dashboardService, ICurrentUser currentUser) : ControllerBase
 {
     // Dynamic server-derived progress/risk data is deliberately non-cacheable until a tagged
     // invalidation strategy exists; payment state is never part of these read models.
