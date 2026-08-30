@@ -34,10 +34,13 @@ Một feature dùng cùng tên PascalCase xuyên layer khi có domain/persistenc
 
 ```text
 Domain/<Feature>/
+├── <Feature>Entities.cs
+└── <Feature>Enums.cs
 Application/<Feature>/<Feature>Contracts.cs
 Application/<Feature>/<Feature>Outcomes.cs
-Application/<Feature>/<Feature>Service.cs
-Application/<Feature>/<Feature>Repository.cs
+Application/<Feature>/Services/I<Feature>Service.cs
+Application/<Feature>/Services/<Feature>Service.cs
+Application/<Feature>/Repositories/I<Feature>Repository.cs
 Infrastructure/Repositories/<Feature>Repository.cs
 Api/Controllers/<Feature>Controller.cs
 ```
@@ -50,11 +53,13 @@ Khi một service chỉ phục vụ transport/API, giữ ở `Api/<Feature>`. Kh
 
 ```text
 Application/<Feature>/
-├── <Feature>Contracts.cs     # Request, response, query DTO
-├── <Feature>Service.cs       # Use case, transaction, scope
-├── <Feature>Repository.cs     # Contract truy cập dữ liệu
+├── <Feature>Contracts.cs      # Request, response, query DTO
 ├── <Feature>Outcomes.cs       # Outcome enum nghiệp vụ
-└── <Feature>ServiceImpl.cs    # Implementation nếu feature tách interface/class
+├── Services/
+│   ├── I<Feature>Service.cs   # Contract use case cho controller/background job
+│   └── <Feature>Service.cs    # Application service implementation
+└── Repositories/
+    └── I<Feature>Repository.cs # Contract persistence cho Infrastructure
 
 Api/Controllers/
 └── <Feature>Controller.cs    # HTTP mapping, policy và response code
@@ -88,8 +93,10 @@ Controller không được chứa LINQ query phức tạp, business state transi
 
 1. Viết/điều chỉnh entity + invariant ở `Domain`.
 2. Tạo EF configuration + migration ở `Infrastructure`.
-3. Tạo contracts/service tại `Application/<Feature>`.
-4. Tạo controller mỏng ở `Api/Controllers`.
-5. Đăng ký dependency trong [`Program.cs`](../../src/DNTU.SkillBridge.Api/Program.cs).
-6. Cập nhật plan/evidence ở [`docs/plans`](../plans/README.md).
-7. Chạy build, migration gate và test phù hợp.
+3. Tạo contracts/outcomes tại `Application/<Feature>`.
+4. Tạo service tại `Application/<Feature>/Services`.
+5. Tạo repository contract tại `Application/<Feature>/Repositories` và implementation tại `Infrastructure/Repositories`.
+6. Tạo controller mỏng ở `Api/Controllers`.
+7. Đăng ký dependency trong [`Program.cs`](../../src/DNTU.SkillBridge.Api/Program.cs).
+8. Cập nhật plan/evidence ở [`docs/plans`](../plans/README.md).
+9. Chạy build, migration gate và test phù hợp.
