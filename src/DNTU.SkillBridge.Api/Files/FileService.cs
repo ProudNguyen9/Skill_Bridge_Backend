@@ -1,4 +1,5 @@
 using DNTU.SkillBridge.Application.Common.Options;
+using DNTU.SkillBridge.Application.Files;
 using DNTU.SkillBridge.Domain.Files;
 using DNTU.SkillBridge.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -6,7 +7,7 @@ using Microsoft.Extensions.Options;
 
 namespace DNTU.SkillBridge.Api.Files;
 
-public sealed class FileService(AppDbContext dbContext, IFileStorage fileStorage, IOptions<StorageOptions> storageOptions)
+public sealed class FileService(AppDbContext dbContext, IFileStorage fileStorage, IOptions<StorageOptions> storageOptions) : IFileExpirationService
 {
     private const long MaximumSizeBytes = 10 * 1024 * 1024;
     private static readonly IReadOnlyDictionary<string, FilePolicy> Policies = new Dictionary<string, FilePolicy>(StringComparer.OrdinalIgnoreCase)

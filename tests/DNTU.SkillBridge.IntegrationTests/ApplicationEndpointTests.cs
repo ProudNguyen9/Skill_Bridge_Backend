@@ -1,6 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Collections.Concurrent;
-using DNTU.SkillBridge.Api.Files;
+using DNTU.SkillBridge.Application.Files;
 using DNTU.SkillBridge.Application.Commitments;
 using DNTU.SkillBridge.Domain.Commitments;
 using DNTU.SkillBridge.Domain.Files;

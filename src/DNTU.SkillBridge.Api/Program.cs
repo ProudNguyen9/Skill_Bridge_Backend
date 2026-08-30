@@ -5,6 +5,7 @@ using Asp.Versioning;
 using DNTU.SkillBridge.Api.Authentication;
 
 using DNTU.SkillBridge.Api.Realtime;
+using DNTU.SkillBridge.Infrastructure.Realtime;
 using DNTU.SkillBridge.Application.Catalog;
 using DNTU.SkillBridge.Application.Notifications;
 using DNTU.SkillBridge.Application.Common.Options;
@@ -116,6 +117,7 @@ builder.Services.AddScoped<DNTU.SkillBridge.Api.Workspaces.DashboardService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Workspaces.ProjectTaskService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Workspaces.TaskCollaborationService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Files.FileService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Files.IFileExpirationService>(provider => provider.GetRequiredService<DNTU.SkillBridge.Api.Files.FileService>());
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Milestones.MilestoneService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Meetings.MeetingService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Submissions.SubmissionService>();
@@ -132,17 +134,17 @@ builder.Services.AddScoped<NotificationWriter>();
 builder.Services.AddScoped<INotificationWriter>(provider => provider.GetRequiredService<NotificationWriter>());
 builder.Services.AddScoped<IOutboxEnqueuer>(provider => provider.GetRequiredService<NotificationWriter>());
 builder.Services.AddHostedService<OutboxProcessor>();
-builder.Services.AddHostedService<DNTU.SkillBridge.Api.Files.FileCleanupService>();
+builder.Services.AddHostedService<DNTU.SkillBridge.Infrastructure.Files.FileCleanupService>();
 builder.Services.AddSignalR();
 builder.Services.AddHttpClient(nameof(DNTU.SkillBridge.Api.Files.S3CompatibleFileStorage));
 var storageOptions = builder.Configuration.GetSection(StorageOptions.SectionName).Get<StorageOptions>() ?? new StorageOptions();
 if (storageOptions.Enabled && (string.Equals(storageOptions.Provider, "MinIO", StringComparison.OrdinalIgnoreCase) || string.Equals(storageOptions.Provider, "S3", StringComparison.OrdinalIgnoreCase)))
 {
-    builder.Services.AddSingleton<DNTU.SkillBridge.Api.Files.IFileStorage, DNTU.SkillBridge.Api.Files.S3CompatibleFileStorage>();
+    builder.Services.AddSingleton<DNTU.SkillBridge.Application.Files.IFileStorage, DNTU.SkillBridge.Api.Files.S3CompatibleFileStorage>();
 }
 else
 {
-    builder.Services.AddSingleton<DNTU.SkillBridge.Api.Files.IFileStorage, DNTU.SkillBridge.Api.Files.DisabledFileStorage>();
+    builder.Services.AddSingleton<DNTU.SkillBridge.Application.Files.IFileStorage, DNTU.SkillBridge.Application.Files.DisabledFileStorage>();
 }
 builder.Services.AddSingleton<IAccountEmailSender, NullAccountEmailSender>();
 builder.Services.AddScoped<Microsoft.AspNetCore.Identity.IPasswordHasher<DNTU.SkillBridge.Domain.Identity.User>, Microsoft.AspNetCore.Identity.PasswordHasher<DNTU.SkillBridge.Domain.Identity.User>>();

@@ -1,10 +1,13 @@
 using System.Text.Json;
 using DNTU.SkillBridge.Application.Notifications;
+using DNTU.SkillBridge.Infrastructure.Realtime;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using DNTU.SkillBridge.Infrastructure.Persistence;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
-namespace DNTU.SkillBridge.Api.Realtime;
+namespace DNTU.SkillBridge.Infrastructure.Persistence;
 
 public sealed class OutboxProcessor(IServiceScopeFactory scopeFactory, ILogger<OutboxProcessor> logger) : BackgroundService
 {

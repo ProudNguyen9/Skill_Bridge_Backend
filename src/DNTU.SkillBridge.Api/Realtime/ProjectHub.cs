@@ -7,9 +7,6 @@ using Microsoft.EntityFrameworkCore;
 namespace DNTU.SkillBridge.Api.Realtime;
 
 [Authorize]
-public sealed class NotificationHub : Hub { }
-
-[Authorize]
 public sealed class ProjectHub(AppDbContext dbContext) : Hub
 {
     public async Task JoinProject(Guid projectId)

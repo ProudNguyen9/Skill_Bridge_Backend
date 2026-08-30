@@ -1,7 +1,11 @@
 using DNTU.SkillBridge.Application.Common.Options;
+using DNTU.SkillBridge.Application.Files;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace DNTU.SkillBridge.Api.Files;
+namespace DNTU.SkillBridge.Infrastructure.Files;
 
 /// <summary>Configurable worker integration point for expiry cleanup until the Quartz scheduler is introduced.</summary>
 public sealed class FileCleanupService(IServiceScopeFactory scopeFactory, IOptions<QuartzOptions> quartzOptions, ILogger<FileCleanupService> logger) : BackgroundService
@@ -15,7 +19,7 @@ public sealed class FileCleanupService(IServiceScopeFactory scopeFactory, IOptio
             try
             {
                 using var scope = scopeFactory.CreateScope();
-                var removed = await scope.ServiceProvider.GetRequiredService<FileService>().ExpirePendingUploadsAsync(DateTimeOffset.UtcNow, stoppingToken);
+                var removed = await scope.ServiceProvider.GetRequiredService<IFileExpirationService>().ExpirePendingUploadsAsync(DateTimeOffset.UtcNow, stoppingToken);
                 if (removed > 0) logger.LogInformation("Expired {ExpiredFileCount} pending file upload(s).", removed);
             }
             catch (Exception exception) when (!stoppingToken.IsCancellationRequested)

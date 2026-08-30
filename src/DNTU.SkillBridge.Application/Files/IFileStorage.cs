@@ -1,4 +1,4 @@
-namespace DNTU.SkillBridge.Api.Files;
+namespace DNTU.SkillBridge.Application.Files;
 
 public sealed record StoredObjectMetadata(long Length, string ChecksumSha256, string DetectedContentType, FileSignature Signature);
 

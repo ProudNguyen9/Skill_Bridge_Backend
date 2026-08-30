@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using DNTU.SkillBridge.Application.Common.Options;
+using DNTU.SkillBridge.Application.Files;
 using Microsoft.Extensions.Options;
 
 namespace DNTU.SkillBridge.Api.Files;
