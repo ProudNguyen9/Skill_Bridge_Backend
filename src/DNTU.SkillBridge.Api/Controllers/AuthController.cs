@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Api.Authentication;
+using DNTU.SkillBridge.Application.Authentication;
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Application.Common.Security;
 using Microsoft.AspNetCore.Authorization;
@@ -12,7 +13,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/auth")]
 [Produces("application/json")]
-public sealed class AuthController(AuthService authService, ICurrentUser currentUser, IAccountEmailSender accountEmailSender) : ControllerBase
+public sealed class AuthController(IAuthService authService, ICurrentUser currentUser, IAccountEmailSender accountEmailSender) : ControllerBase
 {
     [HttpPost("register")]
     [AllowAnonymous]

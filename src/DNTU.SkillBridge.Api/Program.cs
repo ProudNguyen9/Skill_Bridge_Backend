@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Asp.Versioning;
 using DNTU.SkillBridge.Api.Authentication;
+using DNTU.SkillBridge.Application.Authentication;
 
 using DNTU.SkillBridge.Api.Realtime;
 using DNTU.SkillBridge.Infrastructure.Realtime;
@@ -99,7 +100,7 @@ builder.Services.AddPersistence(builder.Configuration);
 builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>("postgresql");
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
-builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICatalogService, CatalogService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Students.IStudentService, DNTU.SkillBridge.Application.Students.StudentService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Companies.ICompanyService, DNTU.SkillBridge.Application.Companies.CompanyService>();

@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace DNTU.SkillBridge.Api.Authentication;
+namespace DNTU.SkillBridge.Application.Authentication;
 
 public enum RegistrationAccountType
 {

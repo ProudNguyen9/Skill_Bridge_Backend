@@ -1,3 +1,4 @@
+using System.Data;
 using DNTU.SkillBridge.Application.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -22,6 +23,12 @@ public sealed class UnitOfWork(AppDbContext dbContext) : IUnitOfWork
     public async Task<IUnitOfWorkTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
     {
         var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        return new UnitOfWorkTransaction(transaction);
+    }
+
+    public async Task<IUnitOfWorkTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default)
+    {
+        var transaction = await dbContext.Database.BeginTransactionAsync(isolationLevel, cancellationToken);
         return new UnitOfWorkTransaction(transaction);
     }
 

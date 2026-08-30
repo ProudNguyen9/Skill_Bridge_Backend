@@ -1,3 +1,5 @@
+using System.Data;
+
 namespace DNTU.SkillBridge.Application.Abstractions;
 
 /// <summary>
@@ -10,4 +12,6 @@ public interface IUnitOfWork
 
     /// <summary>Begins an explicit database transaction spanning the pending changes of all repositories.</summary>
     Task<IUnitOfWorkTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default);
+
+    Task<IUnitOfWorkTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default);
 }
