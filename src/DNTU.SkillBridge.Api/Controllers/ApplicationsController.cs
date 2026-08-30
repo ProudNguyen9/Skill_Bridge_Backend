@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using DNTU.SkillBridge.Application.Applications;
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Api.Applications;
 using DNTU.SkillBridge.Application.Common.Security;

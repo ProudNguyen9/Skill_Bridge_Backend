@@ -1,4 +1,5 @@
 using System.Text.Json;
+using DNTU.SkillBridge.Application.Projects;
 using DNTU.SkillBridge.Application.Workspaces;
 using DNTU.SkillBridge.Domain.Lecturers;
 using DNTU.SkillBridge.Domain.Notifications;
@@ -9,14 +10,6 @@ using DNTU.SkillBridge.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace DNTU.SkillBridge.Api.Projects;
-
-public enum ProjectCompletionOutcome
-{
-    Success,
-    NotFound,
-    Forbidden,
-    Conflict
-}
 
 public sealed record ProjectCompletionResponse(Guid Id, Guid ProjectId, Guid CompletedByUserId, DateTimeOffset CompletedAt, string EvidenceJson);
 

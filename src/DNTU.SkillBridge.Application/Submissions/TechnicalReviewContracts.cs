@@ -3,15 +3,6 @@ using DNTU.SkillBridge.Domain.Submissions;
 
 namespace DNTU.SkillBridge.Application.Submissions;
 
-public enum TechnicalReviewOutcome
-{
-    Success,
-    NotFound,
-    Forbidden,
-    Conflict,
-    Invalid
-}
-
 public sealed class CreateTechnicalReviewRequest
 {
     /// <summary>Current submission concurrency token returned by the submission API.</summary>

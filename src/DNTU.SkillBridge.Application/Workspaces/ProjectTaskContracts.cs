@@ -3,8 +3,6 @@ using DNTU.SkillBridge.Domain.Workspaces;
 
 namespace DNTU.SkillBridge.Application.Workspaces;
 
-public enum ProjectTaskOutcome { Success, NotFound, Forbidden, Conflict, InvalidAssignee }
-
 public class CreateProjectTaskRequest
 {
     [Required, StringLength(300, MinimumLength = 2)]

@@ -2,6 +2,7 @@ using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Api.Projects;
 using DNTU.SkillBridge.Application.Common.Security;
+using DNTU.SkillBridge.Application.Projects;
 using DNTU.SkillBridge.Domain.Identity;
 using DNTU.SkillBridge.Domain.Projects;
 using Microsoft.AspNetCore.Authorization;

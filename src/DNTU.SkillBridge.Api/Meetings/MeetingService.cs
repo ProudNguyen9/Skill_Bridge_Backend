@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Data;
 using System.Text.Json;
+using DNTU.SkillBridge.Application.Meetings;
 using DNTU.SkillBridge.Domain.Companies;
 using DNTU.SkillBridge.Domain.Identity;
 using DNTU.SkillBridge.Domain.Lecturers;
@@ -389,5 +390,3 @@ public sealed class MeetingService(AppDbContext dbContext)
     private static MeetingActionItemResponse Map(MeetingActionItem item) => new(item.Id, item.MeetingId, item.Description, item.ResponsibleStudentId, item.DueAt, item.IsCompleted, item.ProjectTaskId, item.Version, item.CreatedAt, item.UpdatedAt);
     private static ProjectTaskResponse Map(ProjectTask task) => new(task.Id, task.ProjectId, task.Title, task.Description, task.Status, task.Priority, task.AssigneeStudentId, task.DueAt, task.SortOrder, task.Version, task.CreatedAt);
 }
-
-public enum MeetingOutcome { Success, NotFound, Forbidden, Conflict, Invalid, InvalidAssignee }

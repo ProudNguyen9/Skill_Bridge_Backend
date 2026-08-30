@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using DNTU.SkillBridge.Application.Common;
+using DNTU.SkillBridge.Application.Projects;
 using DNTU.SkillBridge.Domain.Catalog;
 using DNTU.SkillBridge.Domain.Common;
 using DNTU.SkillBridge.Domain.Companies;
@@ -8,63 +9,6 @@ using DNTU.SkillBridge.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace DNTU.SkillBridge.Api.Projects;
-
-public enum ProjectCreateOutcome
-{
-    Created,
-    CompanyNotFound,
-    InvalidCatalog,
-    InvalidTeamSize,
-    Conflict
-}
-
-public enum ProjectUpdateOutcome
-{
-    Updated,
-    NotFound,
-    NotDraft,
-    InvalidCatalog,
-    InvalidTeamSize,
-    Conflict
-}
-
-public enum ProjectDeleteOutcome
-{
-    Deleted,
-    NotFound,
-    NotDraft
-}
-
-public enum ProjectSubmitOutcome
-{
-    Submitted,
-    NotFound,
-    CompanyNotVerified,
-    Incomplete,
-    InvalidDeadline,
-    NotSubmittable
-}
-
-public enum ProjectCancelOutcome
-{
-    Cancelled,
-    NotFound,
-    InvalidTransition
-}
-
-public enum ProjectReopenOutcome
-{
-    Reopened,
-    NotFound,
-    InvalidTransition
-}
-
-public enum AdminDecisionOutcome
-{
-    Applied,
-    NotFound,
-    InvalidTransition
-}
 
 /// <summary>
 /// Company-scoped project draft CRUD. The company/project identity is always resolved

@@ -3,15 +3,6 @@ using DNTU.SkillBridge.Domain.Commitments;
 
 namespace DNTU.SkillBridge.Application.Commitments;
 
-public enum WithdrawalOutcome
-{
-    Created,
-    NotFound,
-    Conflict,
-    Forbidden,
-    Updated
-}
-
 public sealed record CommitmentResponse(Guid Id, Guid ProjectId, Guid StudentId, CommitmentStatus Status, string PolicyVersion, DateTimeOffset ConfirmationDeadline, DateTimeOffset? ConfirmedAt);
 
 public sealed class CreateWithdrawalRequest

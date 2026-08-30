@@ -1,13 +1,5 @@
 namespace DNTU.SkillBridge.Application.Students;
 
-public enum SavedProjectOutcome
-{
-    Saved,
-    AlreadySaved,
-    NotFound,
-    ProjectNotVisible
-}
-
 /// <summary>One row of the caller's saved-project list (most recently saved first).</summary>
 public sealed record SavedProjectListItemResponse(
     Guid ProjectId,

@@ -4,8 +4,6 @@ using DNTU.SkillBridge.Domain.Workspaces;
 
 namespace DNTU.SkillBridge.Application.Workspaces;
 
-public enum TaskCollaborationOutcome { Success, NotFound, Forbidden, Conflict }
-
 public sealed class CreateTaskCommentRequest
 {
     [Required, StringLength(4000, MinimumLength = 1)] public string Content { get; init; } = string.Empty;

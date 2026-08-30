@@ -1,4 +1,5 @@
 using DNTU.SkillBridge.Application.Common;
+using DNTU.SkillBridge.Application.Applications;
 using DNTU.SkillBridge.Domain.Applications;
 using DNTU.SkillBridge.Domain.Commitments;
 using DNTU.SkillBridge.Domain.Workspaces;
@@ -8,22 +9,6 @@ using DNTU.SkillBridge.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace DNTU.SkillBridge.Api.Applications;
-
-public enum ApplicationApplyOutcome
-{
-    Applied,
-    StudentNotFound,
-    ProjectNotFound,
-    ProjectNotAccepting,
-    AlreadyApplied
-}
-
-public enum ApplicationWithdrawOutcome
-{
-    Withdrawn,
-    NotFound,
-    NotWithdrawable
-}
 
 /// <summary>
 /// Student-side application lifecycle (Task 16): apply to a publicly visible project,
