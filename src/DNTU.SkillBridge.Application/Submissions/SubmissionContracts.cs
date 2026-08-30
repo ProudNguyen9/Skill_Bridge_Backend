@@ -1,6 +1,15 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace DNTU.SkillBridge.Api.Submissions;
+namespace DNTU.SkillBridge.Application.Submissions;
+
+public enum SubmissionOutcome
+{
+    Success,
+    NotFound,
+    Forbidden,
+    Conflict,
+    Invalid
+}
 
 public class CreateSubmissionRequest
 {

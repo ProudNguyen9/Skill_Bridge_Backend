@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
-using DNTU.SkillBridge.Api.Submissions;
+using DNTU.SkillBridge.Application.Submissions;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Domain.Identity;
 using Microsoft.AspNetCore.Authorization;
@@ -13,7 +13,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}")]
 [Authorize]
 [Produces("application/json")]
-public sealed class SubmissionsController(SubmissionService submissionService, ICurrentUser currentUser) : ControllerBase
+public sealed class SubmissionsController(ISubmissionService submissionService, ICurrentUser currentUser) : ControllerBase
 {
     /// <summary>Creates the first immutable evidence version for an active project member.</summary>
     [HttpPost("projects/{projectId:guid}/submissions")]
