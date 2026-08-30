@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace DNTU.SkillBridge.Api.Academics;
+namespace DNTU.SkillBridge.Application.Academics;
 
 public sealed class CriterionScoreRequest
 {

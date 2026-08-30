@@ -49,6 +49,7 @@ public static class PersistenceServiceCollectionExtensions
         services.AddScoped<ITeamRepository, TeamRepository>();
         services.AddScoped<ILecturerRepository, LecturerRepository>();
         services.AddScoped<IAcademicRepository, AcademicRepository>();
+        services.AddScoped<IAcademicEvaluationRepository, AcademicEvaluationRepository>();
 
         return services;
     }
