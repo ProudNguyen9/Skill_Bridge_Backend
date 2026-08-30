@@ -1,7 +1,16 @@
 using System.ComponentModel.DataAnnotations;
 using DNTU.SkillBridge.Domain.Submissions;
 
-namespace DNTU.SkillBridge.Api.Submissions;
+namespace DNTU.SkillBridge.Application.Submissions;
+
+public enum TechnicalReviewOutcome
+{
+    Success,
+    NotFound,
+    Forbidden,
+    Conflict,
+    Invalid
+}
 
 public sealed class CreateTechnicalReviewRequest
 {

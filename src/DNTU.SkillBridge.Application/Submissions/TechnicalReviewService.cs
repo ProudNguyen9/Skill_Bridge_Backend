@@ -1,25 +1,23 @@
 using System.Text.Json;
 using DNTU.SkillBridge.Application.Workspaces;
-using DNTU.SkillBridge.Domain.Lecturers;
 using DNTU.SkillBridge.Domain.Notifications;
 using DNTU.SkillBridge.Domain.Submissions;
-using DNTU.SkillBridge.Domain.Workspaces;
-using DNTU.SkillBridge.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
 
-namespace DNTU.SkillBridge.Api.Submissions;
+namespace DNTU.SkillBridge.Application.Submissions;
 
-public enum TechnicalReviewOutcome
+public interface ITechnicalReviewService
 {
-    Success,
-    NotFound,
-    Forbidden,
-    Conflict,
-    Invalid
+    Task<(TechnicalReviewOutcome Outcome, TechnicalReviewResponse? Review)> CreateAsync(Guid reviewerUserId, bool mayOverrideLecturerScope, Guid submissionId, CreateTechnicalReviewRequest request, CancellationToken cancellationToken);
+
+    Task<(TechnicalReviewOutcome Outcome, IReadOnlyCollection<TechnicalReviewResponse>? Reviews)> ListForSubmissionAsync(Guid requesterUserId, bool mayOverrideLecturerScope, Guid submissionId, CancellationToken cancellationToken);
+
+    Task<(TechnicalReviewOutcome Outcome, TechnicalReviewResponse? Review)> GetAsync(Guid requesterUserId, bool mayOverrideLecturerScope, Guid reviewId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<TechnicalReviewResponse>> ListMineAsync(Guid lecturerUserId, CancellationToken cancellationToken);
 }
 
 /// <summary>Creates immutable technical review history and atomically advances the submission workflow.</summary>
-public sealed class TechnicalReviewService(AppDbContext dbContext, IProjectActivityWriter activityWriter)
+public sealed class TechnicalReviewService(ITechnicalReviewRepository reviewRepository, IProjectActivityWriter activityWriter) : ITechnicalReviewService
 {
     public async Task<(TechnicalReviewOutcome Outcome, TechnicalReviewResponse? Review)> CreateAsync(
         Guid reviewerUserId,
@@ -33,9 +31,7 @@ public sealed class TechnicalReviewService(AppDbContext dbContext, IProjectActiv
             return (TechnicalReviewOutcome.Invalid, null);
         }
 
-        var submission = await dbContext.ProjectSubmissions
-            .Include(item => item.Versions)
-            .SingleOrDefaultAsync(item => item.Id == submissionId, cancellationToken);
+        var submission = await reviewRepository.FindSubmissionWithVersionsAsync(submissionId, cancellationToken);
         if (submission is null)
         {
             return (TechnicalReviewOutcome.NotFound, null);
@@ -46,7 +42,7 @@ public sealed class TechnicalReviewService(AppDbContext dbContext, IProjectActiv
             return (TechnicalReviewOutcome.Conflict, null);
         }
 
-        if (!mayOverrideLecturerScope && !await IsAssignedActiveLecturerAsync(reviewerUserId, submission.ProjectId, cancellationToken))
+        if (!mayOverrideLecturerScope && !await reviewRepository.IsAssignedActiveLecturerAsync(reviewerUserId, submission.ProjectId, cancellationToken))
         {
             return (TechnicalReviewOutcome.Forbidden, null);
         }
@@ -78,8 +74,8 @@ public sealed class TechnicalReviewService(AppDbContext dbContext, IProjectActiv
                 submission.RequireRevision(request.Version);
             }
 
-            dbContext.TechnicalSubmissionReviews.Add(review);
-            dbContext.SubmissionStatusHistories.Add(new SubmissionStatusHistory(
+            reviewRepository.AddReview(review);
+            reviewRepository.AddStatusHistory(new SubmissionStatusHistory(
                 submission.Id,
                 priorStatus,
                 submission.Status,
@@ -112,17 +108,9 @@ public sealed class TechnicalReviewService(AppDbContext dbContext, IProjectActiv
             reviewId = review.Id,
             decision = request.Decision.ToString()
         });
-        dbContext.OutboxMessages.Add(new OutboxMessage("submission.technical-review.completed", payload));
+        reviewRepository.AddOutboxMessage(new OutboxMessage("submission.technical-review.completed", payload));
 
-        try
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            return (TechnicalReviewOutcome.Conflict, null);
-        }
-        catch (DbUpdateException)
+        if (!await reviewRepository.TrySaveChangesAsync(cancellationToken))
         {
             return (TechnicalReviewOutcome.Conflict, null);
         }
@@ -136,27 +124,20 @@ public sealed class TechnicalReviewService(AppDbContext dbContext, IProjectActiv
         Guid submissionId,
         CancellationToken cancellationToken)
     {
-        var projectId = await dbContext.ProjectSubmissions.AsNoTracking()
-            .Where(submission => submission.Id == submissionId)
-            .Select(submission => (Guid?)submission.ProjectId)
-            .SingleOrDefaultAsync(cancellationToken);
+        var projectId = await reviewRepository.FindProjectIdBySubmissionIdAsync(submissionId, cancellationToken);
         if (projectId is null)
         {
             return (TechnicalReviewOutcome.NotFound, null);
         }
 
         if (!mayOverrideLecturerScope &&
-            !await IsProjectStudentAsync(requesterUserId, projectId.Value, cancellationToken) &&
-            !await IsAssignedActiveLecturerAsync(requesterUserId, projectId.Value, cancellationToken))
+            !await reviewRepository.IsProjectStudentAsync(requesterUserId, projectId.Value, cancellationToken) &&
+            !await reviewRepository.IsAssignedActiveLecturerAsync(requesterUserId, projectId.Value, cancellationToken))
         {
             return (TechnicalReviewOutcome.Forbidden, null);
         }
 
-        var reviews = await dbContext.TechnicalSubmissionReviews.AsNoTracking()
-            .Where(review => review.SubmissionId == submissionId)
-            .OrderBy(review => review.CreatedAt).ThenBy(review => review.Id)
-            .Select(review => Map(review))
-            .ToListAsync(cancellationToken);
+        var reviews = await reviewRepository.ListForSubmissionAsync(submissionId, cancellationToken);
         return (TechnicalReviewOutcome.Success, reviews);
     }
 
@@ -166,10 +147,7 @@ public sealed class TechnicalReviewService(AppDbContext dbContext, IProjectActiv
         Guid reviewId,
         CancellationToken cancellationToken)
     {
-        var review = await dbContext.TechnicalSubmissionReviews.AsNoTracking()
-            .Where(item => item.Id == reviewId)
-            .Select(item => new { Response = Map(item), item.SubmissionId })
-            .SingleOrDefaultAsync(cancellationToken);
+        var review = await reviewRepository.FindReviewRowAsync(reviewId, cancellationToken);
         if (review is null)
         {
             return (TechnicalReviewOutcome.NotFound, null);
@@ -181,29 +159,8 @@ public sealed class TechnicalReviewService(AppDbContext dbContext, IProjectActiv
             : (outcome, null);
     }
 
-    public async Task<IReadOnlyCollection<TechnicalReviewResponse>> ListMineAsync(Guid lecturerUserId, CancellationToken cancellationToken) =>
-        await dbContext.TechnicalSubmissionReviews.AsNoTracking()
-            .Where(review => review.ReviewerUserId == lecturerUserId)
-            .OrderByDescending(review => review.CreatedAt).ThenByDescending(review => review.Id)
-            .Select(review => Map(review))
-            .ToListAsync(cancellationToken);
-
-    private Task<bool> IsProjectStudentAsync(Guid userId, Guid projectId, CancellationToken cancellationToken) =>
-        dbContext.ProjectMembers.AsNoTracking().AnyAsync(member =>
-            member.ProjectId == projectId && member.IsActive && member.Student.UserId == userId,
-            cancellationToken);
-
-    private Task<bool> IsAssignedActiveLecturerAsync(Guid userId, Guid projectId, CancellationToken cancellationToken) =>
-        dbContext.LecturerAssignments.AsNoTracking()
-            .Join(dbContext.LecturerProfiles.AsNoTracking(),
-                assignment => assignment.LecturerId,
-                lecturer => lecturer.Id,
-                (assignment, lecturer) => new { assignment, lecturer })
-            .AnyAsync(row => row.assignment.ProjectId == projectId &&
-                             row.assignment.Status == LecturerAssignmentStatus.ACTIVE &&
-                             row.lecturer.IsActive &&
-                             row.lecturer.UserId == userId,
-                cancellationToken);
+    public Task<IReadOnlyCollection<TechnicalReviewResponse>> ListMineAsync(Guid lecturerUserId, CancellationToken cancellationToken) =>
+        reviewRepository.ListMineAsync(lecturerUserId, cancellationToken);
 
     private static TechnicalReviewResponse Map(TechnicalSubmissionReview review) => new(
         review.Id,

@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
-using DNTU.SkillBridge.Api.Submissions;
+using DNTU.SkillBridge.Application.Submissions;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Domain.Identity;
 using Microsoft.AspNetCore.Authorization;
@@ -14,7 +14,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}")]
 [Authorize]
 [Produces("application/json")]
-public sealed class TechnicalReviewsController(TechnicalReviewService reviewService, ICurrentUser currentUser) : ControllerBase
+public sealed class TechnicalReviewsController(ITechnicalReviewService reviewService, ICurrentUser currentUser) : ControllerBase
 {
     /// <summary>Records one assigned lecturer's technical decision and atomically moves the submission workflow.</summary>
     [HttpPost("lecturer/submissions/{submissionId:guid}/technical-review")]

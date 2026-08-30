@@ -121,7 +121,7 @@ builder.Services.AddScoped<DNTU.SkillBridge.Application.Files.IFileExpirationSer
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Milestones.IMilestoneService, DNTU.SkillBridge.Application.Milestones.MilestoneService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Meetings.MeetingService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Submissions.ISubmissionService, DNTU.SkillBridge.Application.Submissions.SubmissionService>();
-builder.Services.AddScoped<DNTU.SkillBridge.Api.Submissions.TechnicalReviewService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Submissions.ITechnicalReviewService, DNTU.SkillBridge.Application.Submissions.TechnicalReviewService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Submissions.BusinessReviewService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Academics.IAcademicService, DNTU.SkillBridge.Application.Academics.AcademicService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Academics.IAcademicEvaluationService, DNTU.SkillBridge.Application.Academics.AcademicEvaluationService>();
