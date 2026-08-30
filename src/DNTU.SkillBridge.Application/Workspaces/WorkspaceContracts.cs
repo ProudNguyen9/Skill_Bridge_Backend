@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using DNTU.SkillBridge.Application.Common;
 
-namespace DNTU.SkillBridge.Api.Workspaces;
+namespace DNTU.SkillBridge.Application.Workspaces;
 
 public sealed record WorkspaceOverviewResponse(
     Guid ProjectId,

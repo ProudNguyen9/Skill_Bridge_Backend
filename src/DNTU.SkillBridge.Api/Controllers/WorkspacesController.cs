@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
-using DNTU.SkillBridge.Api.Workspaces;
+using DNTU.SkillBridge.Application.Workspaces;
 using DNTU.SkillBridge.Application.Common.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +12,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}")]
 [Authorize]
 [Produces("application/json")]
-public sealed class WorkspacesController(WorkspaceService workspaceService, ICurrentUser currentUser) : ControllerBase
+public sealed class WorkspacesController(IWorkspaceService workspaceService, ICurrentUser currentUser) : ControllerBase
 {
     [HttpGet("workspaces/{projectId:guid}/overview")]
     [ProducesResponseType(typeof(ApiResponse<WorkspaceOverviewResponse>), StatusCodes.Status200OK)]

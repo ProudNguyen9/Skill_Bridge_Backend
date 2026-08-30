@@ -39,6 +39,7 @@ public static class PersistenceServiceCollectionExtensions
         services.AddScoped<ISePayRepository, SePayRepository>();
         services.AddScoped<ICommitmentRepository, CommitmentRepository>();
         services.AddScoped<IProjectAccessRepository, ProjectAccessRepository>();
+        services.AddScoped<IWorkspaceRepository, WorkspaceRepository>();
 
         return services;
     }
