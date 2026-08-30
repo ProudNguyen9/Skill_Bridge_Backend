@@ -2,7 +2,9 @@ using System.ComponentModel.DataAnnotations;
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Domain.Workspaces;
 
-namespace DNTU.SkillBridge.Api.Workspaces;
+namespace DNTU.SkillBridge.Application.Workspaces;
+
+public enum TaskCollaborationOutcome { Success, NotFound, Forbidden, Conflict }
 
 public sealed class CreateTaskCommentRequest
 {

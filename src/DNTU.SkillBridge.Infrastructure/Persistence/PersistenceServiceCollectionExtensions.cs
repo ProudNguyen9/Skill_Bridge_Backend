@@ -41,6 +41,7 @@ public static class PersistenceServiceCollectionExtensions
         services.AddScoped<IProjectAccessRepository, ProjectAccessRepository>();
         services.AddScoped<IWorkspaceRepository, WorkspaceRepository>();
         services.AddScoped<IProjectTaskRepository, ProjectTaskRepository>();
+        services.AddScoped<ITaskCollaborationRepository, TaskCollaborationRepository>();
 
         return services;
     }

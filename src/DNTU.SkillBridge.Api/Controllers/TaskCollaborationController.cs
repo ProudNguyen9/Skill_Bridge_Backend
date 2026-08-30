@@ -1,6 +1,5 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
-using DNTU.SkillBridge.Api.Workspaces;
 using DNTU.SkillBridge.Application.Workspaces;
 using DNTU.SkillBridge.Application.Common.Security;
 using Microsoft.AspNetCore.Authorization;
@@ -13,7 +12,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}")]
 [Authorize]
 [Produces("application/json")]
-public sealed class TaskCollaborationController(TaskCollaborationService collaborationService, ICurrentUser currentUser) : ControllerBase
+public sealed class TaskCollaborationController(ITaskCollaborationService collaborationService, ICurrentUser currentUser) : ControllerBase
 {
     [HttpPost("tasks/{taskId:guid}/comments")]
     public async Task<ActionResult<ApiResponse<TaskCommentResponse>>> AddComment(Guid taskId, CreateTaskCommentRequest request, CancellationToken cancellationToken)

@@ -115,7 +115,7 @@ builder.Services.AddScoped<DNTU.SkillBridge.Application.Workspaces.IProjectActiv
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Workspaces.IWorkspaceService, DNTU.SkillBridge.Application.Workspaces.WorkspaceService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Workspaces.DashboardService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Workspaces.IProjectTaskService, DNTU.SkillBridge.Application.Workspaces.ProjectTaskService>();
-builder.Services.AddScoped<DNTU.SkillBridge.Api.Workspaces.TaskCollaborationService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Workspaces.ITaskCollaborationService, DNTU.SkillBridge.Application.Workspaces.TaskCollaborationService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Files.FileService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Files.IFileExpirationService>(provider => provider.GetRequiredService<DNTU.SkillBridge.Api.Files.FileService>());
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Milestones.MilestoneService>();
