@@ -108,7 +108,7 @@ builder.Services.AddScoped<DNTU.SkillBridge.Api.Projects.ProjectService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Projects.ProjectCompletionService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Students.SavedProjectService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Applications.ApplicationService>();
-builder.Services.AddScoped<DNTU.SkillBridge.Api.Teams.TeamService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Teams.ITeamService, DNTU.SkillBridge.Application.Teams.TeamService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Commitments.ICommitmentService, DNTU.SkillBridge.Application.Commitments.CommitmentService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Workspaces.IProjectAccessService, DNTU.SkillBridge.Application.Workspaces.ProjectAccessService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Workspaces.IProjectActivityWriter, DNTU.SkillBridge.Api.Workspaces.ProjectActivityWriter>();

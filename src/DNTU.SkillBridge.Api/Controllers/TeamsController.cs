@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
-using DNTU.SkillBridge.Api.Teams;
+using DNTU.SkillBridge.Application.Teams;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Domain.Identity;
 using Microsoft.AspNetCore.Authorization;
@@ -13,7 +13,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}")]
 [Authorize]
 [Produces("application/json")]
-public sealed class TeamsController(TeamService teamService, ICurrentUser currentUser) : ControllerBase
+public sealed class TeamsController(ITeamService teamService, ICurrentUser currentUser) : ControllerBase
 {
     [HttpPost("teams")]
     [ProducesResponseType(typeof(ApiResponse<TeamResponse>), StatusCodes.Status201Created)]

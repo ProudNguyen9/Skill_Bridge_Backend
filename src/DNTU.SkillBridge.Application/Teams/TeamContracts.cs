@@ -1,7 +1,17 @@
 using System.ComponentModel.DataAnnotations;
 using DNTU.SkillBridge.Domain.Teams;
 
-namespace DNTU.SkillBridge.Api.Teams;
+namespace DNTU.SkillBridge.Application.Teams;
+
+public enum TeamOperationOutcome
+{
+    Success,
+    NotFound,
+    Forbidden,
+    Conflict,
+    Locked,
+    Invalid
+}
 
 public sealed class CreateTeamRequest
 {
