@@ -122,7 +122,7 @@ builder.Services.AddScoped<DNTU.SkillBridge.Application.Milestones.IMilestoneSer
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Meetings.MeetingService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Submissions.ISubmissionService, DNTU.SkillBridge.Application.Submissions.SubmissionService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Submissions.ITechnicalReviewService, DNTU.SkillBridge.Application.Submissions.TechnicalReviewService>();
-builder.Services.AddScoped<DNTU.SkillBridge.Api.Submissions.BusinessReviewService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Submissions.IBusinessReviewService, DNTU.SkillBridge.Application.Submissions.BusinessReviewService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Academics.IAcademicService, DNTU.SkillBridge.Application.Academics.AcademicService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Academics.IAcademicEvaluationService, DNTU.SkillBridge.Application.Academics.AcademicEvaluationService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Payments.IPaymentService, DNTU.SkillBridge.Application.Payments.PaymentService>();

@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
-using DNTU.SkillBridge.Api.Submissions;
+using DNTU.SkillBridge.Application.Submissions;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Domain.Identity;
 using Microsoft.AspNetCore.Authorization;
@@ -14,7 +14,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}")]
 [Authorize]
 [Produces("application/json")]
-public sealed class BusinessReviewsController(BusinessReviewService reviewService, ICurrentUser currentUser) : ControllerBase
+public sealed class BusinessReviewsController(IBusinessReviewService reviewService, ICurrentUser currentUser) : ControllerBase
 {
     /// <summary>Creates an immutable business decision for the current technically-approved submission version.</summary>
     [HttpPost("company/submissions/{submissionId:guid}/business-review")]

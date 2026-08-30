@@ -1,7 +1,16 @@
 using System.ComponentModel.DataAnnotations;
 using DNTU.SkillBridge.Domain.Submissions;
 
-namespace DNTU.SkillBridge.Api.Submissions;
+namespace DNTU.SkillBridge.Application.Submissions;
+
+public enum BusinessReviewOutcome
+{
+    Success,
+    NotFound,
+    Forbidden,
+    Conflict,
+    Invalid
+}
 
 /// <summary>Company-owned business assessment input. Academic scoring and verified-skill fields are deliberately absent.</summary>
 public sealed class CreateBusinessReviewRequest
