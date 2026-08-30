@@ -127,13 +127,15 @@ public sealed class CommitmentService(ICommitmentRepository commitmentRepository
     public async Task<int> ExpirePendingCommitmentsAsync(DateTimeOffset now, CancellationToken cancellationToken)
     {
         var pending = await commitmentRepository.FindPendingCommitmentsAsync(now, cancellationToken);
+        if (pending.Count == 0) return 0;
         foreach (var commitment in pending)
         {
             commitment.Expire(now);
             commitmentRepository.AddProjectActivity(new ProjectActivity(commitment.ProjectId, "COMMITMENT_ABANDONED", null));
         }
 
-        return pending.Count == 0 ? 0 : pending.Count;
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return pending.Count;
     }
 
     private static WithdrawalResponse ToResponse(WithdrawalRequest item) => new(item.Id, item.ProjectId, item.StudentId, item.Reason, item.Status, item.RecommendedByLecturerId, item.RecommendedAt, item.LecturerNote, item.DecidedByUserId, item.DecidedAt, item.DecisionNote, item.CreatedAt);
