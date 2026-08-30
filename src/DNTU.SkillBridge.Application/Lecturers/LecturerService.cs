@@ -1,25 +1,28 @@
+using DNTU.SkillBridge.Application.Abstractions;
 using DNTU.SkillBridge.Domain.Lecturers;
-using DNTU.SkillBridge.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
 
-namespace DNTU.SkillBridge.Api.Lecturers;
+namespace DNTU.SkillBridge.Application.Lecturers;
 
-public enum LecturerAssignmentCreateOutcome
+public interface ILecturerService
 {
-    Created,
-    LecturerNotFound,
-    LecturerInactive,
-    DuplicateAssignment
+    Task<LecturerProfileResponse> GetMyProfileAsync(Guid userId, CancellationToken cancellationToken);
+
+    Task<LecturerProfileResponse> UpdateMyProfileAsync(Guid userId, UpdateLecturerProfileRequest request, CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<LecturerAssignmentResponse>> GetMyAssignmentsAsync(Guid userId, CancellationToken cancellationToken);
+
+    Task<(LecturerAssignmentAcceptOutcome Outcome, LecturerAssignmentResponse? Assignment)> AcceptMyAssignmentAsync(
+        Guid userId, Guid assignmentId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<LecturerAssignmentResponse>> GetLecturerAssignmentsAsync(Guid lecturerId, CancellationToken cancellationToken);
+
+    Task<(LecturerAssignmentCreateOutcome Outcome, LecturerAssignmentResponse? Assignment)> CreateAssignmentAsync(
+        Guid lecturerId, CreateLecturerAssignmentRequest request, CancellationToken cancellationToken);
+
+    Task<bool> DeleteAssignmentAsync(Guid assignmentId, CancellationToken cancellationToken);
 }
 
-public enum LecturerAssignmentAcceptOutcome
-{
-    Accepted,
-    NotFound,
-    NotOpenForAcceptance
-}
-
-public sealed class LecturerService(AppDbContext dbContext)
+public sealed class LecturerService(ILecturerRepository lecturerRepository, IUnitOfWork unitOfWork) : ILecturerService
 {
     /// <summary>Returns the caller's own profile, lazily creating it (active, private) on first access.</summary>
     public async Task<LecturerProfileResponse> GetMyProfileAsync(Guid userId, CancellationToken cancellationToken)
@@ -43,7 +46,7 @@ public sealed class LecturerService(AppDbContext dbContext)
             request.IsProfilePublic,
             request.ShowContactInfo);
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return ProjectProfile(profile);
     }
 
@@ -51,7 +54,7 @@ public sealed class LecturerService(AppDbContext dbContext)
     public async Task<IReadOnlyCollection<LecturerAssignmentResponse>> GetMyAssignmentsAsync(Guid userId, CancellationToken cancellationToken)
     {
         var profile = await EnsureProfileAsync(userId, cancellationToken);
-        return await ProjectAssignmentsAsync(dbContext, profile.Id, cancellationToken);
+        return ProjectAssignments(await lecturerRepository.ListAssignmentsAsync(profile.Id, cancellationToken));
     }
 
     /// <summary>The caller accepts an invited supervision assignment as their own.</summary>
@@ -59,9 +62,7 @@ public sealed class LecturerService(AppDbContext dbContext)
         Guid userId, Guid assignmentId, CancellationToken cancellationToken)
     {
         var profile = await EnsureProfileAsync(userId, cancellationToken);
-        var assignment = await dbContext.LecturerAssignments
-            .AsTracking()
-            .SingleOrDefaultAsync(item => item.Id == assignmentId && item.LecturerId == profile.Id, cancellationToken);
+        var assignment = await lecturerRepository.FindAssignmentForUpdateAsync(assignmentId, profile.Id, cancellationToken);
         if (assignment is null)
         {
             return (LecturerAssignmentAcceptOutcome.NotFound, null);
@@ -73,13 +74,13 @@ public sealed class LecturerService(AppDbContext dbContext)
         }
 
         assignment.Accept(DateTimeOffset.UtcNow);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return (LecturerAssignmentAcceptOutcome.Accepted, ProjectAssignment(assignment));
     }
 
     /// <summary>Admin projection of one lecturer's supervision assignments.</summary>
     public async Task<IReadOnlyCollection<LecturerAssignmentResponse>> GetLecturerAssignmentsAsync(Guid lecturerId, CancellationToken cancellationToken) =>
-        await ProjectAssignmentsAsync(dbContext, lecturerId, cancellationToken);
+        ProjectAssignments(await lecturerRepository.ListAssignmentsAsync(lecturerId, cancellationToken));
 
     /// <summary>
     /// Invites a lecturer to supervise a project (status INVITED). Only existing active lecturers qualify and a
@@ -88,9 +89,7 @@ public sealed class LecturerService(AppDbContext dbContext)
     public async Task<(LecturerAssignmentCreateOutcome Outcome, LecturerAssignmentResponse? Assignment)> CreateAssignmentAsync(
         Guid lecturerId, CreateLecturerAssignmentRequest request, CancellationToken cancellationToken)
     {
-        var profile = await dbContext.LecturerProfiles
-            .AsTracking()
-            .SingleOrDefaultAsync(item => item.Id == lecturerId, cancellationToken);
+        var profile = await lecturerRepository.FindProfileForUpdateAsync(lecturerId, cancellationToken);
         if (profile is null)
         {
             return (LecturerAssignmentCreateOutcome.LecturerNotFound, null);
@@ -101,48 +100,43 @@ public sealed class LecturerService(AppDbContext dbContext)
             return (LecturerAssignmentCreateOutcome.LecturerInactive, null);
         }
 
-        var duplicate = await dbContext.LecturerAssignments
-            .AnyAsync(item => item.ProjectId == request.ProjectId, cancellationToken);
-        if (duplicate)
+        if (await lecturerRepository.HasAssignmentForProjectAsync(request.ProjectId, cancellationToken))
         {
             return (LecturerAssignmentCreateOutcome.DuplicateAssignment, null);
         }
 
         var assignment = profile.AssignProject(request.ProjectId, request.Role, request.Note);
-        dbContext.LecturerAssignments.Add(assignment);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        lecturerRepository.AddAssignment(assignment);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return (LecturerAssignmentCreateOutcome.Created, ProjectAssignment(assignment));
     }
 
     /// <summary>Removes a supervision assignment; returns false when it does not exist.</summary>
     public async Task<bool> DeleteAssignmentAsync(Guid assignmentId, CancellationToken cancellationToken)
     {
-        var assignment = await dbContext.LecturerAssignments
-            .SingleOrDefaultAsync(item => item.Id == assignmentId, cancellationToken);
+        var assignment = await lecturerRepository.FindAssignmentAsync(assignmentId, cancellationToken);
         if (assignment is null)
         {
             return false;
         }
 
-        dbContext.LecturerAssignments.Remove(assignment);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        lecturerRepository.RemoveAssignment(assignment);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return true;
     }
 
     private async Task<LecturerProfile> EnsureProfileAsync(Guid userId, CancellationToken cancellationToken)
     {
         // Tracked on purpose: the context defaults to NoTracking and /me writes mutate this entity.
-        var profile = await dbContext.LecturerProfiles
-            .AsTracking()
-            .SingleOrDefaultAsync(item => item.UserId == userId, cancellationToken);
+        var profile = await lecturerRepository.FindProfileByUserIdAsync(userId, cancellationToken);
         if (profile is not null)
         {
             return profile;
         }
 
         profile = new LecturerProfile(userId);
-        dbContext.LecturerProfiles.Add(profile);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        lecturerRepository.AddProfile(profile);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return profile;
     }
 
@@ -170,16 +164,6 @@ public sealed class LecturerService(AppDbContext dbContext)
             assignment.EndedAt,
             assignment.Note);
 
-    private static async Task<IReadOnlyCollection<LecturerAssignmentResponse>> ProjectAssignmentsAsync(
-        AppDbContext dbContext, Guid lecturerId, CancellationToken cancellationToken)
-    {
-        var rows = await dbContext.LecturerAssignments
-            .AsNoTracking()
-            .Where(item => item.LecturerId == lecturerId)
-            .OrderBy(item => item.AssignedAt)
-            .ThenBy(item => item.Id)
-            .ToListAsync(cancellationToken);
-
-        return rows.Select(ProjectAssignment).ToList();
-    }
+    private static IReadOnlyCollection<LecturerAssignmentResponse> ProjectAssignments(IReadOnlyCollection<LecturerAssignment> assignments) =>
+        assignments.Select(ProjectAssignment).ToList();
 }

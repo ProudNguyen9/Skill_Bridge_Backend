@@ -103,7 +103,7 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<ICatalogService, CatalogService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Students.StudentService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Companies.CompanyService>();
-builder.Services.AddScoped<DNTU.SkillBridge.Api.Lecturers.LecturerService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Lecturers.ILecturerService, DNTU.SkillBridge.Application.Lecturers.LecturerService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Projects.ProjectService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Projects.ProjectCompletionService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Students.SavedProjectService>();

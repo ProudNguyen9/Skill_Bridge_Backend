@@ -1,7 +1,22 @@
 using System.ComponentModel.DataAnnotations;
 using DNTU.SkillBridge.Domain.Lecturers;
 
-namespace DNTU.SkillBridge.Api.Lecturers;
+namespace DNTU.SkillBridge.Application.Lecturers;
+
+public enum LecturerAssignmentCreateOutcome
+{
+    Created,
+    LecturerNotFound,
+    LecturerInactive,
+    DuplicateAssignment
+}
+
+public enum LecturerAssignmentAcceptOutcome
+{
+    Accepted,
+    NotFound,
+    NotOpenForAcceptance
+}
 
 /// <summary>Private profile projection for the authenticated lecturer.</summary>
 public sealed record LecturerProfileResponse(
