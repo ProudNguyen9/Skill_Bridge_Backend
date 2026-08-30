@@ -121,7 +121,7 @@ builder.Services.AddScoped<DNTU.SkillBridge.Application.Workspaces.ITaskCollabor
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Files.IFileService, DNTU.SkillBridge.Application.Files.FileService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Files.IFileExpirationService>(provider => provider.GetRequiredService<DNTU.SkillBridge.Application.Files.IFileService>() as DNTU.SkillBridge.Application.Files.IFileExpirationService ?? throw new InvalidOperationException("File service must implement file expiration."));
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Milestones.IMilestoneService, DNTU.SkillBridge.Application.Milestones.MilestoneService>();
-builder.Services.AddScoped<DNTU.SkillBridge.Api.Meetings.MeetingService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Meetings.IMeetingService, DNTU.SkillBridge.Application.Meetings.MeetingService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Submissions.ISubmissionService, DNTU.SkillBridge.Application.Submissions.SubmissionService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Submissions.ITechnicalReviewService, DNTU.SkillBridge.Application.Submissions.TechnicalReviewService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Submissions.IBusinessReviewService, DNTU.SkillBridge.Application.Submissions.BusinessReviewService>();

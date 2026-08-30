@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using DNTU.SkillBridge.Domain.Meetings;
 
-namespace DNTU.SkillBridge.Api.Meetings;
+namespace DNTU.SkillBridge.Application.Meetings;
 
 public sealed class CreateMeetingRequest
 {

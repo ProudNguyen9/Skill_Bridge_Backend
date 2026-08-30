@@ -1,6 +1,5 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
-using DNTU.SkillBridge.Api.Meetings;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Application.Meetings;
 using Microsoft.AspNetCore.Authorization;
@@ -13,7 +12,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}")]
 [Authorize]
 [Produces("application/json")]
-public sealed class MeetingsController(MeetingService meetingService, ICurrentUser currentUser) : ControllerBase
+public sealed class MeetingsController(IMeetingService meetingService, ICurrentUser currentUser) : ControllerBase
 {
     /// <summary>Schedules a UTC project meeting. Project members may schedule only when workspace settings allow it; owners, active lecturers, and admins may always schedule.</summary>
     [HttpPost("projects/{projectId:guid}/meetings")]

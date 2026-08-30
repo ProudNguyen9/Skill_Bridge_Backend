@@ -3,7 +3,7 @@ using DNTU.SkillBridge.Application.Workspaces;
 using DNTU.SkillBridge.Domain.Meetings;
 using DNTU.SkillBridge.Domain.Workspaces;
 
-namespace DNTU.SkillBridge.Api.Meetings;
+namespace DNTU.SkillBridge.Application.Meetings;
 
 public sealed class UpsertMeetingMinutesRequest
 {

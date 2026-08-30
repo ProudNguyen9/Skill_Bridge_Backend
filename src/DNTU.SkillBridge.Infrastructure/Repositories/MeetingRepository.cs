@@ -12,9 +12,9 @@ using DNTU.SkillBridge.Infrastructure.Persistence;
 using DNTU.SkillBridge.Application.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace DNTU.SkillBridge.Api.Meetings;
+namespace DNTU.SkillBridge.Infrastructure.Repositories;
 
-public sealed class MeetingService(AppDbContext dbContext)
+public sealed class MeetingRepository(AppDbContext dbContext) : IMeetingRepository
 {
     private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> ConversionLocks = new();
     public async Task<MeetingResponse?> CreateAsync(Guid userId, Guid projectId, CreateMeetingRequest request, CancellationToken cancellationToken)
