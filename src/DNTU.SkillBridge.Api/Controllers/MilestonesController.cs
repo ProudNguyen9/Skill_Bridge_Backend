@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
-using DNTU.SkillBridge.Api.Milestones;
+using DNTU.SkillBridge.Application.Milestones;
 using DNTU.SkillBridge.Application.Common.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +12,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}")]
 [Authorize]
 [Produces("application/json")]
-public sealed class MilestonesController(MilestoneService milestoneService, ICurrentUser currentUser) : ControllerBase
+public sealed class MilestonesController(IMilestoneService milestoneService, ICurrentUser currentUser) : ControllerBase
 {
     /// <summary>Creates a planned milestone. Company owners/managers and active assigned lecturers manage the milestone plan.</summary>
     [HttpPost("projects/{projectId:guid}/milestones")]

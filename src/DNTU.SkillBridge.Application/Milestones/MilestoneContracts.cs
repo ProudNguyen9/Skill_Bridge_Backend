@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using DNTU.SkillBridge.Domain.Milestones;
 
-namespace DNTU.SkillBridge.Api.Milestones;
+namespace DNTU.SkillBridge.Application.Milestones;
 
 public sealed class CreateMilestoneRequest
 {

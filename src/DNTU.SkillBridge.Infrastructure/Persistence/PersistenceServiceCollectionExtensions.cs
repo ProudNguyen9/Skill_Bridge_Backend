@@ -5,6 +5,7 @@ using DNTU.SkillBridge.Application.Analytics;
 using DNTU.SkillBridge.Application.Catalog;
 using DNTU.SkillBridge.Application.Commitments;
 using DNTU.SkillBridge.Application.Lecturers;
+using DNTU.SkillBridge.Application.Milestones;
 using DNTU.SkillBridge.Application.Notifications;
 using DNTU.SkillBridge.Application.Payments;
 using DNTU.SkillBridge.Application.SePay;
@@ -50,6 +51,7 @@ public static class PersistenceServiceCollectionExtensions
         services.AddScoped<ILecturerRepository, LecturerRepository>();
         services.AddScoped<IAcademicRepository, AcademicRepository>();
         services.AddScoped<IAcademicEvaluationRepository, AcademicEvaluationRepository>();
+        services.AddScoped<IMilestoneRepository, MilestoneRepository>();
 
         return services;
     }
