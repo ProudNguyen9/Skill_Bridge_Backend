@@ -2,6 +2,7 @@ using DNTU.SkillBridge.Application.Abstractions;
 using DNTU.SkillBridge.Application.Administration;
 using DNTU.SkillBridge.Application.Analytics;
 using DNTU.SkillBridge.Application.Catalog;
+using DNTU.SkillBridge.Application.Commitments;
 using DNTU.SkillBridge.Application.Notifications;
 using DNTU.SkillBridge.Application.Payments;
 using DNTU.SkillBridge.Application.SePay;
@@ -35,6 +36,7 @@ public static class PersistenceServiceCollectionExtensions
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<ISePayRepository, SePayRepository>();
+        services.AddScoped<ICommitmentRepository, CommitmentRepository>();
 
         return services;
     }

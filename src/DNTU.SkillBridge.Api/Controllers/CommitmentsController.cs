@@ -1,5 +1,5 @@
 using Asp.Versioning;
-using DNTU.SkillBridge.Api.Commitments;
+using DNTU.SkillBridge.Application.Commitments;
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Domain.Identity;
@@ -13,7 +13,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}")]
 [Authorize]
 [Produces("application/json")]
-public sealed class CommitmentsController(CommitmentService commitmentService, ICurrentUser currentUser) : ControllerBase
+public sealed class CommitmentsController(ICommitmentService commitmentService, ICurrentUser currentUser) : ControllerBase
 {
     [HttpGet("projects/{projectId:guid}/commitment")]
     [ProducesResponseType(typeof(ApiResponse<CommitmentResponse>), StatusCodes.Status200OK)]

@@ -1,7 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Collections.Concurrent;
-using DNTU.SkillBridge.Api.Commitments;
 using DNTU.SkillBridge.Api.Files;
+using DNTU.SkillBridge.Application.Commitments;
 using DNTU.SkillBridge.Domain.Commitments;
 using DNTU.SkillBridge.Domain.Files;
 using DNTU.SkillBridge.Domain.Meetings;
@@ -398,7 +398,7 @@ public sealed class ApplicationEndpointTests(CatalogApiFactory factory)
                 .SetValue(commitment, DateTimeOffset.UtcNow.AddMinutes(-1));
             await dbContext.SaveChangesAsync();
 
-            var expired = await new CommitmentService(dbContext).ExpirePendingCommitmentsAsync(DateTimeOffset.UtcNow, CancellationToken.None);
+            var expired = await new CommitmentService(new DNTU.SkillBridge.Infrastructure.Repositories.CommitmentRepository(dbContext), new DNTU.SkillBridge.Infrastructure.Persistence.UnitOfWork(dbContext)).ExpirePendingCommitmentsAsync(DateTimeOffset.UtcNow, CancellationToken.None);
             Assert.True(expired >= 1);
             Assert.Equal(DNTU.SkillBridge.Domain.Commitments.CommitmentStatus.ABANDONED,
                 await dbContext.ProjectCommitments.Where(item => item.ProjectId == expiryProjectId).Select(item => item.Status).SingleAsync());
