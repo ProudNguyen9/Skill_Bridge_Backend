@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
-using DNTU.SkillBridge.Api.Notifications;
+using DNTU.SkillBridge.Application.Notifications;
 using DNTU.SkillBridge.Application.Common.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace DNTU.SkillBridge.Api.Controllers;
 
 [ApiController, ApiVersion("1.0"), Route("api/v{version:apiVersion}"), Authorize, Produces("application/json")]
-public sealed class NotificationsController(NotificationService notificationService, ICurrentUser currentUser) : ControllerBase
+public sealed class NotificationsController(INotificationService notificationService, ICurrentUser currentUser) : ControllerBase
 {
     [HttpGet("notifications")] public async Task<ActionResult<ApiResponse<IReadOnlyCollection<NotificationResponse>>>> List(CancellationToken ct) => Ok(new ApiResponse<IReadOnlyCollection<NotificationResponse>>(await notificationService.ListAsync(UserId, ct)));
     [HttpGet("notifications/{id:guid}")] public async Task<ActionResult<ApiResponse<NotificationResponse>>> Get(Guid id, CancellationToken ct) { var result = await notificationService.GetAsync(UserId, id, ct); return result is null ? NotFound() : Ok(new ApiResponse<NotificationResponse>(result)); }

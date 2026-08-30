@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
-namespace DNTU.SkillBridge.Api.Notifications;
+namespace DNTU.SkillBridge.Api.Realtime;
 
 [Authorize]
 public sealed class NotificationHub : Hub { }
