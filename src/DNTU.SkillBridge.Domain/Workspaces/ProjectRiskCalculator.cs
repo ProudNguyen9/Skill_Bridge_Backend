@@ -1,6 +1,4 @@
-using DNTU.SkillBridge.Domain.Workspaces;
-
-namespace DNTU.SkillBridge.Api.Workspaces;
+namespace DNTU.SkillBridge.Domain.Workspaces;
 
 public sealed record ProjectRiskPolicy(
     int OverdueMilestonePoints = 2,

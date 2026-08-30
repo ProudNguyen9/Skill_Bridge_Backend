@@ -1,4 +1,3 @@
-using DNTU.SkillBridge.Api.Workspaces;
 using DNTU.SkillBridge.Domain.Workspaces;
 
 namespace DNTU.SkillBridge.FunctionalTests;
