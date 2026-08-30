@@ -1,7 +1,23 @@
 using System.ComponentModel.DataAnnotations;
 using DNTU.SkillBridge.Domain.Companies;
 
-namespace DNTU.SkillBridge.Api.Companies;
+namespace DNTU.SkillBridge.Application.Companies;
+
+public enum CompanyUpdateOutcome
+{
+    Created,
+    Updated,
+    NameRequired,
+    Conflict
+}
+
+public enum CompanyRemoveMemberOutcome
+{
+    Removed,
+    NotMember,
+    LastOwner,
+    Forbidden
+}
 
 public sealed record CompanyProfileResponse(
     Guid Id,

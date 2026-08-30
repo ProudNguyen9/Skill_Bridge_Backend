@@ -3,6 +3,7 @@ using DNTU.SkillBridge.Application.Administration;
 using DNTU.SkillBridge.Application.Academics;
 using DNTU.SkillBridge.Application.Analytics;
 using DNTU.SkillBridge.Application.Catalog;
+using DNTU.SkillBridge.Application.Companies;
 using DNTU.SkillBridge.Application.Commitments;
 using DNTU.SkillBridge.Application.Lecturers;
 using DNTU.SkillBridge.Application.Milestones;
@@ -56,6 +57,7 @@ public static class PersistenceServiceCollectionExtensions
         services.AddScoped<IMilestoneRepository, MilestoneRepository>();
         services.AddScoped<ISavedProjectRepository, SavedProjectRepository>();
         services.AddScoped<IStudentRepository, StudentRepository>();
+        services.AddScoped<ICompanyRepository, CompanyRepository>();
         services.AddScoped<ISubmissionRepository, SubmissionRepository>();
         services.AddScoped<ITechnicalReviewRepository, TechnicalReviewRepository>();
         services.AddScoped<IBusinessReviewRepository, BusinessReviewRepository>();

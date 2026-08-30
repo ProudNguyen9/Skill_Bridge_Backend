@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Api.Applications;
-using DNTU.SkillBridge.Api.Companies;
+using DNTU.SkillBridge.Application.Companies;
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Api.Projects;
 using DNTU.SkillBridge.Application.Common.Security;
@@ -16,7 +16,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}/company/projects")]
 [Authorize]
 [Produces("application/json")]
-public sealed class CompanyProjectsController(ProjectService projectService, ApplicationService applicationService, CompanyService companyService, ICurrentUser currentUser) : ControllerBase
+public sealed class CompanyProjectsController(ProjectService projectService, ApplicationService applicationService, ICompanyService companyService, ICurrentUser currentUser) : ControllerBase
 {
     /// <summary>Lists the caller's company projects with pagination and a validated sort allow-list.</summary>
     [HttpGet]

@@ -1,7 +1,7 @@
 using Asp.Versioning;
-using DNTU.SkillBridge.Api.Companies;
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Application.Common.Security;
+using DNTU.SkillBridge.Application.Companies;
 using DNTU.SkillBridge.Domain.Companies;
 using DNTU.SkillBridge.Domain.Identity;
 using Microsoft.AspNetCore.Authorization;
@@ -14,7 +14,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/companies")]
 [Produces("application/json")]
-public sealed class CompaniesController(CompanyService companyService, ICurrentUser currentUser) : ControllerBase
+public sealed class CompaniesController(ICompanyService companyService, ICurrentUser currentUser) : ControllerBase
 {
     /// <summary>Returns the caller's own company profile, or 404 until the company is created.</summary>
     [HttpGet("me")]
