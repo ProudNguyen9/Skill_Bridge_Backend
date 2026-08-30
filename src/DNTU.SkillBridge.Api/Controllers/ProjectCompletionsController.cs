@@ -1,6 +1,5 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
-using DNTU.SkillBridge.Api.Projects;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Application.Projects;
 using DNTU.SkillBridge.Domain.Identity;
@@ -14,7 +13,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}/projects")]
 [Authorize]
 [Produces("application/json")]
-public sealed class ProjectCompletionsController(ProjectCompletionService completionService, ICurrentUser currentUser) : ControllerBase
+public sealed class ProjectCompletionsController(IProjectCompletionService completionService, ICurrentUser currentUser) : ControllerBase
 {
     [HttpPost("{projectId:guid}/complete")]
     [ProducesResponseType(typeof(ApiResponse<ProjectCompletionResponse>), StatusCodes.Status200OK)]

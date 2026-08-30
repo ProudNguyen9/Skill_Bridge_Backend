@@ -9,12 +9,10 @@ using DNTU.SkillBridge.Domain.Submissions;
 using DNTU.SkillBridge.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
-namespace DNTU.SkillBridge.Api.Projects;
-
-public sealed record ProjectCompletionResponse(Guid Id, Guid ProjectId, Guid CompletedByUserId, DateTimeOffset CompletedAt, string EvidenceJson);
+namespace DNTU.SkillBridge.Infrastructure.Repositories;
 
 /// <summary>Coordinates the irreversible project completion transaction and its downstream records.</summary>
-public sealed class ProjectCompletionService(AppDbContext dbContext, IProjectActivityWriter activityWriter)
+public sealed class ProjectCompletionRepository(AppDbContext dbContext, IProjectActivityWriter activityWriter) : IProjectCompletionRepository
 {
     public async Task<(ProjectCompletionOutcome Outcome, ProjectCompletionResponse? Completion)> CompleteAsync(
         Guid actorUserId,
