@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
-using DNTU.SkillBridge.Api.Students;
+using DNTU.SkillBridge.Application.Students;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Domain.Identity;
 using Microsoft.AspNetCore.Authorization;
@@ -18,7 +18,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}/students/me")]
 [Authorize]
 [Produces("application/json")]
-public sealed class SavedProjectsController(SavedProjectService savedProjectService, ICurrentUser currentUser) : ControllerBase
+public sealed class SavedProjectsController(ISavedProjectService savedProjectService, ICurrentUser currentUser) : ControllerBase
 {
     /// <summary>Saves a publicly visible project. Idempotent; answers with the current saved list. Drafts and hidden projects answer 404.</summary>
     [HttpPost("saved-projects/{projectId:guid}")]
