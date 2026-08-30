@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using DNTU.SkillBridge.Domain.Students;
 
-namespace DNTU.SkillBridge.Api.Students;
+namespace DNTU.SkillBridge.Application.Students;
 
 public sealed record StudentProfileResponse(
     Guid Id,

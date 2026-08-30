@@ -1,7 +1,7 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
-using DNTU.SkillBridge.Api.Students;
 using DNTU.SkillBridge.Application.Common.Security;
+using DNTU.SkillBridge.Application.Students;
 using DNTU.SkillBridge.Domain.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,7 +13,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/students")]
 [Produces("application/json")]
-public sealed class StudentsController(StudentService studentService, ICurrentUser currentUser) : ControllerBase
+public sealed class StudentsController(IStudentService studentService, ICurrentUser currentUser) : ControllerBase
 {
     /// <summary>Returns the caller's own student profile, creating it with default privacy settings on first access.</summary>
     [HttpGet("me")]

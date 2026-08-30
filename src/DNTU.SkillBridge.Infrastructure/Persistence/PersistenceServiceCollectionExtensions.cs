@@ -55,6 +55,7 @@ public static class PersistenceServiceCollectionExtensions
         services.AddScoped<IAcademicEvaluationRepository, AcademicEvaluationRepository>();
         services.AddScoped<IMilestoneRepository, MilestoneRepository>();
         services.AddScoped<ISavedProjectRepository, SavedProjectRepository>();
+        services.AddScoped<IStudentRepository, StudentRepository>();
         services.AddScoped<ISubmissionRepository, SubmissionRepository>();
         services.AddScoped<ITechnicalReviewRepository, TechnicalReviewRepository>();
         services.AddScoped<IBusinessReviewRepository, BusinessReviewRepository>();
