@@ -2,6 +2,7 @@ using DNTU.SkillBridge.Application.Administration;
 using DNTU.SkillBridge.Application.Analytics;
 using DNTU.SkillBridge.Application.Catalog;
 using DNTU.SkillBridge.Application.Notifications;
+using DNTU.SkillBridge.Application.Payments;
 using DNTU.SkillBridge.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -29,6 +30,7 @@ public static class PersistenceServiceCollectionExtensions
         services.AddScoped<IAnalyticsRepository, AnalyticsRepository>();
         services.AddScoped<IAdministrationRepository, AdminGovernanceRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<IPaymentRepository, PaymentRepository>();
 
         return services;
     }

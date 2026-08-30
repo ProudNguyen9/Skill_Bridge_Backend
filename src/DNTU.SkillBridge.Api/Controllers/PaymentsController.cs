@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
-using DNTU.SkillBridge.Api.Payments;
+using DNTU.SkillBridge.Application.Payments;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Domain.Identity;
 using Microsoft.AspNetCore.Authorization;
@@ -16,7 +16,7 @@ public sealed record FundingOrderResponse(Guid Id, Guid ProjectId, string Invoic
 [Route("api/v{version:apiVersion}")]
 [Authorize]
 [Produces("application/json")]
-public sealed class PaymentsController(PaymentService paymentService, ICurrentUser currentUser) : ControllerBase
+public sealed class PaymentsController(IPaymentService paymentService, ICurrentUser currentUser) : ControllerBase
 {
     [HttpPost("company/projects/{projectId:guid}/funding-orders")]
     public async Task<ActionResult<ApiResponse<FundingOrderResponse>>> CreateFundingOrder(

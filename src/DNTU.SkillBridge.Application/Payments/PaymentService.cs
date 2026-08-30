@@ -1,18 +1,27 @@
+using DNTU.SkillBridge.Application.Abstractions;
 using DNTU.SkillBridge.Domain.Payments;
-using DNTU.SkillBridge.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
 
-namespace DNTU.SkillBridge.Api.Payments;
+namespace DNTU.SkillBridge.Application.Payments;
 
-public sealed class PaymentService(AppDbContext dbContext)
+public interface IPaymentService
+{
+    Task<FundingOrder?> CreateFundingOrderAsync(Guid companyUserId, Guid projectId, long amount, CancellationToken cancellationToken);
+
+    Task<bool> StartDisbursementProcessingAsync(Guid disbursementId, CancellationToken cancellationToken);
+
+    Task<bool> MarkDisbursementPaidAsync(Guid disbursementId, string idempotencyKey, string bankReference, CancellationToken cancellationToken);
+
+    Task<bool> MarkDisbursementFailedAsync(Guid disbursementId, string? note, CancellationToken cancellationToken);
+
+    Task<bool> CancelDisbursementAsync(Guid disbursementId, string? note, CancellationToken cancellationToken);
+}
+
+public sealed class PaymentService(IPaymentRepository paymentRepository, IUnitOfWork unitOfWork) : IPaymentService
 {
     public async Task<FundingOrder?> CreateFundingOrderAsync(Guid companyUserId, Guid projectId, long amount, CancellationToken cancellationToken)
     {
-        var companyId = await dbContext.CompanyMembers.AsNoTracking()
-            .Where(member => member.UserId == companyUserId)
-            .Select(member => (Guid?)member.CompanyId)
-            .SingleOrDefaultAsync(cancellationToken);
-        if (!companyId.HasValue || !await dbContext.Projects.AsNoTracking().AnyAsync(project => project.Id == projectId && project.CompanyId == companyId.Value, cancellationToken))
+        var companyId = await paymentRepository.FindCompanyIdByUserAsync(companyUserId, cancellationToken);
+        if (!companyId.HasValue || !await paymentRepository.ProjectBelongsToCompanyAsync(projectId, companyId.Value, cancellationToken))
         {
             return null;
         }
@@ -24,20 +33,20 @@ public sealed class PaymentService(AppDbContext dbContext)
             "VND",
             DateTimeOffset.UtcNow.AddMinutes(15));
         order.MarkPending();
-        dbContext.FundingOrders.Add(order);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        paymentRepository.AddFundingOrder(order);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return order;
     }
 
     public async Task<bool> StartDisbursementProcessingAsync(Guid disbursementId, CancellationToken cancellationToken)
     {
-        var disbursement = await dbContext.Disbursements.SingleOrDefaultAsync(item => item.Id == disbursementId, cancellationToken);
+        var disbursement = await paymentRepository.FindDisbursementAsync(disbursementId, cancellationToken);
         if (disbursement is null) return false;
 
         try
         {
             disbursement.StartProcessing();
-            await dbContext.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
             return true;
         }
         catch (InvalidOperationException)
@@ -52,7 +61,7 @@ public sealed class PaymentService(AppDbContext dbContext)
         string bankReference,
         CancellationToken cancellationToken)
     {
-        var disbursement = await dbContext.Disbursements.SingleOrDefaultAsync(item => item.Id == disbursementId, cancellationToken);
+        var disbursement = await paymentRepository.FindDisbursementAsync(disbursementId, cancellationToken);
         if (disbursement is null)
         {
             return false;
@@ -63,7 +72,7 @@ public sealed class PaymentService(AppDbContext dbContext)
             var changed = disbursement.MarkPaid(idempotencyKey, bankReference, null, DateTimeOffset.UtcNow);
             if (changed)
             {
-                await dbContext.SaveChangesAsync(cancellationToken);
+                await unitOfWork.SaveChangesAsync(cancellationToken);
             }
 
             return true;
@@ -76,13 +85,13 @@ public sealed class PaymentService(AppDbContext dbContext)
 
     public async Task<bool> MarkDisbursementFailedAsync(Guid disbursementId, string? note, CancellationToken cancellationToken)
     {
-        var disbursement = await dbContext.Disbursements.SingleOrDefaultAsync(item => item.Id == disbursementId, cancellationToken);
+        var disbursement = await paymentRepository.FindDisbursementAsync(disbursementId, cancellationToken);
         if (disbursement is null) return false;
 
         try
         {
             disbursement.MarkFailed(note);
-            await dbContext.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
             return true;
         }
         catch (InvalidOperationException)
@@ -93,13 +102,13 @@ public sealed class PaymentService(AppDbContext dbContext)
 
     public async Task<bool> CancelDisbursementAsync(Guid disbursementId, string? note, CancellationToken cancellationToken)
     {
-        var disbursement = await dbContext.Disbursements.SingleOrDefaultAsync(item => item.Id == disbursementId, cancellationToken);
+        var disbursement = await paymentRepository.FindDisbursementAsync(disbursementId, cancellationToken);
         if (disbursement is null) return false;
 
         try
         {
             disbursement.Cancel(note);
-            await dbContext.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
             return true;
         }
         catch (InvalidOperationException)
