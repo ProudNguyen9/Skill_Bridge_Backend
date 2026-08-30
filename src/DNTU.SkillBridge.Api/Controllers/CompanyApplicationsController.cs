@@ -1,6 +1,5 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Applications;
-using DNTU.SkillBridge.Api.Applications;
 using DNTU.SkillBridge.Application.Companies;
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Application.Common.Security;
@@ -16,7 +15,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}/company/applications")]
 [Authorize]
 [Produces("application/json")]
-public sealed class CompanyApplicationsController(ApplicationService applicationService, ICompanyService companyService, ICurrentUser currentUser) : ControllerBase
+public sealed class CompanyApplicationsController(IApplicationService applicationService, ICompanyService companyService, ICurrentUser currentUser) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<PagedResponse<CompanyApplicationResponse>>> List([FromQuery] CompanyApplicationListQuery query, CancellationToken cancellationToken)
