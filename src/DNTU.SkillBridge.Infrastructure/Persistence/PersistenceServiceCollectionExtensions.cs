@@ -58,6 +58,7 @@ public static class PersistenceServiceCollectionExtensions
         services.AddScoped<ISubmissionRepository, SubmissionRepository>();
         services.AddScoped<ITechnicalReviewRepository, TechnicalReviewRepository>();
         services.AddScoped<IBusinessReviewRepository, BusinessReviewRepository>();
+        services.AddScoped<IPortfolioRepository, PortfolioRepository>();
 
         return services;
     }
