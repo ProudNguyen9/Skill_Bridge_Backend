@@ -124,7 +124,7 @@ builder.Services.AddScoped<DNTU.SkillBridge.Api.Academics.AcademicEvaluationServ
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Payments.PaymentService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Payments.SePayService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Administration.AdminGovernanceService>();
-builder.Services.AddScoped<DNTU.SkillBridge.Api.Analytics.AnalyticsService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Analytics.IAnalyticsService, DNTU.SkillBridge.Application.Analytics.AnalyticsService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<NotificationWriter>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Notifications.INotificationWriter>(provider => provider.GetRequiredService<NotificationWriter>());

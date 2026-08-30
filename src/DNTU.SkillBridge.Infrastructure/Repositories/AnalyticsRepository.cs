@@ -1,14 +1,12 @@
+using DNTU.SkillBridge.Application.Analytics;
 using DNTU.SkillBridge.Domain.Workspaces;
 using DNTU.SkillBridge.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
-namespace DNTU.SkillBridge.Api.Analytics;
+namespace DNTU.SkillBridge.Infrastructure.Repositories;
 
-public sealed record SkillAnalyticsResponse(Guid SkillId, string SkillName, int Demand, int DeclaredSupply, int VerifiedSupply, int Gap);
-public sealed record AnalyticsOverviewResponse(int ActiveProjects, int StudentsWithDeclaredSkills, int VerifiedSkills, int ProjectsAtRisk);
-
-/// <summary>Read-only, privacy-safe aggregate skill supply and demand analytics.</summary>
-public sealed class AnalyticsService(AppDbContext dbContext)
+/// <summary>EF Core implementation of the admin analytics aggregate queries.</summary>
+public sealed class AnalyticsRepository(AppDbContext dbContext) : IAnalyticsRepository
 {
     public async Task<AnalyticsOverviewResponse> GetOverviewAsync(CancellationToken cancellationToken) => new(
         await dbContext.Projects.CountAsync(item => item.IsActive, cancellationToken),
@@ -16,7 +14,7 @@ public sealed class AnalyticsService(AppDbContext dbContext)
         await dbContext.VerifiedSkills.CountAsync(item => !item.IsRevoked, cancellationToken),
         await dbContext.ProjectRiskSnapshots.CountAsync(item => item.Level != ProjectRiskLevel.LOW, cancellationToken));
 
-    public async Task<IReadOnlyCollection<SkillAnalyticsResponse>> GetSkillsAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<SkillAnalyticsResponse>> GetSkillGapRowsAsync(CancellationToken cancellationToken)
     {
         var demand = await dbContext.ProjectSkills.AsNoTracking()
             .Join(dbContext.Projects.AsNoTracking().Where(project => project.IsActive), skill => skill.ProjectId, project => project.Id, (skill, _) => skill.SkillId)

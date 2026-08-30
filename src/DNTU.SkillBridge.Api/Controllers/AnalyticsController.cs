@@ -1,5 +1,5 @@
 using Asp.Versioning;
-using DNTU.SkillBridge.Api.Analytics;
+using DNTU.SkillBridge.Application.Analytics;
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Domain.Identity;
@@ -13,7 +13,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}/admin/analytics")]
 [Authorize]
 [Produces("application/json")]
-public sealed class AnalyticsController(AnalyticsService analyticsService, ICurrentUser currentUser) : ControllerBase
+public sealed class AnalyticsController(IAnalyticsService analyticsService, ICurrentUser currentUser) : ControllerBase
 {
     [HttpGet("overview")]
     public async Task<ActionResult<ApiResponse<AnalyticsOverviewResponse>>> Overview(CancellationToken cancellationToken)
