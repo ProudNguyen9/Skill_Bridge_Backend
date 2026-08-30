@@ -1,5 +1,5 @@
 using Asp.Versioning;
-using DNTU.SkillBridge.Api.Administration;
+using DNTU.SkillBridge.Application.Administration;
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Domain.Identity;
@@ -13,7 +13,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}/admin")]
 [Authorize]
 [Produces("application/json")]
-public sealed class AdminGovernanceController(AdminGovernanceService governanceService, ICurrentUser currentUser) : ControllerBase
+public sealed class AdminGovernanceController(IAdminGovernanceService governanceService, ICurrentUser currentUser) : ControllerBase
 {
     [HttpGet("dashboard")]
     public async Task<ActionResult<ApiResponse<AdminDashboardResponse>>> Dashboard(CancellationToken cancellationToken)
