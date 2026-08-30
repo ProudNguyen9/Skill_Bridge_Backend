@@ -1,5 +1,5 @@
 using Asp.Versioning;
-using DNTU.SkillBridge.Api.Catalog;
+using DNTU.SkillBridge.Application.Catalog;
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Application.Common.Security;
 using Microsoft.AspNetCore.Authorization;
@@ -12,7 +12,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/catalog")]
 [Produces("application/json")]
-public sealed class CatalogController(CatalogService catalogService, ICurrentUser currentUser) : ControllerBase
+public sealed class CatalogController(ICatalogService catalogService, ICurrentUser currentUser) : ControllerBase
 {
     /// <summary>Lists active skills (all skills when an administrator requests inactive entries).</summary>
     [HttpGet("skills")]

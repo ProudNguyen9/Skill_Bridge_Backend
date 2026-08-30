@@ -1,4 +1,4 @@
-namespace DNTU.SkillBridge.Api.Catalog;
+namespace DNTU.SkillBridge.Application.Catalog;
 
 /// <summary>A skill entry returned by the catalog endpoints.</summary>
 public sealed record SkillResponse(

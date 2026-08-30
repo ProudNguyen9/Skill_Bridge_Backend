@@ -1,3 +1,5 @@
+using DNTU.SkillBridge.Application.Catalog;
+using DNTU.SkillBridge.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +21,8 @@ public static class PersistenceServiceCollectionExtensions
             });
             options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
         });
+
+        services.AddScoped<ICatalogRepository, CatalogRepository>();
 
         return services;
     }

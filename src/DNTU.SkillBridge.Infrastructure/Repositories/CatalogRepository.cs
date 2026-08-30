@@ -1,16 +1,12 @@
-using DNTU.SkillBridge.Application.Common.Options;
-using DNTU.SkillBridge.Application.Common.Security;
-using DNTU.SkillBridge.Domain.Identity;
+using DNTU.SkillBridge.Application.Catalog;
 using DNTU.SkillBridge.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
-namespace DNTU.SkillBridge.Api.Catalog;
+namespace DNTU.SkillBridge.Infrastructure.Repositories;
 
-public sealed class CatalogService(AppDbContext dbContext, IOptions<CatalogOptions> catalogOptions)
+/// <summary>EF Core implementation of the catalog read queries.</summary>
+public sealed class CatalogRepository(AppDbContext dbContext) : ICatalogRepository
 {
-    private readonly CatalogOptions _catalogOptions = catalogOptions.Value;
-
     /// <summary>Lists catalog skills ordered by name. Inactive entries only appear when explicitly requested by an administrator.</summary>
     public async Task<IReadOnlyCollection<SkillResponse>> GetSkillsAsync(bool includeInactive, CancellationToken cancellationToken)
     {
@@ -84,29 +80,4 @@ public sealed class CatalogService(AppDbContext dbContext, IOptions<CatalogOptio
             .Select(bank => new BankResponse(bank.Id, bank.Code, bank.Name, bank.Bin, bank.IsActive))
             .ToListAsync(cancellationToken);
     }
-
-    /// <summary>Returns configuration-backed project metadata used to build project forms and filters.</summary>
-    public Task<ProjectMetadataResponse> GetProjectMetadataAsync(CancellationToken cancellationToken)
-    {
-        var project = _catalogOptions.Project;
-        return Task.FromResult(new ProjectMetadataResponse(
-            project.Difficulties,
-            project.WorkTypes,
-            new CatalogRangeMetadata(project.DurationWeeks.Min, project.DurationWeeks.Max),
-            new CatalogRangeMetadata(project.TeamSize.Min, project.TeamSize.Max),
-            new CatalogAllowanceMetadata(
-                project.Allowance.Currency,
-                new CatalogRangeMetadata(project.Allowance.Amount.Min, project.Allowance.Amount.Max))));
-    }
-
-    /// <summary>Returns configuration-backed task metadata (kanban statuses and priorities).</summary>
-    public Task<TaskMetadataResponse> GetTaskMetadataAsync(CancellationToken cancellationToken)
-    {
-        var task = _catalogOptions.Task;
-        return Task.FromResult(new TaskMetadataResponse(task.Statuses, task.Priorities));
-    }
-
-    /// <summary>Determines whether the current user may request inactive catalog entries.</summary>
-    public static bool CanIncludeInactive(ICurrentUser currentUser) =>
-        currentUser.Roles.Contains(RoleNames.Admin) || currentUser.Roles.Contains(RoleNames.SuperAdmin);
 }
