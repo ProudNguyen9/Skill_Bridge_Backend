@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using DNTU.SkillBridge.Domain.Academics;
 
-namespace DNTU.SkillBridge.Api.Academics;
+namespace DNTU.SkillBridge.Application.Academics;
 
 public sealed class CreateCourseRequest
 {

@@ -1,5 +1,5 @@
 using Asp.Versioning;
-using DNTU.SkillBridge.Api.Academics;
+using DNTU.SkillBridge.Application.Academics;
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Domain.Identity;
@@ -13,7 +13,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}")]
 [Authorize]
 [Produces("application/json")]
-public sealed class AcademicsController(AcademicService academicService, ICurrentUser currentUser) : ControllerBase
+public sealed class AcademicsController(IAcademicService academicService, ICurrentUser currentUser) : ControllerBase
 {
     [HttpPost("admin/courses")]
     public async Task<ActionResult<ApiResponse<CourseResponse>>> CreateCourse(CreateCourseRequest request, CancellationToken cancellationToken)
