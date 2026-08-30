@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
-using DNTU.SkillBridge.Api.Workspaces;
+using DNTU.SkillBridge.Application.Workspaces;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Domain.Identity;
 using Microsoft.AspNetCore.Authorization;
@@ -13,7 +13,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}")]
 [Authorize]
 [Produces("application/json")]
-public sealed class ProjectTasksController(ProjectTaskService taskService, ICurrentUser currentUser) : ControllerBase
+public sealed class ProjectTasksController(IProjectTaskService taskService, ICurrentUser currentUser) : ControllerBase
 {
     [HttpPost("projects/{projectId:guid}/tasks")]
     public async Task<ActionResult<ApiResponse<ProjectTaskResponse>>> Create(Guid projectId, CreateProjectTaskRequest request, CancellationToken cancellationToken) =>

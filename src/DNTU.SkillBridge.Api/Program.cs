@@ -111,10 +111,10 @@ builder.Services.AddScoped<DNTU.SkillBridge.Api.Applications.ApplicationService>
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Teams.TeamService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Commitments.ICommitmentService, DNTU.SkillBridge.Application.Commitments.CommitmentService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Workspaces.IProjectAccessService, DNTU.SkillBridge.Application.Workspaces.ProjectAccessService>();
-builder.Services.AddScoped<DNTU.SkillBridge.Api.Workspaces.IProjectActivityWriter, DNTU.SkillBridge.Api.Workspaces.ProjectActivityWriter>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Workspaces.IProjectActivityWriter, DNTU.SkillBridge.Api.Workspaces.ProjectActivityWriter>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Workspaces.IWorkspaceService, DNTU.SkillBridge.Application.Workspaces.WorkspaceService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Workspaces.DashboardService>();
-builder.Services.AddScoped<DNTU.SkillBridge.Api.Workspaces.ProjectTaskService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Workspaces.IProjectTaskService, DNTU.SkillBridge.Application.Workspaces.ProjectTaskService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Workspaces.TaskCollaborationService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Files.FileService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Files.IFileExpirationService>(provider => provider.GetRequiredService<DNTU.SkillBridge.Api.Files.FileService>());

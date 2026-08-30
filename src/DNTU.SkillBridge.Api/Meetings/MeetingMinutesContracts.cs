@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using DNTU.SkillBridge.Api.Workspaces;
+using DNTU.SkillBridge.Application.Workspaces;
 using DNTU.SkillBridge.Domain.Meetings;
 using DNTU.SkillBridge.Domain.Workspaces;
 

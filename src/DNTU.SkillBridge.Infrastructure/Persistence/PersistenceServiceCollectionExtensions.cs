@@ -40,6 +40,7 @@ public static class PersistenceServiceCollectionExtensions
         services.AddScoped<ICommitmentRepository, CommitmentRepository>();
         services.AddScoped<IProjectAccessRepository, ProjectAccessRepository>();
         services.AddScoped<IWorkspaceRepository, WorkspaceRepository>();
+        services.AddScoped<IProjectTaskRepository, ProjectTaskRepository>();
 
         return services;
     }

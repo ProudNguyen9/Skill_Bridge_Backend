@@ -1,4 +1,4 @@
-using DNTU.SkillBridge.Api.Workspaces;
+using DNTU.SkillBridge.Application.Workspaces;
 using DNTU.SkillBridge.Domain.Files;
 using DNTU.SkillBridge.Domain.Lecturers;
 using DNTU.SkillBridge.Domain.Submissions;

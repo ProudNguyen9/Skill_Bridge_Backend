@@ -1,5 +1,5 @@
 using System.Text.Json;
-using DNTU.SkillBridge.Api.Workspaces;
+using DNTU.SkillBridge.Application.Workspaces;
 using DNTU.SkillBridge.Domain.Companies;
 using DNTU.SkillBridge.Domain.Notifications;
 using DNTU.SkillBridge.Domain.Submissions;

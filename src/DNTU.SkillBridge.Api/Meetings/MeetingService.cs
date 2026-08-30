@@ -8,7 +8,7 @@ using DNTU.SkillBridge.Domain.Meetings;
 using DNTU.SkillBridge.Domain.Notifications;
 using DNTU.SkillBridge.Domain.Workspaces;
 using DNTU.SkillBridge.Infrastructure.Persistence;
-using DNTU.SkillBridge.Api.Workspaces;
+using DNTU.SkillBridge.Application.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace DNTU.SkillBridge.Api.Meetings;

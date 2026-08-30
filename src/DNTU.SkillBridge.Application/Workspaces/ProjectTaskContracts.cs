@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using DNTU.SkillBridge.Domain.Workspaces;
 
-namespace DNTU.SkillBridge.Api.Workspaces;
+namespace DNTU.SkillBridge.Application.Workspaces;
+
+public enum ProjectTaskOutcome { Success, NotFound, Forbidden, Conflict, InvalidAssignee }
 
 public class CreateProjectTaskRequest
 {
