@@ -1,5 +1,6 @@
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Application.Common.Security;
+using DNTU.SkillBridge.Application.Workspaces;
 using DNTU.SkillBridge.Domain.Companies;
 using DNTU.SkillBridge.Domain.Identity;
 using DNTU.SkillBridge.Domain.Lecturers;

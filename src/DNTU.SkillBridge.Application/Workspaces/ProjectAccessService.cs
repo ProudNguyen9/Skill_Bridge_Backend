@@ -1,17 +1,14 @@
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Domain.Identity;
-using DNTU.SkillBridge.Domain.Lecturers;
-using DNTU.SkillBridge.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
 
-namespace DNTU.SkillBridge.Api.Workspaces;
+namespace DNTU.SkillBridge.Application.Workspaces;
 
 /// <summary>
 /// Resolves the current caller's effective access to a project workspace from persisted
 /// membership, company ownership, lecturer assignment, and administrator roles.
 /// This service is the authorization source of truth for workspace features.
 /// </summary>
-public sealed class ProjectAccessService(AppDbContext dbContext)
+public sealed class ProjectAccessService(IProjectAccessRepository projectAccessRepository) : IProjectAccessService
 {
     public async Task<ProjectAccess> GetAsync(
         ICurrentUser currentUser,
@@ -25,12 +22,7 @@ public sealed class ProjectAccessService(AppDbContext dbContext)
 
         if (currentUser.Roles.Contains(RoleNames.Student))
         {
-            var hasActiveMembership = await dbContext.ProjectMembers.AsNoTracking()
-                .AnyAsync(member => member.ProjectId == projectId
-                    && member.IsActive
-                    && member.Student.UserId == userId,
-                    cancellationToken);
-
+            var hasActiveMembership = await projectAccessRepository.HasActiveStudentMembershipAsync(userId, projectId, cancellationToken);
             return hasActiveMembership ? ProjectAccess.Student : ProjectAccess.None;
         }
 
@@ -39,27 +31,14 @@ public sealed class ProjectAccessService(AppDbContext dbContext)
             return ProjectAccess.Admin;
         }
 
-        var hasCompanyAccess = await dbContext.Projects.AsNoTracking()
-            .AnyAsync(project => project.Id == projectId
-                && project.Company.Members.Any(member => member.UserId == userId),
-                cancellationToken);
-        if (hasCompanyAccess)
+        if (await projectAccessRepository.HasCompanyAccessAsync(userId, projectId, cancellationToken))
         {
             return ProjectAccess.Company;
         }
 
-        var hasLecturerAccess = await dbContext.LecturerAssignments.AsNoTracking()
-            .Join(
-                dbContext.LecturerProfiles.AsNoTracking(),
-                assignment => assignment.LecturerId,
-                lecturer => lecturer.Id,
-                (assignment, lecturer) => new { assignment, lecturer })
-            .AnyAsync(item => item.assignment.ProjectId == projectId
-                && item.assignment.Status == LecturerAssignmentStatus.ACTIVE
-                && item.lecturer.UserId == userId,
-                cancellationToken);
-
-        return hasLecturerAccess ? ProjectAccess.Lecturer : ProjectAccess.None;
+        return await projectAccessRepository.HasLecturerAccessAsync(userId, projectId, cancellationToken)
+            ? ProjectAccess.Lecturer
+            : ProjectAccess.None;
     }
 }
 

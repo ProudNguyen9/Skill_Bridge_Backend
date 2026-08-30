@@ -6,6 +6,7 @@ using DNTU.SkillBridge.Application.Commitments;
 using DNTU.SkillBridge.Application.Notifications;
 using DNTU.SkillBridge.Application.Payments;
 using DNTU.SkillBridge.Application.SePay;
+using DNTU.SkillBridge.Application.Workspaces;
 using DNTU.SkillBridge.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -37,6 +38,7 @@ public static class PersistenceServiceCollectionExtensions
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<ISePayRepository, SePayRepository>();
         services.AddScoped<ICommitmentRepository, CommitmentRepository>();
+        services.AddScoped<IProjectAccessRepository, ProjectAccessRepository>();
 
         return services;
     }
