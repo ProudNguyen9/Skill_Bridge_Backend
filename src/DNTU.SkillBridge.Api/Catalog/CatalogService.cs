@@ -1,4 +1,4 @@
-using DNTU.SkillBridge.Api.Configuration;
+using DNTU.SkillBridge.Application.Common.Options;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Domain.Identity;
 using DNTU.SkillBridge.Infrastructure.Persistence;

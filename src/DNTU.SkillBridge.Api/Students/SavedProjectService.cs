@@ -1,4 +1,4 @@
-using DNTU.SkillBridge.Api.Contracts;
+using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Domain.Projects;
 using DNTU.SkillBridge.Domain.Students;
 using DNTU.SkillBridge.Infrastructure.Persistence;

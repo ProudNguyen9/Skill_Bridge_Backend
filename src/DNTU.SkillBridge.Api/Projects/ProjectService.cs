@@ -1,5 +1,5 @@
 using System.Security.Cryptography;
-using DNTU.SkillBridge.Api.Contracts;
+using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Domain.Catalog;
 using DNTU.SkillBridge.Domain.Common;
 using DNTU.SkillBridge.Domain.Companies;

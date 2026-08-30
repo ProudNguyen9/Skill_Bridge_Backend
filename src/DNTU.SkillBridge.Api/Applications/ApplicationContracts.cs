@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using DNTU.SkillBridge.Api.Contracts;
+using DNTU.SkillBridge.Application.Common;
 
 namespace DNTU.SkillBridge.Api.Applications;
 

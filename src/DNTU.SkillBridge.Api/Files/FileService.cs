@@ -1,4 +1,4 @@
-using DNTU.SkillBridge.Api.Configuration;
+using DNTU.SkillBridge.Application.Common.Options;
 using DNTU.SkillBridge.Domain.Files;
 using DNTU.SkillBridge.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;

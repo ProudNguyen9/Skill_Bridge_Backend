@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using DNTU.SkillBridge.Api.Configuration;
+using DNTU.SkillBridge.Application.Common.Options;
 using DNTU.SkillBridge.Domain.Notifications;
 using DNTU.SkillBridge.Domain.Payments;
 using DNTU.SkillBridge.Infrastructure.Persistence;

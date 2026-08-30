@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using DNTU.SkillBridge.Domain.Catalog;
 using Microsoft.Extensions.Options;
 
-namespace DNTU.SkillBridge.Api.Configuration;
+namespace DNTU.SkillBridge.Application.Common.Options;
 
 public sealed class AppOptions
 {

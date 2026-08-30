@@ -1,5 +1,5 @@
 using Asp.Versioning;
-using DNTU.SkillBridge.Api.Contracts;
+using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Api.Meetings;
 using DNTU.SkillBridge.Application.Common.Security;
 using Microsoft.AspNetCore.Authorization;

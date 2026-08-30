@@ -1,4 +1,4 @@
-using DNTU.SkillBridge.Api.Configuration;
+using DNTU.SkillBridge.Application.Common.Options;
 using Microsoft.Extensions.Options;
 
 namespace DNTU.SkillBridge.Api.Files;

@@ -5,7 +5,7 @@ using Asp.Versioning;
 using DNTU.SkillBridge.Api.Authentication;
 using DNTU.SkillBridge.Api.Catalog;
 using DNTU.SkillBridge.Api.Notifications;
-using DNTU.SkillBridge.Api.Configuration;
+using DNTU.SkillBridge.Application.Common.Options;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using DNTU.SkillBridge.Api.Security;

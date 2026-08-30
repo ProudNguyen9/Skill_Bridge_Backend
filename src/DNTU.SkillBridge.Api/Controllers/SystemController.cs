@@ -1,5 +1,5 @@
 using Asp.Versioning;
-using DNTU.SkillBridge.Api.Contracts;
+using DNTU.SkillBridge.Application.Common;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DNTU.SkillBridge.Api.Controllers;

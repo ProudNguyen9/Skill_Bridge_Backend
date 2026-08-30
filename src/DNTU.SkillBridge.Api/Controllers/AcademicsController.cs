@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Api.Academics;
-using DNTU.SkillBridge.Api.Contracts;
+using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Domain.Identity;
 using Microsoft.AspNetCore.Authorization;

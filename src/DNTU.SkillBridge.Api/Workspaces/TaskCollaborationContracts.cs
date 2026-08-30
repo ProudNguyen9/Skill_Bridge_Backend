@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using DNTU.SkillBridge.Api.Contracts;
+using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Domain.Workspaces;
 
 namespace DNTU.SkillBridge.Api.Workspaces;

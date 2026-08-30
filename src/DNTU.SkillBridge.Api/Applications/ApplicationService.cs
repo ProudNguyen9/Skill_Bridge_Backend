@@ -1,4 +1,4 @@
-using DNTU.SkillBridge.Api.Contracts;
+using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Domain.Applications;
 using DNTU.SkillBridge.Domain.Commitments;
 using DNTU.SkillBridge.Domain.Workspaces;

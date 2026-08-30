@@ -2,7 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using DNTU.SkillBridge.Api.Configuration;
+using DNTU.SkillBridge.Application.Common.Options;
 using DNTU.SkillBridge.Domain.Identity;
 using DNTU.SkillBridge.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;

@@ -1,4 +1,4 @@
-using DNTU.SkillBridge.Api.Contracts;
+using DNTU.SkillBridge.Application.Common;
 using System.ComponentModel.DataAnnotations;
 using DNTU.SkillBridge.Domain.Catalog;
 using DNTU.SkillBridge.Domain.Projects;

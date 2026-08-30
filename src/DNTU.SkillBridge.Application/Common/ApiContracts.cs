@@ -1,4 +1,4 @@
-namespace DNTU.SkillBridge.Api.Contracts;
+namespace DNTU.SkillBridge.Application.Common;
 
 public sealed record ApiResponse<T>(T Data);
 

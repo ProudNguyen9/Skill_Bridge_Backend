@@ -1,5 +1,5 @@
 using Asp.Versioning;
-using DNTU.SkillBridge.Api.Contracts;
+using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Api.Applications;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Domain.Identity;
@@ -49,9 +49,9 @@ public sealed class ApplicationsController(ApplicationService applicationService
     /// <summary>Lists the caller's own applications, newest first, with an optional status filter.</summary>
     [HttpGet("applications/me")]
     [Authorize]
-    [ProducesResponseType(typeof(Contracts.PagedResponse<ApplicationResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PagedResponse<ApplicationResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<Contracts.PagedResponse<ApplicationResponse>>> ListMine(
+    public async Task<ActionResult<PagedResponse<ApplicationResponse>>> ListMine(
         [FromQuery] ApplicationListQuery query, CancellationToken cancellationToken)
     {
         if (!IsStudent())
