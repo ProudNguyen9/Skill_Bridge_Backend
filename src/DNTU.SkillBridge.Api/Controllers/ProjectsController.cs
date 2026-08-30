@@ -15,7 +15,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}/projects")]
 [AllowAnonymous]
 [Produces("application/json")]
-public sealed class ProjectsController(IProjectService projectService) : ControllerBase
+public sealed class ProjectsController(IProjectSearchService projectService) : ControllerBase
 {
     /// <summary>
     /// Browses publicly visible projects with optional search (title/summary), skill,
@@ -34,7 +34,7 @@ public sealed class ProjectsController(IProjectService projectService) : Control
             return ValidationProblem(ModelState);
         }
 
-        if (!ProjectService.IsPublicSortAllowed(query.Sort))
+        if (!ProjectSearchService.IsPublicSortAllowed(query.Sort))
         {
             ModelState.AddModelError(nameof(query.Sort), "Sort must be one of: newest, oldest, deadline, title, allowance.");
             return ValidationProblem(ModelState);

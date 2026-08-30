@@ -19,7 +19,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}/admin")]
 [Authorize]
 [Produces("application/json")]
-public sealed class AdminProjectApprovalsController(IProjectService projectService, ICurrentUser currentUser) : ControllerBase
+public sealed class AdminProjectApprovalsController(IProjectApprovalService projectService, ICurrentUser currentUser) : ControllerBase
 {
     /// <summary>Lists the admin approval queue (all non-draft projects), newest submissions first.</summary>
     [HttpGet("project-approvals")]

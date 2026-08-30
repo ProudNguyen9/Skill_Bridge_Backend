@@ -24,9 +24,9 @@ Api → Infrastructure → Application → Domain
 ```
 
 - [`Domain`](../../src/DNTU.SkillBridge.Domain/DNTU.SkillBridge.Domain.csproj): entity, enum, state-machine, invariant nghiệp vụ. Không tham chiếu ASP.NET Core, EF Core, HTTP hoặc provider SDK.
-- [`Application`](../../src/DNTU.SkillBridge.Application/DNTU.SkillBridge.Application.csproj): abstraction và contract xuyên layer. Không tham chiếu controller/adapters.
-- [`Infrastructure`](../../src/DNTU.SkillBridge.Infrastructure/DNTU.SkillBridge.Infrastructure.csproj): EF Core, configuration/migration/seed, storage/email/payment adapter.
-- [`Api`](../../src/DNTU.SkillBridge.Api/DNTU.SkillBridge.Api.csproj): transport HTTP, auth, DI composition, feature service orchestration.
+- [`Application`](../../src/DNTU.SkillBridge.Application/DNTU.SkillBridge.Application.csproj): contract, DTO, outcome enum, service interface, repository interface, service implementation. Không tham chiếu controller/adapters.
+- [`Infrastructure`](../../src/DNTU.SkillBridge.Infrastructure/DNTU.SkillBridge.Infrastructure.csproj): EF Core repository, UnitOfWork, outbox, background worker, storage/email/payment adapter.
+- [`Api`](../../src/DNTU.SkillBridge.Api/DNTU.SkillBridge.Api.csproj): transport HTTP, middleware, auth/web adapter, SignalR hub, `Program.cs`.
 
 ## 3. Feature ownership
 
@@ -34,37 +34,40 @@ Một feature dùng cùng tên PascalCase xuyên layer khi có domain/persistenc
 
 ```text
 Domain/<Feature>/
-Infrastructure/Persistence/Configurations/<Feature>Configuration.cs
-Api/<Feature>/<Feature>Service.cs
-Api/<Feature>/<Feature>Contracts.cs
+Application/<Feature>/<Feature>Contracts.cs
+Application/<Feature>/<Feature>Outcomes.cs
+Application/<Feature>/<Feature>Service.cs
+Application/<Feature>/<Feature>Repository.cs
+Infrastructure/Repositories/<Feature>Repository.cs
 Api/Controllers/<Feature>Controller.cs
 ```
 
-Ví dụ chuẩn: [`Submissions`](../../src/DNTU.SkillBridge.Api/Submissions), [`Payments`](../../src/DNTU.SkillBridge.Api/Payments), [`Workspaces`](../../src/DNTU.SkillBridge.Api/Workspaces).
+Ví dụ chuẩn: [`Authentication`](../../src/DNTU.SkillBridge.Application/Authentication), [`Applications`](../../src/DNTU.SkillBridge.Application/Applications), [`Projects`](../../src/DNTU.SkillBridge.Application/Projects).
 
 Khi một service chỉ phục vụ transport/API, giữ ở `Api/<Feature>`. Khi type là business rule hoặc state transition, đặt ở `Domain/<Feature>`.
 
-## 4. API feature layout
+## 4. Application feature layout
 
 ```text
-Api/<Feature>/
+Application/<Feature>/
 ├── <Feature>Contracts.cs     # Request, response, query DTO
 ├── <Feature>Service.cs       # Use case, transaction, scope
-├── <Feature>Options.cs       # Chỉ khi feature có options riêng
-└── <Provider>Adapter.cs       # Adapter cục bộ feature nếu cần
+├── <Feature>Repository.cs     # Contract truy cập dữ liệu
+├── <Feature>Outcomes.cs       # Outcome enum nghiệp vụ
+└── <Feature>ServiceImpl.cs    # Implementation nếu feature tách interface/class
 
 Api/Controllers/
 └── <Feature>Controller.cs    # HTTP mapping, policy và response code
 ```
 
-Controller không được chứa LINQ query phức tạp, business state transition, hoặc thao tác `DbContext` trực tiếp. Chúng gọi feature service và map outcome sang HTTP status.
+Controller không được chứa LINQ query phức tạp, business state transition, hoặc thao tác `DbContext` trực tiếp. Chúng gọi service ở `Application` và map outcome sang HTTP status.
 
 ## 5. Naming
 
 - Public type chính và file phải cùng tên: `PaymentService` ở `PaymentService.cs`.
 - `Request`, `Response`, `Query`, `Outcome`, `Options`, `Configuration`, `Controller`, `Service` có ý nghĩa nhất quán.
 - Async method luôn hậu tố `Async`; [`CancellationToken`](../../src/DNTU.SkillBridge.Api/Program.cs:23) là tham số cuối.
-- Namespace phản chiếu ownership: `DNTU.SkillBridge.Api.Payments`.
+- Namespace phản chiếu ownership: `DNTU.SkillBridge.Application.Payments`.
 - Một public type chính mỗi file, trừ contract records gắn chặt cùng một endpoint/feature.
 
 ## 6. Persistence
@@ -78,14 +81,14 @@ Controller không được chứa LINQ query phức tạp, business state transi
 
 - Không commit `bin`, `obj`, `node_modules`, test report, log hoặc file `.env` thật.
 - Không log token, secret, raw request payment, raw file body hay full bank account.
-- Truy vấn read dùng DTO projection, [`AsNoTracking()`](../../src/DNTU.SkillBridge.Api/Workspaces/WorkspaceService.cs:18) và pagination.
+- Truy vấn read dùng DTO projection, [`AsNoTracking()`](../../src/DNTU.SkillBridge.Application/Workspaces/WorkspaceService.cs) và pagination.
 - Mọi side effect cross-feature dùng transaction/outbox; không gọi SignalR/email trực tiếp từ state transition.
 
 ## 8. Khi thêm feature mới
 
 1. Viết/điều chỉnh entity + invariant ở `Domain`.
 2. Tạo EF configuration + migration ở `Infrastructure`.
-3. Tạo contracts/service tại `Api/<Feature>`.
+3. Tạo contracts/service tại `Application/<Feature>`.
 4. Tạo controller mỏng ở `Api/Controllers`.
 5. Đăng ký dependency trong [`Program.cs`](../../src/DNTU.SkillBridge.Api/Program.cs).
 6. Cập nhật plan/evidence ở [`docs/plans`](../plans/README.md).

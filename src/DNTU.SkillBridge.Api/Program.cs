@@ -106,6 +106,10 @@ builder.Services.AddScoped<DNTU.SkillBridge.Application.Students.IStudentService
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Companies.ICompanyService, DNTU.SkillBridge.Application.Companies.CompanyService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Lecturers.ILecturerService, DNTU.SkillBridge.Application.Lecturers.LecturerService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Projects.IProjectService, DNTU.SkillBridge.Application.Projects.ProjectService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Projects.IProjectWorkflowService, DNTU.SkillBridge.Application.Projects.ProjectWorkflowService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Projects.IProjectApprovalService, DNTU.SkillBridge.Application.Projects.ProjectApprovalService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Projects.IProjectSearchService, DNTU.SkillBridge.Application.Projects.ProjectSearchService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Projects.IProjectTeamService, DNTU.SkillBridge.Application.Projects.ProjectTeamService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Projects.IProjectCompletionService, DNTU.SkillBridge.Application.Projects.ProjectCompletionService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Students.ISavedProjectService, DNTU.SkillBridge.Application.Students.SavedProjectService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Students.IPortfolioService, DNTU.SkillBridge.Application.Students.PortfolioService>();
@@ -113,7 +117,7 @@ builder.Services.AddScoped<DNTU.SkillBridge.Application.Applications.IApplicatio
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Teams.ITeamService, DNTU.SkillBridge.Application.Teams.TeamService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Commitments.ICommitmentService, DNTU.SkillBridge.Application.Commitments.CommitmentService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Workspaces.IProjectAccessService, DNTU.SkillBridge.Application.Workspaces.ProjectAccessService>();
-builder.Services.AddScoped<DNTU.SkillBridge.Application.Workspaces.IProjectActivityWriter, DNTU.SkillBridge.Api.Workspaces.ProjectActivityWriter>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Workspaces.IProjectActivityWriter, DNTU.SkillBridge.Infrastructure.Repositories.ProjectActivityWriter>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Workspaces.IWorkspaceService, DNTU.SkillBridge.Application.Workspaces.WorkspaceService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Workspaces.IDashboardService, DNTU.SkillBridge.Application.Workspaces.DashboardService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Workspaces.IProjectTaskService, DNTU.SkillBridge.Application.Workspaces.ProjectTaskService>();

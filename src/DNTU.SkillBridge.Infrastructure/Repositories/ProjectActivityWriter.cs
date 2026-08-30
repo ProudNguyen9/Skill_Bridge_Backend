@@ -3,7 +3,7 @@ using DNTU.SkillBridge.Application.Workspaces;
 using DNTU.SkillBridge.Domain.Workspaces;
 using DNTU.SkillBridge.Infrastructure.Persistence;
 
-namespace DNTU.SkillBridge.Api.Workspaces;
+namespace DNTU.SkillBridge.Infrastructure.Repositories;
 
 /// <summary>EF Core-backed append-only activity writer for workspace feature services.</summary>
 public sealed class ProjectActivityWriter(AppDbContext dbContext) : IProjectActivityWriter

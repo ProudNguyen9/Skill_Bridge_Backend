@@ -16,7 +16,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}/company/projects")]
 [Authorize]
 [Produces("application/json")]
-public sealed class CompanyProjectsController(IProjectService projectService, IApplicationService applicationService, ICompanyService companyService, ICurrentUser currentUser) : ControllerBase
+public sealed class CompanyProjectsController(IProjectService projectService, IProjectWorkflowService workflowService, IProjectTeamService teamService, IApplicationService applicationService, ICompanyService companyService, ICurrentUser currentUser) : ControllerBase
 {
     /// <summary>Lists the caller's company projects with pagination and a validated sort allow-list.</summary>
     [HttpGet]
@@ -182,7 +182,7 @@ public sealed class CompanyProjectsController(IProjectService projectService, IA
             return NotFound();
         }
 
-        var team = await projectService.GetProjectTeamAsync(companyId.Value, projectId, cancellationToken);
+        var team = await teamService.GetProjectTeamAsync(companyId.Value, projectId, cancellationToken);
         return team is null ? NotFound() : Ok(new ApiResponse<IReadOnlyCollection<object>>(team));
     }
 
@@ -234,7 +234,7 @@ public sealed class CompanyProjectsController(IProjectService projectService, IA
             return NotFound();
         }
 
-        var progress = await projectService.GetProjectProgressAsync(companyId.Value, projectId, cancellationToken);
+        var progress = await teamService.GetProjectProgressAsync(companyId.Value, projectId, cancellationToken);
         return progress is null ? NotFound() : Ok(new ApiResponse<CompanyProjectProgressResponse>(progress));
     }
 
@@ -258,7 +258,7 @@ public sealed class CompanyProjectsController(IProjectService projectService, IA
             return NotFound();
         }
 
-        var (outcome, project) = await projectService.SubmitForApprovalAsync(
+        var (outcome, project) = await workflowService.SubmitForApprovalAsync(
             companyId.Value, projectId, currentUser.UserId!.Value, cancellationToken);
         return outcome switch
         {
@@ -291,7 +291,7 @@ public sealed class CompanyProjectsController(IProjectService projectService, IA
             return NotFound();
         }
 
-        var (outcome, project) = await projectService.CancelAsync(
+        var (outcome, project) = await workflowService.CancelAsync(
             companyId.Value, projectId, currentUser.UserId!.Value, cancellationToken);
         return outcome switch
         {
@@ -321,7 +321,7 @@ public sealed class CompanyProjectsController(IProjectService projectService, IA
             return NotFound();
         }
 
-        var (outcome, project) = await projectService.ReopenAsync(
+        var (outcome, project) = await workflowService.ReopenAsync(
             companyId.Value, projectId, currentUser.UserId!.Value, cancellationToken);
         return outcome switch
         {
