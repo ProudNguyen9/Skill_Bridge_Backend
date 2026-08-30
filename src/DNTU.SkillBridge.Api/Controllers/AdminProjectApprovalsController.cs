@@ -1,6 +1,5 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
-using DNTU.SkillBridge.Api.Projects;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Application.Projects;
 using DNTU.SkillBridge.Domain.Identity;
@@ -20,7 +19,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}/admin")]
 [Authorize]
 [Produces("application/json")]
-public sealed class AdminProjectApprovalsController(ProjectService projectService, ICurrentUser currentUser) : ControllerBase
+public sealed class AdminProjectApprovalsController(IProjectService projectService, ICurrentUser currentUser) : ControllerBase
 {
     /// <summary>Lists the admin approval queue (all non-draft projects), newest submissions first.</summary>
     [HttpGet("project-approvals")]

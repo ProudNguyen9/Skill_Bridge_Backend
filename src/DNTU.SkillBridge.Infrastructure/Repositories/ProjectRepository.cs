@@ -8,7 +8,7 @@ using DNTU.SkillBridge.Domain.Projects;
 using DNTU.SkillBridge.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
-namespace DNTU.SkillBridge.Api.Projects;
+namespace DNTU.SkillBridge.Infrastructure.Repositories;
 
 /// <summary>
 /// Company-scoped project draft CRUD. The company/project identity is always resolved
@@ -16,7 +16,7 @@ namespace DNTU.SkillBridge.Api.Projects;
 /// Submit/approve/publication transitions belong to Task 13 — this service only ever
 /// touches DRAFT projects.
 /// </summary>
-public sealed class ProjectService(AppDbContext dbContext)
+public sealed class ProjectRepository(AppDbContext dbContext) : IProjectRepository
 {
     private static readonly string[] AllowedSorts = ["newest", "oldest", "deadline", "title"];
 

@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
-using DNTU.SkillBridge.Api.Projects;
+using DNTU.SkillBridge.Application.Projects;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,7 +15,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}/projects")]
 [AllowAnonymous]
 [Produces("application/json")]
-public sealed class ProjectsController(ProjectService projectService) : ControllerBase
+public sealed class ProjectsController(IProjectService projectService) : ControllerBase
 {
     /// <summary>
     /// Browses publicly visible projects with optional search (title/summary), skill,

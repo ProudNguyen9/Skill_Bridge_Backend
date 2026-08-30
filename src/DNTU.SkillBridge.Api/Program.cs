@@ -105,7 +105,7 @@ builder.Services.AddScoped<ICatalogService, CatalogService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Students.IStudentService, DNTU.SkillBridge.Application.Students.StudentService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Companies.ICompanyService, DNTU.SkillBridge.Application.Companies.CompanyService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Lecturers.ILecturerService, DNTU.SkillBridge.Application.Lecturers.LecturerService>();
-builder.Services.AddScoped<DNTU.SkillBridge.Api.Projects.ProjectService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Projects.IProjectService, DNTU.SkillBridge.Application.Projects.ProjectService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Api.Projects.ProjectCompletionService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Students.ISavedProjectService, DNTU.SkillBridge.Application.Students.SavedProjectService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Students.IPortfolioService, DNTU.SkillBridge.Application.Students.PortfolioService>();

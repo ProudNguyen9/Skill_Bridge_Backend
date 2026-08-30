@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using DNTU.SkillBridge.Domain.Catalog;
 using DNTU.SkillBridge.Domain.Projects;
 
-namespace DNTU.SkillBridge.Api.Projects;
+namespace DNTU.SkillBridge.Application.Projects;
 
 public sealed class CreateProjectRequest
 {
