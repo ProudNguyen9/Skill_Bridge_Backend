@@ -1,0 +1,41 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+secrets/
+*.pfx
+*.key
+*.pem
+
+# Logs and test artifacts
+logs/
+*.log
+*.log.*
+TestResults/
+test-results/
+coverage/
+playwright-report/
+artifacts/*.tmp
+artifacts/*.log
+artifacts/test-results/
+artifacts/coverage/
+
+# JavaScript dependencies
+node_modules/
+
+# Local infrastructure volumes
+infra/docker/volumes/
+postgres-data/
+minio-data/
+redis-data/
+
+# IDE state
+.vs/
+.vscode/*.user
+*.user
+*.suo

@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DNTU.SkillBridge.Api/DNTU.SkillBridge.Api.csproj" />
+    <Project Path="src/DNTU.SkillBridge.Application/DNTU.SkillBridge.Application.csproj" />
+    <Project Path="src/DNTU.SkillBridge.Domain/DNTU.SkillBridge.Domain.csproj" />
+    <Project Path="src/DNTU.SkillBridge.Infrastructure/DNTU.SkillBridge.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DNTU.SkillBridge.FunctionalTests/DNTU.SkillBridge.FunctionalTests.csproj" />
+    <Project Path="tests/DNTU.SkillBridge.IntegrationTests/DNTU.SkillBridge.IntegrationTests.csproj" />
+    <Project Path="tests/DNTU.SkillBridge.UnitTests/DNTU.SkillBridge.UnitTests.csproj" />
+  </Folder>
+</Solution>
