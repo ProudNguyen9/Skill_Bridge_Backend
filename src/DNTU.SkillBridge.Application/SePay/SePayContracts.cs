@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace DNTU.SkillBridge.Api.Payments;
+namespace DNTU.SkillBridge.Application.SePay;
 
 public sealed record SePayCheckoutResponse(Guid FundingOrderId, Uri CheckoutUrl, DateTimeOffset ExpiresAt);
 

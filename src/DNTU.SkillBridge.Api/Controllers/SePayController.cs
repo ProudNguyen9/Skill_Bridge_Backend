@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
-using DNTU.SkillBridge.Api.Payments;
+using DNTU.SkillBridge.Application.SePay;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Domain.Identity;
 using Microsoft.AspNetCore.Authorization;
@@ -12,7 +12,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}")]
 [Produces("application/json")]
-public sealed class SePayController(SePayService sePayService, ICurrentUser currentUser) : ControllerBase
+public sealed class SePayController(ISePayService sePayService, ICurrentUser currentUser) : ControllerBase
 {
     [Authorize]
     [HttpPost("company/funding-orders/{fundingOrderId:guid}/checkout")]

@@ -1,8 +1,10 @@
+using DNTU.SkillBridge.Application.Abstractions;
 using DNTU.SkillBridge.Application.Administration;
 using DNTU.SkillBridge.Application.Analytics;
 using DNTU.SkillBridge.Application.Catalog;
 using DNTU.SkillBridge.Application.Notifications;
 using DNTU.SkillBridge.Application.Payments;
+using DNTU.SkillBridge.Application.SePay;
 using DNTU.SkillBridge.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -26,11 +28,13 @@ public static class PersistenceServiceCollectionExtensions
             options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
         });
 
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<ICatalogRepository, CatalogRepository>();
         services.AddScoped<IAnalyticsRepository, AnalyticsRepository>();
         services.AddScoped<IAdministrationRepository, AdminGovernanceRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
+        services.AddScoped<ISePayRepository, SePayRepository>();
 
         return services;
     }

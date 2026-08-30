@@ -1,22 +1,28 @@
 using System.Security.Cryptography;
 using System.Text;
+using DNTU.SkillBridge.Application.Abstractions;
 using DNTU.SkillBridge.Application.Common.Options;
-using DNTU.SkillBridge.Domain.Notifications;
+using DNTU.SkillBridge.Application.Notifications;
 using DNTU.SkillBridge.Domain.Payments;
-using DNTU.SkillBridge.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
-namespace DNTU.SkillBridge.Api.Payments;
+namespace DNTU.SkillBridge.Application.SePay;
+
+public interface ISePayService
+{
+    Task<SePayCheckoutResponse?> CreateCheckoutAsync(Guid companyUserId, Guid fundingOrderId, CancellationToken cancellationToken);
+
+    Task<bool> ApplyIpnAsync(SePayIpnRequest request, CancellationToken cancellationToken);
+}
 
 /// <summary>Handles verified SePay callbacks; browser navigation is never payment proof.</summary>
-public sealed class SePayService(AppDbContext dbContext, IOptions<SePayOptions> options)
+public sealed class SePayService(ISePayRepository sePayRepository, IOutboxEnqueuer outboxEnqueuer, IUnitOfWork unitOfWork, IOptions<SePayOptions> options) : ISePayService
 {
     public async Task<SePayCheckoutResponse?> CreateCheckoutAsync(Guid companyUserId, Guid fundingOrderId, CancellationToken cancellationToken)
     {
-        var order = await dbContext.FundingOrders.AsNoTracking().SingleOrDefaultAsync(item => item.Id == fundingOrderId, cancellationToken);
+        var order = await sePayRepository.FindFundingOrderAsync(fundingOrderId, cancellationToken);
         if (order is null || order.Status != FundingOrderStatus.PENDING_PAYMENT || order.ExpiresAt <= DateTimeOffset.UtcNow ||
-            !await dbContext.Projects.AnyAsync(project => project.Id == order.ProjectId && project.Company.Members.Any(member => member.UserId == companyUserId), cancellationToken))
+            !await sePayRepository.ProjectBelongsToUserAsync(order.ProjectId, companyUserId, cancellationToken))
         {
             return null;
         }
@@ -40,16 +46,16 @@ public sealed class SePayService(AppDbContext dbContext, IOptions<SePayOptions> 
             return false;
         }
 
-        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
-            if (await dbContext.SePayIpnEvents.AnyAsync(item => item.ProviderEventId == request.EventId || item.ProviderTransactionId == request.TransactionId, cancellationToken))
+            if (await sePayRepository.HasIpnEventAsync(request.EventId, request.TransactionId, cancellationToken))
             {
                 await transaction.CommitAsync(cancellationToken);
                 return true;
             }
 
-            var order = await dbContext.FundingOrders.SingleOrDefaultAsync(item => item.InvoiceCode == request.InvoiceCode, cancellationToken);
+            var order = await sePayRepository.FindFundingOrderByInvoiceAsync(request.InvoiceCode, cancellationToken);
             if (order is null || order.Status != FundingOrderStatus.PENDING_PAYMENT || order.ExpiresAt <= DateTimeOffset.UtcNow ||
                 request.Amount != order.Amount || !string.Equals(request.Currency, order.Currency, StringComparison.OrdinalIgnoreCase) ||
                 !string.Equals(request.Status, "SUCCESS", StringComparison.OrdinalIgnoreCase))
@@ -64,22 +70,22 @@ public sealed class SePayService(AppDbContext dbContext, IOptions<SePayOptions> 
                 return false;
             }
 
-            var funding = await dbContext.ProjectFundings.SingleOrDefaultAsync(item => item.ProjectId == order.ProjectId, cancellationToken);
+            var funding = await sePayRepository.FindProjectFundingAsync(order.ProjectId, cancellationToken);
             if (funding is null)
             {
                 funding = new ProjectFunding(order.ProjectId, order.Amount, order.Currency);
-                dbContext.ProjectFundings.Add(funding);
+                sePayRepository.AddProjectFunding(funding);
             }
             funding.AddFunding(order.Amount);
-            dbContext.SePayIpnEvents.Add(ipnEvent);
-            dbContext.PaymentTransactions.Add(new PaymentTransaction(order.Id, "SePay", request.TransactionId, request.Amount, request.Currency, PaymentTransactionStatus.SUCCEEDED, request.OccurredAt));
-            dbContext.OutboxMessages.Add(new OutboxMessage("payment.funding.succeeded", $"{{\"projectId\":\"{order.ProjectId}\",\"orderId\":\"{order.Id}\"}}"));
+            sePayRepository.AddSePayIpnEvent(ipnEvent);
+            sePayRepository.AddPaymentTransaction(new PaymentTransaction(order.Id, "SePay", request.TransactionId, request.Amount, request.Currency, PaymentTransactionStatus.SUCCEEDED, request.OccurredAt));
+            outboxEnqueuer.Enqueue("payment.funding.succeeded", $"{{\"projectId\":\"{order.ProjectId}\",\"orderId\":\"{order.Id}\"}}");
             ipnEvent.MarkApplied();
-            await dbContext.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return true;
         }
-        catch (DbUpdateException)
+        catch (PersistenceException)
         {
             await transaction.RollbackAsync(cancellationToken);
             return false;
