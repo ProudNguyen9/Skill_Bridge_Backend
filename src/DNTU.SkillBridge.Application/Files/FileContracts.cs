@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using DNTU.SkillBridge.Domain.Files;
 
-namespace DNTU.SkillBridge.Api.Files;
+namespace DNTU.SkillBridge.Application.Files;
 
 public sealed class CreateFileUploadRequest
 {

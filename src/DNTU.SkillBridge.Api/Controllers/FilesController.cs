@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
-using DNTU.SkillBridge.Api.Files;
+using DNTU.SkillBridge.Application.Files;
 using DNTU.SkillBridge.Application.Common.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +12,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v{version:apiVersion}/files")]
 [Authorize]
 [Produces("application/json")]
-public sealed class FilesController(FileService fileService, ICurrentUser currentUser) : ControllerBase
+public sealed class FilesController(IFileService fileService, ICurrentUser currentUser) : ControllerBase
 {
     [HttpPost("upload-requests")]
     [ProducesResponseType(typeof(ApiResponse<FileUploadRequestResponse>), StatusCodes.Status201Created)]
