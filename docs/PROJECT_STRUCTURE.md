@@ -7,10 +7,9 @@ Tài liệu này là chuẩn tổ chức source cho DNTU SkillBridge. Mục tiê
 ```text
 Backend/
 ├── src/        # Production projects
-├── tests/      # Test projects và E2E assets
-├── docs/       # Kiến trúc, plan, runbook, ADR sau này
+├── tests/      # Test projects, E2E assets và manual smoke scripts
+├── docs/       # Kiến trúc, báo cáo kỹ thuật và ADR sau này
 ├── infra/      # Docker, Nginx, deployment manifests
-├── scripts/    # Script thao tác lặp lại được
 └── artifacts/  # Output runtime/CI không commit
 ```
 
@@ -98,5 +97,5 @@ Controller không được chứa LINQ query phức tạp, business state transi
 5. Tạo repository contract tại `Application/<Feature>/Repositories` và implementation tại `Infrastructure/Repositories`.
 6. Tạo controller mỏng ở `Api/Controllers`.
 7. Đăng ký dependency trong [`Program.cs`](../../src/DNTU.SkillBridge.Api/Program.cs).
-8. Cập nhật plan/evidence ở [`docs/plans`](../plans/README.md).
+8. Cập nhật test hoặc tài liệu kỹ thuật phù hợp.
 9. Chạy build, migration gate và test phù hợp.

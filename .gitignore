@@ -39,3 +39,7 @@ redis-data/
 .vscode/*.user
 *.user
 *.suo
+
+# Local planning notes
+/plan.md
+/docs/plans/

@@ -4,7 +4,7 @@ Backend modular monolith cho quy trình phối hợp dự án thực tế giữa
 
 ## Bắt đầu nhanh
 
-**Yêu cầu:** .NET SDK `10.0.303` theo [`global.json`](global.json), PostgreSQL 16+ cho API/integration tests; Docker Desktop nếu dùng local stack.
+**Yêu cầu:** .NET SDK 10, PostgreSQL 16+ cho API/integration tests; Docker Desktop nếu dùng local stack.
 
 ```powershell
 # Restore và build sạch
@@ -27,15 +27,12 @@ Backend/
 │   ├── DNTU.SkillBridge.Application/ # Cross-cutting abstractions/contracts
 │   ├── DNTU.SkillBridge.Infrastructure/ # EF Core, migrations, provider adapters
 │   └── DNTU.SkillBridge.Api/      # HTTP API, DI composition, feature services
-├── tests/                         # Unit, integration, functional, E2E
-├── docs/
-│   └── plans/                     # Delivery board và acceptance criteria theo task
+├── tests/                         # Unit, integration, functional, E2E và manual smoke scripts
+├── docs/                          # Tài liệu cấu trúc và báo cáo kỹ thuật
 ├── infra/
 │   ├── docker/                    # Compose và template local environment
 │   └── nginx/                     # Reverse-proxy baseline
-├── scripts/                       # Lệnh smoke/debug được kiểm soát
 ├── Dockerfile
-├── OPERATIONS.md                  # Runbook vận hành/deployment
 ├── DNTU.SkillBridge.slnx
 ├── Directory.Build.props          # Cấu hình build/analyzer dùng chung
 └── Directory.Packages.props       # Phiên bản NuGet tập trung
@@ -103,18 +100,16 @@ npm ci
 npx playwright test
 ```
 
-Chiến lược coverage, gap và test matrix nằm tại [`Task 40`](docs/plans/40-unit-integration-functional-and-security-test-matrix.md). Artifact build/test như `bin/`, `obj/`, `node_modules/`, Playwright report không phải source và không commit.
+Các smoke/debug PowerShell dùng thủ công nằm tại [`tests/DNTU.SkillBridge.E2E/scripts/manual`](tests/DNTU.SkillBridge.E2E/scripts/manual). Artifact build/test như `bin/`, `obj/`, `node_modules/`, Playwright report không phải source và không commit.
 
 ## Local infrastructure và vận hành
 
 - Docker Compose: [`infra/docker/docker-compose.yml`](infra/docker/docker-compose.yml).
 - Template secrets local: [`infra/docker/.env.example`](infra/docker/.env.example). Copy thành `.env`, không commit file thật.
-- Runbook migration, readiness, backup/restore, Nginx và SePay: [`OPERATIONS.md`](OPERATIONS.md).
-- Release/readiness checklist: [`Task 41`](docs/plans/41-docker-local-stack-migrations-production-readiness-and-monitoring.md).
 
 ## Standards bắt buộc
 
 - Nullable reference types, centralized package version, analyzer settings theo [`Directory.Build.props`](Directory.Build.props), [`Directory.Packages.props`](Directory.Packages.props), và [`.editorconfig`](.editorconfig).
 - Không commit secrets, private key, real `.env`, build output hoặc test artifacts.
 - Không đưa credentials, raw file content, full bank account hoặc payment secret vào log, audit, notification, response DTO.
-- Mọi thay đổi tính năng phải cập nhật acceptance criteria/evidence trong [`docs/plans`](docs/plans/README.md).
+- Mọi thay đổi phải đi kèm test hoặc tài liệu kỹ thuật phù hợp với phạm vi thay đổi.
