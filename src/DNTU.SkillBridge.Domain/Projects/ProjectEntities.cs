@@ -3,32 +3,6 @@ using DNTU.SkillBridge.Domain.Common;
 
 namespace DNTU.SkillBridge.Domain.Projects;
 
-/// <summary>
-/// Lifecycle state of a project. Member names intentionally match the uppercase
-/// wire values (e.g. PENDING_APPROVAL). Draft-only editing is Task 12; the
-/// submit/approve transitions arrive with Task 13.
-/// </summary>
-public enum ProjectStatus
-{
-    DRAFT = 1,
-    PENDING_APPROVAL = 2,
-    CHANGES_REQUESTED = 3,
-    APPROVED = 4,
-    RECRUITING = 5,
-    IN_PROGRESS = 6,
-    COMPLETED = 7,
-    CANCELLED = 8,
-    REJECTED = 9,
-    SUSPENDED = 10
-}
-
-public enum RequirementLevel
-{
-    NICE_TO_HAVE = 1,
-    IMPORTANT = 2,
-    MUST_HAVE = 3
-}
-
 public sealed class Project : AuditableEntity
 {
     public Guid CompanyId { get; private set; }

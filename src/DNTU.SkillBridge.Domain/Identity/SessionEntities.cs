@@ -59,12 +59,6 @@ public sealed class RefreshToken : AuditableEntity
     public void Revoke(DateTimeOffset revokedAt) => RevokedAt ??= revokedAt;
 }
 
-public enum AccountTokenPurpose
-{
-    EmailVerification = 1,
-    PasswordReset = 2
-}
-
 public sealed class AccountToken : AuditableEntity
 {
     public Guid UserId { get; private set; }

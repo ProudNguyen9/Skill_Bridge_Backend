@@ -2,12 +2,6 @@ using DNTU.SkillBridge.Domain.Common;
 
 namespace DNTU.SkillBridge.Domain.Submissions;
 
-public enum BusinessReviewDecision
-{
-    ACCEPTED = 1,
-    REVISION_REQUIRED = 2
-}
-
 /// <summary>Immutable company-only business assessment with no academic fields or scores.</summary>
 public sealed class BusinessSubmissionReview : AuditableEntity
 {

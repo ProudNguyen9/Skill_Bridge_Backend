@@ -2,12 +2,6 @@ using DNTU.SkillBridge.Domain.Common;
 
 namespace DNTU.SkillBridge.Domain.Submissions;
 
-public enum TechnicalReviewDecision
-{
-    APPROVED = 1,
-    REVISION_REQUIRED = 2
-}
-
 public sealed class TechnicalSubmissionReview : AuditableEntity
 {
     public Guid SubmissionId { get; private set; }

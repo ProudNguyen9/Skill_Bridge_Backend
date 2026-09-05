@@ -2,14 +2,6 @@ using DNTU.SkillBridge.Domain.Common;
 
 namespace DNTU.SkillBridge.Domain.Analytics;
 
-public enum ReportExportStatus
-{
-    QUEUED = 1,
-    COMPLETED = 2,
-    FAILED = 3,
-    EXPIRED = 4
-}
-
 public sealed class ReportExport : AuditableEntity
 {
     public Guid RequestedByUserId { get; private set; }

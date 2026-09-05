@@ -2,15 +2,6 @@ using DNTU.SkillBridge.Domain.Common;
 
 namespace DNTU.SkillBridge.Domain.Submissions;
 
-public enum SubmissionStatus
-{
-    SUBMITTED = 1,
-    REVISION_REQUIRED = 2,
-    RESUBMITTED = 3,
-    TECHNICAL_APPROVED = 4,
-    BUSINESS_ACCEPTED = 5
-}
-
 /// <summary>Append-only audit entry for a submission workflow transition.</summary>
 public sealed class SubmissionStatusHistory : AuditableEntity
 {

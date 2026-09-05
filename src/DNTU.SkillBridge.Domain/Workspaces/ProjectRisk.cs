@@ -2,13 +2,6 @@ using DNTU.SkillBridge.Domain.Common;
 
 namespace DNTU.SkillBridge.Domain.Workspaces;
 
-public enum ProjectRiskLevel
-{
-    LOW = 1,
-    MEDIUM = 2,
-    HIGH = 3
-}
-
 /// <summary>Server-derived current risk state. Client input never supplies scores, levels, or reasons.</summary>
 public sealed class ProjectRiskSnapshot : AuditableEntity
 {

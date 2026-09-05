@@ -2,13 +2,6 @@ using DNTU.SkillBridge.Domain.Common;
 
 namespace DNTU.SkillBridge.Domain.Academics;
 
-public enum AcademicEvaluationStatus
-{
-    DRAFT = 1,
-    READY = 2,
-    FINALIZED = 3
-}
-
 public sealed class AcademicEvaluation : AuditableEntity
 {
     public Guid ProjectId { get; private set; }

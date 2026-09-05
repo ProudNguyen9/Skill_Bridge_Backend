@@ -24,13 +24,6 @@ public sealed class Course : AuditableEntity
     private static string Required(string value, int maxLength) => !string.IsNullOrWhiteSpace(value) && value.Trim().Length <= maxLength ? value.Trim() : throw new ArgumentException("A valid value is required.", nameof(value));
 }
 
-public enum CourseProjectStatus
-{
-    DRAFT = 1,
-    APPROVED = 2,
-    REMOVED = 3
-}
-
 public sealed class CourseProject : AuditableEntity
 {
     public Guid CourseId { get; private set; }

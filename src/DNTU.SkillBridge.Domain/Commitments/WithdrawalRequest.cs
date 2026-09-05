@@ -2,15 +2,6 @@ using DNTU.SkillBridge.Domain.Common;
 
 namespace DNTU.SkillBridge.Domain.Commitments;
 
-public enum WithdrawalStatus
-{
-    REQUESTED = 1,
-    RECOMMENDED = 2,
-    APPROVED = 3,
-    REJECTED = 4,
-    ABANDONED = 5
-}
-
 /// <summary>Append-only governed departure request for an active project member.</summary>
 public sealed class WithdrawalRequest : AuditableEntity
 {

@@ -2,13 +2,6 @@ using DNTU.SkillBridge.Domain.Common;
 
 namespace DNTU.SkillBridge.Domain.Workspaces;
 
-public enum ProjectMemberRole
-{
-    STUDENT = 1,
-    COMPANY = 2,
-    LECTURER = 3
-}
-
 /// <summary>Authoritative active-project membership created after commitment confirmation.</summary>
 public sealed class ProjectMember : AuditableEntity
 {

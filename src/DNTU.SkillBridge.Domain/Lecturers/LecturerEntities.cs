@@ -1,20 +1,5 @@
 namespace DNTU.SkillBridge.Domain.Lecturers;
 
-/// <summary>Enum names intentionally match the uppercase wire values (INVITED, ACTIVE, ENDED).</summary>
-public enum LecturerAssignmentStatus
-{
-    INVITED = 1,
-    ACTIVE = 2,
-    ENDED = 3
-}
-
-/// <summary>The supervision role the lecturer holds on a project (primary supervisor vs. co-supervisor).</summary>
-public enum LecturerAssignmentRole
-{
-    PRIMARY = 1,
-    SUPERVISOR = 2
-}
-
 /// <summary>
 /// Academic profile of a DNTU lecturer. Accounts are provisioned by admins (Task 38), so the row is
 /// created lazily on first /lecturers/me access; supervision is only valid while the profile is active.

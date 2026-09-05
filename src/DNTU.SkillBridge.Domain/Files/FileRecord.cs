@@ -2,14 +2,6 @@ using DNTU.SkillBridge.Domain.Common;
 
 namespace DNTU.SkillBridge.Domain.Files;
 
-public enum FileUploadStatus
-{
-    PENDING = 1,
-    COMPLETED = 2,
-    DELETED = 3,
-    EXPIRED = 4
-}
-
 /// <summary>Metadata and lifecycle state for a server-authorized uploaded object.</summary>
 public sealed class FileRecord : AuditableEntity
 {
