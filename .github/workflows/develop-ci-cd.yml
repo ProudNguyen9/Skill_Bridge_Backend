@@ -130,6 +130,6 @@ jobs:
           protocol: ftp
           port: 21
           local-dir: ./publish/
-          server-dir: ./
+          server-dir: httpdocs/
           exclude: |
             **/.env
