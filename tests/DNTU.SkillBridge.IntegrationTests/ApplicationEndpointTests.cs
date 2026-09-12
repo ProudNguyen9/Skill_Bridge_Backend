@@ -530,13 +530,18 @@ public sealed class ApplicationEndpointTests(CatalogApiFactory factory)
         // Task resources outside the caller's scope are intentionally concealed.
         Assert.Equal(HttpStatusCode.NotFound, (await otherStudent.GetAsync($"/api/v1/tasks/{task.Id}/comments")).StatusCode);
 
-        var checklist = await member.PostAsJsonAsync($"/api/v1/tasks/{task.Id}/checklist-items", new { title = "Viết kiểm thử phạm vi" }, Json);
+        var checklist = await member.PostAsJsonAsync($"/api/v1/tasks/{task.Id}/checklist-items", new
+        {
+            title = "Viết kiểm thử phạm vi",
+            version = task.Version
+        }, Json);
         Assert.Equal(HttpStatusCode.Created, checklist.StatusCode);
         var item = (await checklist.Content.ReadFromJsonAsync<Envelope<ChecklistItemDto>>(Json))!.Data;
+        task = (await member.GetFromJsonAsync<Envelope<ProjectTaskDto>>($"/api/v1/tasks/{task.Id}", Json))!.Data;
         var updated = await member.PatchAsJsonAsync($"/api/v1/checklist-items/{item.Id}", new { title = "Viết kiểm thử phạm vi", isCompleted = true, version = task.Version }, Json);
         Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
         var stale = await member.PatchAsJsonAsync($"/api/v1/checklist-items/{item.Id}", new { title = "Không được ghi đè", isCompleted = false, version = task.Version }, Json);
-        Assert.Equal(HttpStatusCode.NotFound, stale.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
 
         var myTasks = await member.GetFromJsonAsync<PagedProjectTasksDto>("/api/v1/students/me/tasks?assignedOnly=true&priority=HIGH", Json);
         Assert.NotNull(myTasks);
