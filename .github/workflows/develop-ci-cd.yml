@@ -121,7 +121,7 @@ jobs:
           --configuration Release
           --output ./publish
 
-      - name: Test FTPS deployment to Plesk
+      - name: Deploy to Plesk via FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: ${{ secrets.FTP_SERVER }}
@@ -131,6 +131,5 @@ jobs:
           port: ${{ secrets.FTP_PORT }}
           local-dir: ./publish/
           server-dir: ${{ secrets.DEPLOY_DIR }}
-          dry-run: true
           exclude: |
             **/.env
