@@ -527,7 +527,8 @@ public sealed class ApplicationEndpointTests(CatalogApiFactory factory)
 
         var comment = await member.PostAsJsonAsync($"/api/v1/tasks/{task.Id}/comments", new { content = "Đã bắt đầu kiểm thử." }, Json);
         Assert.Equal(HttpStatusCode.Created, comment.StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await otherStudent.GetAsync($"/api/v1/tasks/{task.Id}/comments")).StatusCode);
+        // Task resources outside the caller's scope are intentionally concealed.
+        Assert.Equal(HttpStatusCode.NotFound, (await otherStudent.GetAsync($"/api/v1/tasks/{task.Id}/comments")).StatusCode);
 
         var checklist = await member.PostAsJsonAsync($"/api/v1/tasks/{task.Id}/checklist-items", new { title = "Viết kiểm thử phạm vi" }, Json);
         Assert.Equal(HttpStatusCode.Created, checklist.StatusCode);
@@ -559,6 +560,12 @@ public sealed class ApplicationEndpointTests(CatalogApiFactory factory)
         await using var storageFactory = factory.WithWebHostBuilder(builder =>
         {
             builder.UseSetting("Storage:Enabled", "true");
+            builder.UseSetting("Storage:Provider", "S3");
+            builder.UseSetting("Storage:Endpoint", "https://storage.test");
+            builder.UseSetting("Storage:Bucket", "test-bucket");
+            builder.UseSetting("Storage:AccessKey", "test-access-key");
+            builder.UseSetting("Storage:SecretKey", "test-secret-key");
+            builder.UseSetting("Storage:Region", "us-east-1");
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<IFileStorage>();
