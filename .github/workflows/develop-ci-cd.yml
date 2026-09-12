@@ -130,6 +130,6 @@ jobs:
           protocol: ftp
           port: 21
           local-dir: ./publish/
-          server-dir: httpdocs/
+          server-dir: ${{ secrets.DEPLOY_DIR }}
           exclude: |
             **/.env
