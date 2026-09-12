@@ -22,21 +22,23 @@ jobs:
     name: Build and test
     runs-on: ubuntu-latest
     services:
-      postgres:
-        image: postgres:16-alpine
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
         env:
-          POSTGRES_DB: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          ACCEPT_EULA: Y
+          MSSQL_PID: Developer
+          MSSQL_SA_PASSWORD: SkillBridge_CI_SQL_2022_Password!
         ports:
-          - 5432:5432
+          - 1433:1433
         options: >-
-          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'SkillBridge_CI_SQL_2022_Password!' -C -Q 'SELECT 1' -b"
           --health-interval 5s
           --health-timeout 5s
-          --health-retries 20
+          --health-retries 30
     env:
-      SKILLBRIDGE_TESTS_PG: Host=localhost;Port=5432;Username=postgres;Password=postgres;Database=postgres
+      SKILLBRIDGE_TESTS_SQLSERVER: Server=localhost,1433;User Id=sa;Password=SkillBridge_CI_SQL_2022_Password!;Database=master;Encrypt=True;TrustServerCertificate=True
+      SKILLBRIDGE_FUNCTIONAL_SQLSERVER: Server=localhost,1433;User Id=sa;Password=SkillBridge_CI_SQL_2022_Password!;Database=skillbridge;Encrypt=True;TrustServerCertificate=True
+      SQLSERVER_TARGET: Server=localhost,1433;User Id=sa;Password=SkillBridge_CI_SQL_2022_Password!;Database=skillbridge;Encrypt=True;TrustServerCertificate=True
 
     steps:
       - name: Checkout repository
@@ -55,6 +57,11 @@ jobs:
 
       - name: Unit tests
         run: dotnet test tests/DNTU.SkillBridge.UnitTests --configuration Release --no-build
+
+      - name: Prepare functional database
+        run: |
+          dotnet tool install --global dotnet-ef --version 10.0.11
+          dotnet ef database update --project src/DNTU.SkillBridge.Infrastructure --startup-project src/DNTU.SkillBridge.Api --configuration Release --no-build --connection "$SQLSERVER_TARGET"
 
       - name: Functional tests
         run: dotnet test tests/DNTU.SkillBridge.FunctionalTests --configuration Release --no-build
@@ -92,3 +99,38 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy-plesk:
+    name: Publish and test deployment to Plesk
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publish ASP.NET Core application
+        run: >-
+          dotnet publish src/DNTU.SkillBridge.Api/DNTU.SkillBridge.Api.csproj
+          --configuration Release
+          --output ./publish
+
+      - name: Test FTPS deployment to Plesk
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          port: ${{ secrets.FTP_PORT }}
+          local-dir: ./publish/
+          server-dir: ${{ secrets.DEPLOY_DIR }}
+          dry-run: true
+          exclude: |
+            **/.env
