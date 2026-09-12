@@ -1,23 +1,24 @@
 using System.Net;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Npgsql;
+using Microsoft.Data.SqlClient;
 
 namespace DNTU.SkillBridge.FunctionalTests;
 
 /// <summary>
-/// Boots the API against the developer's configured local PostgreSQL database to
+/// Boots the API against the developer's configured local SQL Server database to
 /// verify public HTTP contracts end-to-end. It does not mutate application data.
 /// </summary>
 public sealed class ApiContractSmokeTests : IAsyncLifetime
 {
-    private const string ConnectionString = "Host=localhost;Port=5432;Database=skillbridge;Username=postgres;Password=123456";
+    private static readonly string ConnectionString = Environment.GetEnvironmentVariable("SKILLBRIDGE_FUNCTIONAL_SQLSERVER")
+        ?? "Server=(localdb)\\SkillBridge2022;Database=skillbridge;Integrated Security=True;Encrypt=True;TrustServerCertificate=True";
     private WebApplicationFactory<Program>? factory;
     private HttpClient? client;
 
     public async Task InitializeAsync()
     {
-        await using var connection = new NpgsqlConnection(ConnectionString);
+        await using var connection = new SqlConnection(ConnectionString);
         await connection.OpenAsync();
 
         factory = new WebApplicationFactory<Program>()

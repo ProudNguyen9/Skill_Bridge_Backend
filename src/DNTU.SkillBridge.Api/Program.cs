@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Asp.Versioning;
 using DNTU.SkillBridge.Api.Authentication;
 using DNTU.SkillBridge.Application.Authentication;
@@ -26,6 +27,19 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
+var envFile = Path.Combine(builder.Environment.ContentRootPath, ".env");
+if (!File.Exists(envFile) && builder.Environment.IsDevelopment())
+{
+    envFile = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", ".env"));
+}
+if (File.Exists(envFile))
+{
+    var envSettings = DotNetEnv.Env.NoEnvVars().Load(envFile)
+        .Select(entry => new KeyValuePair<string, string?>(entry.Key.Replace("__", ":"), entry.Value));
+    builder.Configuration.AddInMemoryCollection(envSettings)
+        .AddEnvironmentVariables()
+        .AddCommandLine(args);
+}
 
 builder.Services
     .AddOptions<AppOptions>()
@@ -257,6 +271,10 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    if (builder.Configuration.GetValue<bool>("Database:ApplyMigrations"))
+    {
+        await dbContext.Database.MigrateAsync();
+    }
     await IdentitySeed.SeedAsync(dbContext, CancellationToken.None);
     await CatalogSeed.SeedAsync(dbContext, CancellationToken.None);
 }

@@ -14,6 +14,7 @@ public interface ISubmissionRepository
     Task<bool> IsAuthorizedCompletedFileAsync(Guid userId, Guid projectId, Guid? fileId, CancellationToken cancellationToken);
 
     void AddSubmission(ProjectSubmission submission);
+    void AddVersion(SubmissionVersion version);
 
     void AddStatusHistory(SubmissionStatusHistory history);
 

@@ -1,19 +1,4 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-skillbridge}
-      POSTGRES_USER: ${POSTGRES_USER:-skillbridge}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-    networks: [skillbridge]
-
   minio:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
@@ -43,7 +28,8 @@ services:
       dockerfile: Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Default: Host=postgres;Port=5432;Database=${POSTGRES_DB:-skillbridge};Username=${POSTGRES_USER:-skillbridge};Password=${POSTGRES_PASSWORD}
+      ConnectionStrings__Default: ${MSSQL_CONNECTION_STRING:?Set connection string for your external SQL Server}
+      Database__ApplyMigrations: "true"
       App__FrontendBaseUrl: ${APP_FRONTEND_BASE_URL:-http://localhost:5173}
       App__PublicBaseUrl: ${APP_PUBLIC_BASE_URL:-http://localhost:8080}
       Jwt__Issuer: ${JWT_ISSUER:-DNTU.SkillBridge.Api}
@@ -58,8 +44,6 @@ services:
       Storage__SecretKey: ${MINIO_ROOT_PASSWORD}
       Storage__Region: us-east-1
     depends_on:
-      postgres:
-        condition: service_healthy
       minio:
         condition: service_healthy
     ports:
@@ -75,5 +59,4 @@ networks:
   skillbridge:
 
 volumes:
-  postgres_data:
   minio_data:

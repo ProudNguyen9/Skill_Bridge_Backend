@@ -2,7 +2,7 @@ namespace DNTU.SkillBridge.Domain.Catalog;
 
 /// <summary>
 /// Enum member names intentionally match the uppercase wire values exposed by the
-/// catalog metadata endpoints and persisted in PostgreSQL (e.g. IN_PROGRESS).
+/// catalog metadata endpoints and persisted in SQL Server (e.g. IN_PROGRESS).
 /// </summary>
 public enum SkillCategory
 {

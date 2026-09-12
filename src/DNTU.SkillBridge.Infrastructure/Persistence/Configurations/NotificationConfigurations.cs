@@ -9,7 +9,7 @@ public sealed class NotificationConfiguration : IEntityTypeConfiguration<Notific
     public void Configure(EntityTypeBuilder<Notification> builder)
     {
         builder.ToTable("notifications"); builder.HasKey(x => x.Id);
-        builder.Property(x => x.Type).HasMaxLength(100).IsRequired(); builder.Property(x => x.Title).HasMaxLength(300).IsRequired(); builder.Property(x => x.PayloadJson).HasColumnType("jsonb");
+        builder.Property(x => x.Type).HasMaxLength(100).IsRequired(); builder.Property(x => x.Title).HasMaxLength(300).IsRequired(); builder.Property(x => x.PayloadJson).HasColumnType("nvarchar(max)");
         builder.HasIndex(x => new { x.UserId, x.ReadAt, x.CreatedAt });
         builder.HasOne<DNTU.SkillBridge.Domain.Identity.User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
     }

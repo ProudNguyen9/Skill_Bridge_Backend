@@ -17,7 +17,7 @@ public sealed class WithdrawalRequestConfiguration : IEntityTypeConfiguration<Wi
         builder.HasIndex(entity => new { entity.StudentId, entity.Status, entity.CreatedAt });
         builder.HasIndex(entity => new { entity.ProjectId, entity.Status, entity.CreatedAt });
         builder.HasIndex(entity => new { entity.ProjectId, entity.StudentId })
-            .HasFilter("\"Status\" IN ('REQUESTED', 'RECOMMENDED')")
+            .HasFilter("[Status] IN ('REQUESTED', 'RECOMMENDED')")
             .IsUnique();
         builder.HasOne<DNTU.SkillBridge.Domain.Projects.Project>()
             .WithMany()

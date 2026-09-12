@@ -4,11 +4,10 @@ Backend modular monolith cho quy trình phối hợp dự án thực tế giữa
 
 ## Bắt đầu nhanh
 
-**Yêu cầu:** .NET SDK 10, PostgreSQL 16+ cho API/integration tests; Docker Desktop nếu dùng local stack.
+**Yêu cầu:** .NET SDK 10, SQL Server 2022+ cho API/integration tests. Backend đọc connection string từ `.env`, kết nối host `backend.phelieuminhduc.com,32022`, database `backendskillbridge`; không cần Docker.
 
 ```powershell
-# Restore và build sạch
-taskkill /F /IM dotnet.exe 2>$null
+# Restore và build
 dotnet restore .\DNTU.SkillBridge.slnx
 dotnet build .\DNTU.SkillBridge.slnx --configuration Debug --no-restore /warnaserror
 
@@ -16,7 +15,7 @@ dotnet build .\DNTU.SkillBridge.slnx --configuration Debug --no-restore /warnase
 dotnet run --project .\src\DNTU.SkillBridge.Api
 ```
 
-> Trước khi build/test lại trên Windows, dừng các host [`dotnet.exe`](DNTU.SkillBridge.slnx:1) cũ để tránh chiếm RAM và khóa file output.
+API đọc `.env` tại thư mục Backend khi chạy Development, hoặc tại thư mục ứng dụng khi deploy. Biến môi trường hệ thống và tham số command line được ưu tiên hơn `.env`. Điền mật khẩu vào `.env`; `.env.example` chỉ chứa placeholder. Backup cho host 2022: `artifacts/database/backendskillbridge-sqlserver2022.bak`.
 
 ## Cấu trúc repository
 
@@ -85,7 +84,7 @@ dotnet ef migrations has-pending-model-changes `
   --startup-project .\src\DNTU.SkillBridge.Api --no-build
 ```
 
-- Không sửa migration đã phát hành. Tạo migration mới để điều chỉnh schema.
+- SQL Server dùng migration `SqlServerInitial` và snapshot hiện tại. Database host đã restore schema này.
 - Query đọc ưu tiên [`AsNoTracking()`](src/DNTU.SkillBridge.Api/Workspaces/WorkspaceService.cs:18), DTO projection và pagination server-side.
 
 ## Test và kiểm chứng

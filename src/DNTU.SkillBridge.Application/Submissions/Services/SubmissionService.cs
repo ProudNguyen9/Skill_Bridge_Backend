@@ -40,7 +40,9 @@ public sealed class SubmissionService(ISubmissionRepository submissionRepository
         var previousStatus = submission.Status;
         try
         {
-            submission.AddVersion(new SubmissionVersion(request.Summary, request.GithubUrl, request.DemoUrl, request.VideoUrl, request.FileId), request.Version);
+            var version = new SubmissionVersion(request.Summary, request.GithubUrl, request.DemoUrl, request.VideoUrl, request.FileId);
+            submission.AddVersion(version, request.Version);
+            submissionRepository.AddVersion(version);
         }
         catch (InvalidOperationException)
         {

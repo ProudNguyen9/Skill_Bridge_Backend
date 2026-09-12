@@ -175,7 +175,7 @@ public sealed class ApplicationRepository(AppDbContext dbContext) : IApplication
         {
             if (targetStatus == ApplicationStatus.ACCEPTED)
             {
-                await dbContext.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM projects WHERE \"Id\" = {application.ProjectId} FOR UPDATE", cancellationToken);
+                await dbContext.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM [projects] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {application.ProjectId}", cancellationToken);
                 var selectedStudentIds = application.Team?.Members.Select(member => member.StudentId).ToArray() ?? [application.StudentId];
                 var acceptedStudentCount = await dbContext.Applications.Where(item => item.ProjectId == application.ProjectId && item.Status == ApplicationStatus.ACCEPTED)
                     .SumAsync(item => item.TeamId.HasValue ? item.Team!.Members.Count : 1, cancellationToken);

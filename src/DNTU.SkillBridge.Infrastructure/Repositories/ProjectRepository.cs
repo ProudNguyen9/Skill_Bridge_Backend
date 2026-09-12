@@ -607,8 +607,8 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
         {
             var pattern = $"%{query.Search.Trim()}%";
             baseQuery = baseQuery.Where(project =>
-                EF.Functions.ILike(project.Title, pattern) ||
-                (project.Summary != null && EF.Functions.ILike(project.Summary, pattern)));
+                EF.Functions.Like(project.Title, pattern) ||
+                (project.Summary != null && EF.Functions.Like(project.Summary, pattern)));
         }
 
         if (query.SkillId.HasValue)

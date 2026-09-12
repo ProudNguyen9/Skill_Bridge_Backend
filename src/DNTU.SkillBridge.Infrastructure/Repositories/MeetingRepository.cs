@@ -255,9 +255,9 @@ public sealed class MeetingRepository(AppDbContext dbContext) : IMeetingReposito
                 // Claim the conversion with a conditional write. This is the durable concurrency
                 // boundary even when multiple application instances process the same request.
                 var claimed = await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
-                UPDATE meeting_action_items
-                SET "ProjectTaskId" = {task.Id}, "Version" = {Guid.CreateVersion7()}
-                WHERE "Id" = {actionItemId} AND "ProjectTaskId" IS NULL
+                UPDATE [meeting_action_items]
+                SET [ProjectTaskId] = {task.Id}, [Version] = {Guid.CreateVersion7()}
+                WHERE [Id] = {actionItemId} AND [ProjectTaskId] IS NULL
                 """, cancellationToken);
                 if (claimed != 1)
                 {

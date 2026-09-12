@@ -21,7 +21,7 @@ public sealed class ProjectSubmissionConfiguration : IEntityTypeConfiguration<Pr
         builder.HasOne<DNTU.SkillBridge.Domain.Milestones.ProjectMilestone>()
             .WithMany()
             .HasForeignKey(entity => entity.MilestoneId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.ClientSetNull);
     }
 }
 
@@ -43,7 +43,7 @@ public sealed class SubmissionVersionConfiguration : IEntityTypeConfiguration<Su
         builder.HasOne<DNTU.SkillBridge.Domain.Files.FileRecord>()
             .WithMany()
             .HasForeignKey(entity => entity.FileId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.ClientSetNull);
     }
 }
 

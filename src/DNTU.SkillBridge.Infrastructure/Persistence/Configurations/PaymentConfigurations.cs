@@ -29,7 +29,7 @@ public sealed class FundingOrderConfiguration : IEntityTypeConfiguration<Funding
         builder.Property(entity => entity.ProviderTransactionId).HasMaxLength(128);
         builder.HasIndex(entity => entity.InvoiceCode).IsUnique();
         builder.HasIndex(entity => new { entity.ProjectId, entity.Status });
-        builder.HasIndex(entity => new { entity.Provider, entity.ProviderTransactionId }).IsUnique().HasFilter("\"Provider\" IS NOT NULL AND \"ProviderTransactionId\" IS NOT NULL");
+        builder.HasIndex(entity => new { entity.Provider, entity.ProviderTransactionId }).IsUnique().HasFilter("[Provider] IS NOT NULL AND [ProviderTransactionId] IS NOT NULL");
     }
 }
 
@@ -96,7 +96,7 @@ public sealed class DisbursementConfiguration : IEntityTypeConfiguration<Disburs
         builder.Property(entity => entity.BankReference).HasMaxLength(128);
         builder.Property(entity => entity.Note).HasMaxLength(1000);
         builder.HasIndex(entity => new { entity.ProjectId, entity.StudentId });
-        builder.HasIndex(entity => entity.IdempotencyKey).IsUnique().HasFilter("\"IdempotencyKey\" IS NOT NULL");
+        builder.HasIndex(entity => entity.IdempotencyKey).IsUnique().HasFilter("[IdempotencyKey] IS NOT NULL");
     }
 }
 

@@ -108,7 +108,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // Npgsql timestamptz only accepts UTC offsets; clients may send local offsets (+07:00).
+        // Normalize timestamps from clients to UTC.
         var utcConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTimeOffset, DateTimeOffset>(
             value => value.ToUniversalTime(),
             value => value);

@@ -35,11 +35,12 @@ public static class PersistenceServiceCollectionExtensions
 
         services.AddDbContext<AppDbContext>(options =>
         {
-            options.UseNpgsql(connectionString, npgsql =>
+            options.UseSqlServer(connectionString, sqlServer =>
             {
-                npgsql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+                sqlServer.UseCompatibilityLevel(150);
+                sqlServer.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
             });
-            options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+            options.UseQueryTrackingBehavior(QueryTrackingBehavior.TrackAll);
         });
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();

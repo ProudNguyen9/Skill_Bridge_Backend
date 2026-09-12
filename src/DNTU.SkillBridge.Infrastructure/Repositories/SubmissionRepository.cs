@@ -24,6 +24,7 @@ public sealed class SubmissionRepository(AppDbContext dbContext) : ISubmissionRe
         !fileId.HasValue || await dbContext.FileRecords.AnyAsync(file => file.Id == fileId.Value && file.ProjectId == projectId && file.UploadedByUserId == userId && file.Status == FileUploadStatus.COMPLETED, cancellationToken);
 
     public void AddSubmission(ProjectSubmission submission) => dbContext.ProjectSubmissions.Add(submission);
+    public void AddVersion(SubmissionVersion version) => dbContext.SubmissionVersions.Add(version);
 
     public void AddStatusHistory(SubmissionStatusHistory history) => dbContext.SubmissionStatusHistories.Add(history);
 

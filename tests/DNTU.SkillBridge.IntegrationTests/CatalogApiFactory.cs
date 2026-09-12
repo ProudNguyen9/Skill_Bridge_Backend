@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Npgsql;
+using Microsoft.Data.SqlClient;
 
 namespace DNTU.SkillBridge.IntegrationTests;
 
@@ -17,20 +17,20 @@ public sealed class CatalogApiCollection : ICollectionFixture<CatalogApiFactory>
 }
 
 /// <summary>
-/// Boots the real API against a dedicated local PostgreSQL database (skillbridge_tests).
-/// Docker/Testcontainers is not available on this machine, so the fixture recreates the
-/// database, applies every migration, and lets Program.cs run identity + catalog seeding.
-/// Set SKILLBRIDGE_TESTS_PG to override the master connection string.
+/// Boots the real API against a dedicated local SQL Server database (skillbridge_tests).
+/// The fixture uses SQL Server directly, recreates its isolated database, applies
+/// every migration, and lets Program.cs run identity + catalog seeding.
+/// Set SKILLBRIDGE_TESTS_SQLSERVER to override the master connection string.
 /// </summary>
 public sealed class CatalogApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private const string DefaultMasterConnectionString =
-        "Host=localhost;Port=5432;Username=postgres;Password=123456;Database=postgres";
+        "Server=(localdb)\\SkillBridge2022;Database=master;Integrated Security=True;Encrypt=True;TrustServerCertificate=True";
     private static readonly string DatabaseName =
         $"skillbridge_tests_{Environment.ProcessId}_{Guid.NewGuid().ToString("N")[..8]}";
 
     private readonly string _masterConnectionString =
-        Environment.GetEnvironmentVariable("SKILLBRIDGE_TESTS_PG") ?? DefaultMasterConnectionString;
+        Environment.GetEnvironmentVariable("SKILLBRIDGE_TESTS_SQLSERVER") ?? DefaultMasterConnectionString;
 
     private string _connectionString = string.Empty;
 
@@ -51,23 +51,23 @@ public sealed class CatalogApiFactory : WebApplicationFactory<Program>, IAsyncLi
 
     private async Task InitializeAsyncCoreAsync()
     {
-        var builder = new NpgsqlConnectionStringBuilder(_masterConnectionString) { Database = "postgres" };
-        await using (var masterConnection = new NpgsqlConnection(builder.ConnectionString))
+        var builder = new SqlConnectionStringBuilder(_masterConnectionString) { InitialCatalog = "master" };
+        await using (var masterConnection = new SqlConnection(builder.ConnectionString))
         {
             await masterConnection.OpenAsync();
 
-            await using var drop = new NpgsqlCommand($"DROP DATABASE IF EXISTS {DatabaseName} WITH (FORCE);", masterConnection);
+            await using var drop = new SqlCommand($"IF DB_ID(N'{DatabaseName}') IS NOT NULL BEGIN ALTER DATABASE [{DatabaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{DatabaseName}]; END;", masterConnection);
             await drop.ExecuteNonQueryAsync();
 
-            await using var create = new NpgsqlCommand(
-                $"CREATE DATABASE {DatabaseName} ENCODING 'UTF8' TEMPLATE template0 LC_COLLATE 'C' LC_CTYPE 'C';",
+            await using var create = new SqlCommand(
+                $"CREATE DATABASE [{DatabaseName}] COLLATE Latin1_General_100_CI_AS_SC;",
                 masterConnection);
             await create.ExecuteNonQueryAsync();
         }
 
-        _connectionString = new NpgsqlConnectionStringBuilder(_masterConnectionString)
+        _connectionString = new SqlConnectionStringBuilder(_masterConnectionString)
         {
-            Database = DatabaseName
+            InitialCatalog = DatabaseName
         }.ConnectionString;
 
         await using var dbContext = CreateDbContext();
@@ -84,16 +84,16 @@ public sealed class CatalogApiFactory : WebApplicationFactory<Program>, IAsyncLi
             return;
         }
 
-        var builder = new NpgsqlConnectionStringBuilder(_masterConnectionString) { Database = "postgres" };
-        await using var masterConnection = new NpgsqlConnection(builder.ConnectionString);
+        var builder = new SqlConnectionStringBuilder(_masterConnectionString) { InitialCatalog = "master" };
+        await using var masterConnection = new SqlConnection(builder.ConnectionString);
         await masterConnection.OpenAsync();
-        await using var drop = new NpgsqlCommand($"DROP DATABASE IF EXISTS {DatabaseName} WITH (FORCE);", masterConnection);
+        await using var drop = new SqlCommand($"IF DB_ID(N'{DatabaseName}') IS NOT NULL BEGIN ALTER DATABASE [{DatabaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{DatabaseName}]; END;", masterConnection);
         await drop.ExecuteNonQueryAsync();
     }
 
     public AppDbContext CreateDbContext() =>
         new(new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(_connectionString)
+            .UseSqlServer(_connectionString)
             .Options);
 
     public async Task RunWithDbContextAsync(Func<AppDbContext, Task> action)

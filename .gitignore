@@ -43,3 +43,9 @@ redis-data/
 # Local planning notes
 /plan.md
 /docs/plans/
+
+# Database backups contain application data
+*.bak
+artifacts/database/*.sql
+.tools/
+artifacts/sqlserver2022/
