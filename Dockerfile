@@ -12,7 +12,7 @@ RUN dotnet publish "src/DNTU.SkillBridge.Api/DNTU.SkillBridge.Api.csproj" --conf
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
-RUN addgroup --system skillbridge && adduser --system --ingroup skillbridge skillbridge
+RUN groupadd --system skillbridge && useradd --system --gid skillbridge --no-create-home skillbridge
 COPY --from=build /app/publish .
 ENV ASPNETCORE_URLS=http://+:8080 \
     ASPNETCORE_ENVIRONMENT=Production
