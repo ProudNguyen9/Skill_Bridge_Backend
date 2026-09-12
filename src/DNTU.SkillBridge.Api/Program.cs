@@ -302,17 +302,14 @@ app.UseAuthorization();
 app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapHub<ProjectHub>("/hubs/projects");
 
-if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Test"))
+app.MapOpenApi();
+app.UseSwagger();
+app.UseSwaggerUI(options =>
 {
-    app.MapOpenApi();
-    app.UseSwagger();
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "DNTU SkillBridge API v1");
-        options.RoutePrefix = "swagger";
-        options.DocumentTitle = "DNTU SkillBridge API";
-    });
-}
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "DNTU SkillBridge API v1");
+    options.RoutePrefix = "swagger";
+    options.DocumentTitle = "DNTU SkillBridge API";
+});
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
