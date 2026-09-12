@@ -127,8 +127,8 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          port: ${{ secrets.FTP_PORT }}
+          protocol: ftp
+          port: 21
           local-dir: ./publish/
           server-dir: ./
           exclude: |
