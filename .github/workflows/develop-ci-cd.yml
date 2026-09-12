@@ -121,6 +121,22 @@ jobs:
           --configuration Release
           --output ./publish
 
+      # IIS/ASP.NET Core unloads the application when this file is present.
+      # Upload it before touching DLLs so Windows does not lock the running files.
+      - name: Put website offline before deployment
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_PORT: ${{ secrets.FTP_PORT }}
+        run: |
+          printf '%s\n' '<!doctype html><html><body>Deployment in progress. Please retry shortly.</body></html>' > app_offline.htm
+          curl --fail --show-error --silent --ftp-pasv \
+            --user "$FTP_USERNAME:$FTP_PASSWORD" \
+            --upload-file app_offline.htm \
+            "ftp://$FTP_SERVER:${FTP_PORT:-21}/app_offline.htm"
+          sleep 10
+
       - name: Deploy to Plesk via FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
@@ -133,3 +149,18 @@ jobs:
           server-dir: ./
           exclude: |
             **/.env
+            **/app_offline.htm
+
+      # Always attempt to bring the site back, including when the FTP sync fails.
+      - name: Bring website back online
+        if: ${{ always() }}
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_PORT: ${{ secrets.FTP_PORT }}
+        run: |
+          curl --fail --show-error --silent --ftp-pasv \
+            --user "$FTP_USERNAME:$FTP_PASSWORD" \
+            -Q 'DELE app_offline.htm' \
+            "ftp://$FTP_SERVER:${FTP_PORT:-21}/"
