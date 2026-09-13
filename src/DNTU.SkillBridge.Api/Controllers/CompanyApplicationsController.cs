@@ -12,7 +12,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/company/applications")]
+[Route("api/v1/company/applications")]
 [Authorize]
 [Produces("application/json")]
 public sealed class CompanyApplicationsController(IApplicationService applicationService, ICompanyService companyService, ICurrentUser currentUser) : ControllerBase

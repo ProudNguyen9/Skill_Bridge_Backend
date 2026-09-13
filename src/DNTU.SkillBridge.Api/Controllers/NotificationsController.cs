@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace DNTU.SkillBridge.Api.Controllers;
 
-[ApiController, ApiVersion("1.0"), Route("api/v{version:apiVersion}"), Authorize, Produces("application/json")]
+[ApiController, ApiVersion("1.0"), Route("api/v1"), Authorize, Produces("application/json")]
 public sealed class NotificationsController(INotificationService notificationService, ICurrentUser currentUser) : ControllerBase
 {
     [HttpGet("notifications")] public async Task<ActionResult<ApiResponse<IReadOnlyCollection<NotificationResponse>>>> List(CancellationToken ct) => Ok(new ApiResponse<IReadOnlyCollection<NotificationResponse>>(await notificationService.ListAsync(UserId, ct)));

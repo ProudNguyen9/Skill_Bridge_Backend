@@ -11,7 +11,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 /// <summary>Company-scoped business review endpoints; DTOs intentionally exclude academic evaluation fields.</summary>
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}")]
+[Route("api/v1")]
 [Authorize]
 [Produces("application/json")]
 public sealed class BusinessReviewsController(IBusinessReviewService reviewService, ICurrentUser currentUser) : ControllerBase

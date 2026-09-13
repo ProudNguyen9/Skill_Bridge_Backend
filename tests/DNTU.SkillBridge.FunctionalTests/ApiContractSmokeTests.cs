@@ -59,9 +59,9 @@ public sealed class ApiContractSmokeTests : IAsyncLifetime
         Assert.NotNull(client);
         var document = await client.GetStringAsync("/swagger/v1/swagger.json");
 
-        Assert.Contains("/api/v{version}/files/upload-requests", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/files/{fileId}/complete", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/files/{fileId}/download-url", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/files/upload-requests", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/files/{fileId}/complete", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/files/{fileId}/download-url", document, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -70,10 +70,10 @@ public sealed class ApiContractSmokeTests : IAsyncLifetime
         Assert.NotNull(client);
         var document = await client.GetStringAsync("/swagger/v1/swagger.json");
 
-        Assert.Contains("/api/v{version}/lecturer/submissions/{submissionId}/technical-review", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/lecturer/reviews", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/lecturer/reviews/{reviewId}", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/submissions/{submissionId}/reviews", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/lecturer/submissions/{submissionId}/technical-review", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/lecturer/reviews", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/lecturer/reviews/{reviewId}", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/submissions/{submissionId}/reviews", document, StringComparison.Ordinal);
         Assert.Contains("criteriaNotes", document, StringComparison.Ordinal);
     }
 
@@ -83,13 +83,13 @@ public sealed class ApiContractSmokeTests : IAsyncLifetime
         Assert.NotNull(client);
         var document = await client.GetStringAsync("/swagger/v1/swagger.json");
 
-        Assert.Contains("/api/v{version}/projects/{projectId}/commitment", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/projects/{projectId}/commitment/confirm", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/students/me/commitments", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/withdrawals", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/withdrawals/{withdrawalId}/recommend", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/withdrawals/{withdrawalId}/approve", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/withdrawals/{withdrawalId}/reject", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/projects/{projectId}/commitment", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/projects/{projectId}/commitment/confirm", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/students/me/commitments", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/withdrawals", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/withdrawals/{withdrawalId}/recommend", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/withdrawals/{withdrawalId}/approve", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/withdrawals/{withdrawalId}/reject", document, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -98,13 +98,13 @@ public sealed class ApiContractSmokeTests : IAsyncLifetime
         Assert.NotNull(client);
         var document = await client.GetStringAsync("/swagger/v1/swagger.json");
 
-        Assert.Contains("/api/v{version}/workspaces/{projectId}/overview", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/workspaces/{projectId}/team", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/workspaces/{projectId}/activity", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/workspaces/{projectId}/settings", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/projects/{projectId}/activity", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/students/me/projects", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/students/me/projects/{projectId}", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/workspaces/{projectId}/overview", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/workspaces/{projectId}/team", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/workspaces/{projectId}/activity", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/workspaces/{projectId}/settings", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/projects/{projectId}/activity", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/students/me/projects", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/students/me/projects/{projectId}", document, StringComparison.Ordinal);
         Assert.Contains("membersCanCreateTasks", document, StringComparison.Ordinal);
         Assert.Contains("eventType", document, StringComparison.Ordinal);
     }
@@ -115,12 +115,12 @@ public sealed class ApiContractSmokeTests : IAsyncLifetime
         Assert.NotNull(client);
         var document = await client.GetStringAsync("/swagger/v1/swagger.json");
 
-        Assert.Contains("/api/v{version}/projects/{projectId}/tasks", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/projects/{projectId}/board", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/tasks/{taskId}", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/tasks/{taskId}/move", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/tasks/{taskId}/assign", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/tasks/{taskId}/unassign", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/projects/{projectId}/tasks", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/projects/{projectId}/board", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/tasks/{taskId}", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/tasks/{taskId}/move", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/tasks/{taskId}/assign", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/tasks/{taskId}/unassign", document, StringComparison.Ordinal);
         Assert.Contains("version", document, StringComparison.Ordinal);
         Assert.Contains("assigneeStudentId", document, StringComparison.Ordinal);
         Assert.Contains("sortOrder", document, StringComparison.Ordinal);
@@ -132,9 +132,9 @@ public sealed class ApiContractSmokeTests : IAsyncLifetime
         Assert.NotNull(client);
         var document = await client.GetStringAsync("/swagger/v1/swagger.json");
 
-        Assert.Contains("/api/v{version}/company/submissions/{submissionId}/business-review", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/company/business-reviews", document, StringComparison.Ordinal);
-        Assert.Contains("/api/v{version}/submissions/{submissionId}/business-reviews", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/company/submissions/{submissionId}/business-review", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/company/business-reviews", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/submissions/{submissionId}/business-reviews", document, StringComparison.Ordinal);
         Assert.Contains("requirementsFeedback", document, StringComparison.Ordinal);
         Assert.Contains("collaborationFeedback", document, StringComparison.Ordinal);
         Assert.DoesNotContain("totalAcademicScore", document, StringComparison.OrdinalIgnoreCase);

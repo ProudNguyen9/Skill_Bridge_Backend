@@ -9,7 +9,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/files")]
+[Route("api/v1/files")]
 [Authorize]
 [Produces("application/json")]
 public sealed class FilesController(IFileService fileService, ICurrentUser currentUser) : ControllerBase

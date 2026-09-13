@@ -10,7 +10,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/admin")]
+[Route("api/v1/admin")]
 [Authorize]
 [Produces("application/json")]
 public sealed class AdminGovernanceController(IAdminGovernanceService governanceService, ICurrentUser currentUser) : ControllerBase

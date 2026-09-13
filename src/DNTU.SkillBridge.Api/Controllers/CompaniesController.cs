@@ -12,7 +12,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 /// <summary>Company tenant endpoints (/me) plus the public, privacy-limited company directory.</summary>
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/companies")]
+[Route("api/v1/companies")]
 [Produces("application/json")]
 public sealed class CompaniesController(ICompanyService companyService, ICurrentUser currentUser) : ControllerBase
 {

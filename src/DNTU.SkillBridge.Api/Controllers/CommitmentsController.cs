@@ -10,7 +10,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}")]
+[Route("api/v1")]
 [Authorize]
 [Produces("application/json")]
 public sealed class CommitmentsController(ICommitmentService commitmentService, ICurrentUser currentUser) : ControllerBase
@@ -56,7 +56,7 @@ public sealed class CommitmentsController(ICommitmentService commitmentService, 
             WithdrawalOutcome.NotFound => NotFound(),
             WithdrawalOutcome.Conflict => Conflict(),
             WithdrawalOutcome.Forbidden => Forbid(),
-            _ => CreatedAtAction(nameof(GetWithdrawal), new { withdrawalId = withdrawal!.Id, version = "1" }, new ApiResponse<WithdrawalResponse>(withdrawal))
+            _ => CreatedAtAction(nameof(GetWithdrawal), new { withdrawalId = withdrawal!.Id }, new ApiResponse<WithdrawalResponse>(withdrawal))
         };
     }
 

@@ -10,7 +10,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 /// <summary>Read-only catalog endpoints powering every frontend dropdown and metadata panel.</summary>
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/catalog")]
+[Route("api/v1/catalog")]
 [Produces("application/json")]
 public sealed class CatalogController(ICatalogService catalogService, ICurrentUser currentUser) : ControllerBase
 {

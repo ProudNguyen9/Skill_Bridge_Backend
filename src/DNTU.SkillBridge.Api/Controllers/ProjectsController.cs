@@ -12,7 +12,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 /// </summary>
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/projects")]
+[Route("api/v1/projects")]
 [AllowAnonymous]
 [Produces("application/json")]
 public sealed class ProjectsController(IProjectSearchService projectService) : ControllerBase

@@ -10,7 +10,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}")]
+[Route("api/v1")]
 [Produces("application/json")]
 public sealed class SePayController(ISePayService sePayService, ICurrentUser currentUser) : ControllerBase
 {

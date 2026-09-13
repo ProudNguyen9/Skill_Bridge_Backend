@@ -10,7 +10,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/admin/analytics")]
+[Route("api/v1/admin/analytics")]
 [Authorize]
 [Produces("application/json")]
 public sealed class AnalyticsController(IAnalyticsService analyticsService, ICurrentUser currentUser) : ControllerBase

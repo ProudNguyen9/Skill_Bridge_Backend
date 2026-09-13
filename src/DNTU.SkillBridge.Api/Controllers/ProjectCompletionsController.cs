@@ -10,7 +10,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/projects")]
+[Route("api/v1/projects")]
 [Authorize]
 [Produces("application/json")]
 public sealed class ProjectCompletionsController(IProjectCompletionService completionService, ICurrentUser currentUser) : ControllerBase

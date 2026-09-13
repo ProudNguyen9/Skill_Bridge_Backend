@@ -13,7 +13,7 @@ public sealed record FundingOrderResponse(Guid Id, Guid ProjectId, string Invoic
 
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}")]
+[Route("api/v1")]
 [Authorize]
 [Produces("application/json")]
 public sealed class PaymentsController(IPaymentService paymentService, ICurrentUser currentUser) : ControllerBase

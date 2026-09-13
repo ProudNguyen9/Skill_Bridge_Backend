@@ -13,7 +13,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 /// <summary>Company-scoped project draft endpoints (create, read, update, delete, team, progress).</summary>
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/company/projects")]
+[Route("api/v1/company/projects")]
 [Authorize]
 [Produces("application/json")]
 public sealed class CompanyProjectsController(IProjectService projectService, IProjectWorkflowService workflowService, IProjectTeamService teamService, IApplicationService applicationService, ICompanyService companyService, ICurrentUser currentUser) : ControllerBase

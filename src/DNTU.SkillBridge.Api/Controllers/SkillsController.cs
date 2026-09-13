@@ -10,7 +10,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 /// <summary>Standalone skill listing alias of the catalog skills endpoint.</summary>
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/skills")]
+[Route("api/v1/skills")]
 [Produces("application/json")]
 public sealed class SkillsController(ICatalogService catalogService, ICurrentUser currentUser) : ControllerBase
 {

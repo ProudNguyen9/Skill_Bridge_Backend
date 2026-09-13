@@ -11,7 +11,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/auth")]
+[Route("api/v1/auth")]
 [Produces("application/json")]
 public sealed class AuthController(IAuthService authService, ICurrentUser currentUser, IAccountEmailSender accountEmailSender) : ControllerBase
 {

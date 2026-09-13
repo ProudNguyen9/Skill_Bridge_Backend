@@ -6,7 +6,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/system")]
+[Route("api/v1/system")]
 public sealed class SystemController : ControllerBase
 {
     [HttpGet("contract")]

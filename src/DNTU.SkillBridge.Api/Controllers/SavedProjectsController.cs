@@ -15,7 +15,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 /// </summary>
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/students/me")]
+[Route("api/v1/students/me")]
 [Authorize]
 [Produces("application/json")]
 public sealed class SavedProjectsController(ISavedProjectService savedProjectService, ICurrentUser currentUser) : ControllerBase

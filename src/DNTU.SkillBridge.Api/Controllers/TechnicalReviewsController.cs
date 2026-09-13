@@ -11,7 +11,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 /// <summary>Immutable lecturer technical-review history for submission evidence versions.</summary>
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}")]
+[Route("api/v1")]
 [Authorize]
 [Produces("application/json")]
 public sealed class TechnicalReviewsController(ITechnicalReviewService reviewService, ICurrentUser currentUser) : ControllerBase
