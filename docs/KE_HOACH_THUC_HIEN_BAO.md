@@ -95,30 +95,26 @@ flowchart TD
 
 ### GIAI ĐOẠN 0: Khảo sát (Audit) & Hợp đồng dữ liệu (API Contract)
 
-*   **Task A-01.3 [Phase 0 - Critical]: Audit chỉ đọc Module C & Shared FE**
-    *   *Mục tiêu:* Rà soát toàn bộ route, mock/live API hiện có của Workspace, Lecturer, Submission, Review, Rubric và Shared FE (`shared/api`).
-    *   *Tiêu chí xong:* Hoàn thành bảng hiện trạng các luồng `U09–U13`, chỉ rõ các endpoint còn thiếu hoặc đang mock. Tuyệt đối **không sửa code** trong bước này.
-*   **Task A-02.3 [Phase 0 - Critical]: Đề xuất hợp đồng API cho Workspace & Academic**
-    *   *Mục tiêu:* Thiết kế DTO, request/response, enums, error cases cho: `Workspace`, `Task`, `Milestone`, `File`, `Submission`, `Review`, `DualAcceptanceEvent`.
+*   **Task A-01.3 [Phase 0 - Critical]: Audit chỉ đọc Module C & Shared FE** ✅ **[HOÀN THÀNH]**
+    *   *Kết quả:* Đã khảo sát toàn bộ mã nguồn FE và BE. Xuất bản báo cáo tại `Skill_Bridge_Backend/docs/reports/AUDIT_REPORT_MODULE_C_SHARED_FE.md`.
+*   **Task A-02.3 [Phase 0 - Critical]: Đề xuất hợp đồng API cho Workspace & Academic** ✅ **[HOÀN THÀNH]**
+    *   *Kết quả:* Đã đặc tả chi tiết toàn bộ DTOs và 3 hợp đồng bàn giao (B-12 kích hoạt, C-10 nghiệm thu kép, C-14 bắn sự kiện). Lưu tại `Skill_Bridge_Backend/docs/reports/API_CONTRACT_PROPOSAL_WORKSPACE_ACADEMIC.md`.
 
 ---
 
 > [!CAUTION]
-> ### 🛑 ĐIỂM DỪNG 1 (CHECKPOINT 1): Duyệt và Hợp nhất Hợp đồng API chung (Task A-02.4)
-> *   **Phụ thuộc vào:** 
->     *   **Hào (`A-02.1`):** Hợp đồng Auth, Catalog, Notifications.
->     *   **Doanh (`A-02.2`):** Hợp đồng Projects, Applications, Teams, Commitments.
-> *   **Hành động của Bảo:** Chờ Hào và Doanh nộp đầy đủ DTO/Enum của module họ. Bảo tiến hành hợp nhất vào bản OpenAPI Spec chuẩn và phát hành `src/shared/types` cho toàn bộ dự án Frontend.
-> *   **Điều kiện mở khóa tiếp tục:** Cả 3 thành viên thống nhất không còn xung đột về field, kiểu dữ liệu hay endpoint URL.
+> ### 🛑 ĐIỂM DỪNG 1 (CHECKPOINT 1): Duyệt và Hợp nhất Hợp đồng API chung (Task A-02.4) ✅ **[ĐÃ THÔNG QUA]**
+> *   *Trạng thái:* Hào và Doanh đã xác nhận OK 100% với bản đề xuất hợp đồng API.
+> *   *Kết quả triển khai Task A-02.4:* Bảo đã phát hành toàn bộ bộ kiểu dữ liệu chuẩn vào `Skill_Bridge_Fontend/src/shared/types/` (`workspace.types.ts`, `task.types.ts`, `milestone.types.ts`, `submission.types.ts`, `academic.types.ts`, `meeting.types.ts`, `file.types.ts`). Đã kiểm tra `tsc` đạt 0 lỗi.
 
 ---
 
 ### GIAI ĐOẠN 1: Thiết lập hạ tầng Shared FE & Nền tảng Phân quyền
 
-*   **Task A-10.1 [MVP - High]: Xây dựng thư viện Shared API Client & Query Conventions**
-    *   *Mục tiêu:* Chuẩn hóa `axios` client tại `src/shared/api`, hỗ trợ: base URL tự động (qua proxy `/api/v1`), token injection, 401 interceptor hook, query keys chuẩn cho React Query.
-*   **Task A-10.4 [MVP - High]: Chuyển đổi Module C sang Shared API Client**
-    *   *Mục tiêu:* Dọn dẹp các lời gọi `fetch`/`axios` cục bộ trong module Workspace/Academic, chuyển sang dùng `shared/api`.
+*   **Task A-10.1 [MVP - High]: Xây dựng thư viện Shared API Client & Query Conventions** ✅ **[HOÀN THÀNH]**
+    *   *Kết quả:* Đã xây dựng `workspaceApi`, `academicApi`, `query-keys.ts` và toàn bộ bộ React Query hooks tại `src/shared/hooks/useWorkspace.ts` và `src/shared/hooks/useAcademic.ts`.
+*   **Task A-10.4 [MVP - High]: Chuyển đổi Module C sang Shared API Client** 🔄 **[ĐANG TIẾN HÀNH]**
+    *   *Mục tiêu:* Tích hợp các hooks mới vào giao diện Workspace, Rubric evaluation, hỗ trợ fallback mượt mà.
 
 ---
 
