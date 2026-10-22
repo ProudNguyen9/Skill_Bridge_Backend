@@ -169,6 +169,7 @@ public sealed class SavedProjectEndpointTests(CatalogApiFactory factory)
         {
             email,
             displayName = "Sinh viên Lưu dự án",
+            studentCode = "22" + Random.Shared.Next(100000, 999999),
             password = Password,
             accountType = "Student"
         }, Json);

@@ -85,6 +85,8 @@ public sealed class EmailOptions
 
     public bool Enabled { get; init; }
 
+    public string? ApiKey { get; init; }
+
     public string? Host { get; init; }
 
     [Range(1, 65535)]
@@ -237,7 +239,7 @@ public sealed class AppOptionsValidator : IValidateOptions<AppOptions>, IValidat
     public ValidateOptionsResult Validate(string? name, EmailOptions options) =>
         !options.Enabled
             ? ValidateOptionsResult.Success
-            : Require("Email", options.Host, options.FromAddress, options.FromName);
+            : Require("Email", options.ApiKey, options.FromAddress, options.FromName);
 
     public ValidateOptionsResult Validate(string? name, PaymentOptions options) =>
         !options.Enabled || string.Equals(options.Currency, "VND", StringComparison.OrdinalIgnoreCase)
@@ -314,9 +316,11 @@ public sealed class AppOptionsValidator : IValidateOptions<AppOptions>, IValidat
             : ValidateOptionsResult.Success;
 
     private static ValidateOptionsResult IsSupportedStorageProvider(string provider) =>
-        string.Equals(provider, "MinIO", StringComparison.OrdinalIgnoreCase) || string.Equals(provider, "S3", StringComparison.OrdinalIgnoreCase)
+        string.Equals(provider, "MinIO", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(provider, "S3", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(provider, "Filebase", StringComparison.OrdinalIgnoreCase)
             ? ValidateOptionsResult.Success
-            : ValidateOptionsResult.Fail("Storage:Provider must be MinIO or S3.");
+            : ValidateOptionsResult.Fail("Storage:Provider must be MinIO, S3, or Filebase.");
 
     private static ValidateOptionsResult IsStorageEndpoint(string? endpoint) =>
         Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https"

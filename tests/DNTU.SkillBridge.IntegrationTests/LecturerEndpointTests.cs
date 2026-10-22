@@ -210,6 +210,7 @@ public sealed class LecturerEndpointTests(CatalogApiFactory factory)
         {
             email,
             displayName = "Sinh viên Kiểm thử",
+            studentCode = "22" + Random.Shared.Next(100000, 999999),
             password = Password,
             accountType = "Student"
         }, Json);
@@ -252,6 +253,7 @@ public sealed class LecturerEndpointTests(CatalogApiFactory factory)
         {
             email,
             displayName = "Tài khoản phân quyền đánh giá",
+            studentCode = accountType == "Student" ? "22" + Random.Shared.Next(100000, 999999) : null,
             password = Password,
             accountType
         }, Json);

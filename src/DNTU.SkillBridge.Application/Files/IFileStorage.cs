@@ -2,6 +2,8 @@ namespace DNTU.SkillBridge.Application.Files;
 
 public sealed record StoredObjectMetadata(long Length, string ChecksumSha256, string DetectedContentType, FileSignature Signature);
 
+public sealed record StorageItemDto(string Key, long Size, DateTimeOffset? LastModified, string? Url, string? ETag = null);
+
 public enum FileSignature
 {
     Unknown = 0,
@@ -20,6 +22,8 @@ public interface IFileStorage
     Task<StoredObjectMetadata?> GetMetadataAsync(string storageKey, CancellationToken cancellationToken);
     Task<Uri> CreateDownloadUrlAsync(string storageKey, TimeSpan lifetime, CancellationToken cancellationToken);
     Task DeleteAsync(string storageKey, CancellationToken cancellationToken);
+    Task<Uri> DirectUploadAsync(string storageKey, Stream content, string contentType, CancellationToken cancellationToken);
+    Task<IReadOnlyList<StorageItemDto>> ListObjectsAsync(string? prefix, CancellationToken cancellationToken);
 }
 
 /// <summary>Safe development placeholder. It deliberately does not expose credentials or make a bucket public.</summary>
@@ -31,4 +35,6 @@ public sealed class DisabledFileStorage : IFileStorage
     public Task<StoredObjectMetadata?> GetMetadataAsync(string storageKey, CancellationToken cancellationToken) => Task.FromException<StoredObjectMetadata?>(Disabled());
     public Task<Uri> CreateDownloadUrlAsync(string storageKey, TimeSpan lifetime, CancellationToken cancellationToken) => Task.FromException<Uri>(Disabled());
     public Task DeleteAsync(string storageKey, CancellationToken cancellationToken) => Task.FromException(Disabled());
+    public Task<Uri> DirectUploadAsync(string storageKey, Stream content, string contentType, CancellationToken cancellationToken) => Task.FromException<Uri>(Disabled());
+    public Task<IReadOnlyList<StorageItemDto>> ListObjectsAsync(string? prefix, CancellationToken cancellationToken) => Task.FromException<IReadOnlyList<StorageItemDto>>(Disabled());
 }

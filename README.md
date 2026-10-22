@@ -4,7 +4,7 @@ Backend modular monolith cho quy trình phối hợp dự án thực tế giữa
 
 ## Bắt đầu nhanh
 
-**Yêu cầu:** .NET SDK 10, SQL Server 2022+ cho API/integration tests. Backend đọc connection string từ `.env`, kết nối host `backend.phelieuminhduc.com,32022`, database `backendskillbridge`; không cần Docker.
+**Yêu cầu:** .NET SDK 10, SQL Server 2022+ cho API/integration tests. Backend đọc cấu hình SQL Server từ các biến riêng trong `.env`; không cần Docker.
 
 ```powershell
 # Restore và build
@@ -15,7 +15,21 @@ dotnet build .\DNTU.SkillBridge.slnx --configuration Debug --no-restore /warnase
 dotnet run --project .\src\DNTU.SkillBridge.Api
 ```
 
-API đọc `.env` tại thư mục Backend khi chạy Development, hoặc tại thư mục ứng dụng khi deploy. Biến môi trường hệ thống và tham số command line được ưu tiên hơn `.env`. Điền mật khẩu vào `.env`; `.env.example` chỉ chứa placeholder. Backup cho host 2022: `artifacts/database/backendskillbridge-sqlserver2022.bak`.
+API đọc `.env` tại thư mục Backend khi chạy Development, hoặc tại thư mục ứng dụng khi deploy. Database được cấu hình qua `Database__Host`, `Database__Port`, `Database__Name`, `Database__Username`, `Database__Password` và các tùy chọn kết nối; API tự ghép thành connection string lúc khởi động. Biến môi trường hệ thống và tham số command line được ưu tiên hơn `.env`. Chỉ điền credential thật trong `.env`; `.env.example` dùng placeholder. Backup cho SQL Server 2022: `artifacts/database/backendskillbridge-sqlserver2022.bak`.
+
+### Tài khoản kiểm thử
+
+Khi API chạy với `ASPNETCORE_ENVIRONMENT=Development` và `Authentication:SeedTestAccounts=true`, backend tự seed các tài khoản dưới đây. Có thể dùng chung mật khẩu `SkillBridge.Test#2026`:
+
+| Role | Email | Mã sinh viên |
+|---|---|---|
+| Sinh viên | `student.test@skillbridge.local` | `TEST0001` |
+| Doanh nghiệp | `company.test@skillbridge.local` | — |
+| Giảng viên | `lecturer.test@skillbridge.local` | — |
+| Quản trị viên | `admin.test@skillbridge.local` | — |
+| Quản trị viên cấp cao | `superadmin.test@skillbridge.local` | — |
+
+Các tài khoản này chỉ dành cho Development. Khởi động lại API sau khi cấu hình database để seed hoặc đồng bộ lại mật khẩu. Xem thêm [hướng dẫn tài khoản kiểm thử](docs/auth-test-accounts.md).
 
 ## Cấu trúc repository
 

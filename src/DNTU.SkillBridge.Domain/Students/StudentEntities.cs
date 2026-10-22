@@ -36,7 +36,7 @@ public sealed class StudentProfile : Common.AuditableEntity
         string? portfolioUrl,
         string? cvUrl)
     {
-        StudentCode = NullIfEmpty(studentCode);
+        StudentCode = string.IsNullOrWhiteSpace(studentCode) ? null : studentCode.Trim().ToUpperInvariant();
         MajorId = majorId;
         FacultyId = facultyId;
         AcademicYear = NullIfEmpty(academicYear);

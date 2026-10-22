@@ -1062,6 +1062,7 @@ public sealed class ApplicationEndpointTests(CatalogApiFactory factory)
         {
             email,
             displayName = "Sinh viên Ứng tuyển",
+            studentCode = "22" + Random.Shared.Next(100000, 999999),
             password = Password,
             accountType = "Student"
         }, Json);
@@ -1181,5 +1182,7 @@ public sealed class ApplicationEndpointTests(CatalogApiFactory factory)
             objects.TryRemove(storageKey, out _);
             return Task.CompletedTask;
         }
+        public Task<Uri> DirectUploadAsync(string storageKey, Stream content, string contentType, CancellationToken cancellationToken) => Task.FromResult(new Uri($"https://storage.test/files/{Uri.EscapeDataString(storageKey)}"));
+        public Task<IReadOnlyList<StorageItemDto>> ListObjectsAsync(string? prefix, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<StorageItemDto>>([]);
     }
 }
