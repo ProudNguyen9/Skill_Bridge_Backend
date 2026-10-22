@@ -20,6 +20,7 @@ public sealed class ProjectAccessService(IProjectAccessRepository projectAccessR
             return ProjectAccess.None;
         }
 
+        if (currentUser.Roles.Contains(RoleNames.Admin) || currentUser.Roles.Contains(RoleNames.SuperAdmin)) return ProjectAccess.Admin;
         if (currentUser.Roles.Contains(RoleNames.Student))
         {
             var hasActiveMembership = await projectAccessRepository.HasActiveStudentMembershipAsync(userId, projectId, cancellationToken);

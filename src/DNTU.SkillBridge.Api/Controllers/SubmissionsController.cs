@@ -103,6 +103,19 @@ public sealed class SubmissionsController(ISubmissionService submissionService, 
         return Ok(new ApiResponse<IReadOnlyCollection<SubmissionResponse>>(await submissionService.ListStudentAsync(UserId, cancellationToken)));
     }
 
+    [HttpGet("projects/{projectId:guid}/submissions")]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<SubmissionResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<IReadOnlyCollection<SubmissionResponse>>>> ListProjectSubmissions(Guid projectId, CancellationToken cancellationToken)
+    {
+        var list = currentUser.Roles.Contains(RoleNames.Lecturer)
+            ? await submissionService.ListLecturerAsync(UserId, cancellationToken)
+            : currentUser.Roles.Contains(RoleNames.Company)
+                ? await submissionService.ListCompanyAsync(UserId, cancellationToken)
+                : await submissionService.ListStudentAsync(UserId, cancellationToken);
+        var filtered = list.Where(s => s.ProjectId == projectId).ToList();
+        return Ok(new ApiResponse<IReadOnlyCollection<SubmissionResponse>>(filtered));
+    }
+
     [HttpGet("company/submissions")]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<SubmissionResponse>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IReadOnlyCollection<SubmissionResponse>>>> ListCompany(CancellationToken cancellationToken)

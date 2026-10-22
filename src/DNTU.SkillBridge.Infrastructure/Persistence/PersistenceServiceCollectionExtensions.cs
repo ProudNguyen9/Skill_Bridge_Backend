@@ -30,8 +30,21 @@ public static class PersistenceServiceCollectionExtensions
 {
     public static IServiceCollection AddPersistence(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("Default")
-            ?? throw new InvalidOperationException("ConnectionStrings:Default is required.");
+        var connectionString = configuration.GetConnectionString("Default");
+        var host = configuration["Database:Host"];
+        if (!string.IsNullOrWhiteSpace(host) && (string.IsNullOrWhiteSpace(connectionString) || connectionString.Contains("(localdb)")))
+        {
+            var port = configuration["Database:Port"] ?? "32022";
+            var db = configuration["Database:Name"] ?? "backendskillbridge";
+            var user = configuration["Database:Username"] ?? "adminbackend";
+            var pass = configuration["Database:Password"] ?? "#K9Ag~eur2fqkr0L";
+            var encrypt = configuration["Database:Encrypt"] ?? "True";
+            var trust = configuration["Database:TrustServerCertificate"] ?? "True";
+            var timeout = configuration["Database:ConnectTimeout"] ?? "15";
+            connectionString = $"Server={host},{port};Database={db};User Id={user};Password={pass};Encrypt={encrypt};TrustServerCertificate={trust};Connect Timeout={timeout};";
+        }
+        if (string.IsNullOrWhiteSpace(connectionString)) throw new InvalidOperationException("ConnectionStrings:Default or Database configuration is required.");
+
 
         services.AddDbContext<AppDbContext>(options =>
         {
