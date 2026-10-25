@@ -256,6 +256,11 @@ public sealed class Project : AuditableEntity
         }
     }
 
+    public void StartExecution()
+    {
+        Status = ProjectStatus.IN_PROGRESS;
+    }
+
     public void Complete()
     {
         if (Status == ProjectStatus.COMPLETED)

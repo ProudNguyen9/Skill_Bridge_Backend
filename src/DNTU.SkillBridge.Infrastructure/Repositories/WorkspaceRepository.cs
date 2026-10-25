@@ -23,11 +23,14 @@ public sealed class WorkspaceRepository(AppDbContext dbContext) : IWorkspaceRepo
     public Task<int> CountOverdueTasksAsync(Guid projectId, DateTimeOffset now, CancellationToken cancellationToken) =>
         dbContext.ProjectTasks.CountAsync(item => item.ProjectId == projectId && !item.IsDeleted && item.Status != ProjectTaskStatus.DONE && item.DueAt < now, cancellationToken);
 
-    public async Task<IReadOnlyCollection<WorkspaceMemberResponse>> ListTeamAsync(Guid projectId, CancellationToken cancellationToken) =>
-        await dbContext.ProjectMembers.AsNoTracking().Where(member => member.ProjectId == projectId && member.IsActive)
+    public async Task<IReadOnlyCollection<WorkspaceMemberResponse>> ListTeamAsync(Guid projectId, CancellationToken cancellationToken)
+    {
+        var raw = await dbContext.ProjectMembers.AsNoTracking().Where(member => member.ProjectId == projectId && member.IsActive)
             .Join(dbContext.StudentProfiles.AsNoTracking(), member => member.StudentId, student => student.Id,
-                (member, student) => new WorkspaceMemberResponse(member.StudentId, student.StudentCode ?? "Student", member.CreatedAt))
+                (member, student) => new { member.StudentId, DisplayName = student.StudentCode ?? "Student", member.CreatedAt })
             .OrderBy(member => member.DisplayName).ToListAsync(cancellationToken);
+        return raw.Select(m => new WorkspaceMemberResponse(m.StudentId, m.DisplayName, m.CreatedAt)).ToList();
+    }
 
     public async Task<(int TotalCount, IReadOnlyCollection<WorkspaceActivityResponse> Items)> ListActivityAsync(Guid projectId, string? eventType, WorkspaceActivityQuery query, CancellationToken cancellationToken)
     {
