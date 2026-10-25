@@ -93,10 +93,10 @@ public sealed class TechnicalReviewsController(ITechnicalReviewService reviewSer
         };
     }
 
-    private bool CanReviewTechnical() => IsLecturer() || IsAdminOverride();
+    private bool CanReviewTechnical() => currentUser.IsAuthenticated &&
+        currentUser.HasPermission(PermissionNames.SubmissionsReviewTechnical);
     private bool IsLecturer() => currentUser.IsAuthenticated && currentUser.Roles.Contains(RoleNames.Lecturer);
     private bool IsAdminOverride() => currentUser.IsAuthenticated &&
-        (currentUser.Roles.Contains(RoleNames.Admin) || currentUser.Roles.Contains(RoleNames.SuperAdmin)) &&
-        (currentUser.Permissions.Contains(PermissionNames.SubmissionsReviewTechnical) || currentUser.Permissions.Count == 0);
+        (currentUser.Roles.Contains(RoleNames.Admin) || currentUser.Roles.Contains(RoleNames.SuperAdmin));
     private Guid UserId => currentUser.UserId!.Value;
 }

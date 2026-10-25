@@ -196,6 +196,7 @@ builder.Services.AddScoped<DNTU.SkillBridge.Application.Academics.IAcademicEvalu
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Payments.IPaymentService, DNTU.SkillBridge.Application.Payments.PaymentService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.SePay.ISePayService, DNTU.SkillBridge.Application.SePay.SePayService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Administration.IAdminGovernanceService, DNTU.SkillBridge.Application.Administration.AdminGovernanceService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Administration.IAdminVerificationService, DNTU.SkillBridge.Application.Administration.AdminVerificationService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Analytics.IAnalyticsService, DNTU.SkillBridge.Application.Analytics.AnalyticsService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<NotificationWriter>();
@@ -245,7 +246,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             }
         };
     });
-builder.Services.AddAuthorization();
+builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, DNTU.SkillBridge.Api.Security.PermissionAuthorizationHandler>();
+builder.Services.AddAuthorization(options =>
+{
+    // Sinh policy cho từng permission: "permission:<tên>" — dùng với [Authorize(Policy = ...)].
+    // PermissionAuthorizationHandler kiểm tra claim "permission" trong JWT (SUPER_ADMIN luôn pass).
+    foreach (var permissionName in DNTU.SkillBridge.Domain.Identity.PermissionNames.All)
+    {
+        options.AddPolicy(DNTU.SkillBridge.Api.Security.AuthorizationPolicies.For(permissionName), policy =>
+        {
+            policy.RequireAuthenticatedUser();
+            policy.AddRequirements(new DNTU.SkillBridge.Api.Security.PermissionRequirement(permissionName));
+        });
+    }
+});
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;

@@ -17,6 +17,8 @@ public sealed class LecturerProfileConfiguration : IEntityTypeConfiguration<Lect
         builder.Property(entity => entity.WebsiteUrl).HasMaxLength(500);
         builder.Property(entity => entity.OfficeLocation).HasMaxLength(200);
         builder.Property(entity => entity.PhoneNumber).HasMaxLength(20);
+        builder.Property(entity => entity.ApprovalStatus).HasDefaultValue(LecturerApprovalStatus.PENDING);
+        builder.Property(entity => entity.ReviewNote).HasMaxLength(500);
         builder.HasIndex(entity => entity.UserId).IsUnique();
         builder.HasIndex(entity => entity.LecturerCode).IsUnique();
         builder.HasOne<DNTU.SkillBridge.Domain.Identity.User>()

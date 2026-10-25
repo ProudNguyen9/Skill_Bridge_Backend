@@ -7,6 +7,7 @@ using System.Text;
 using DNTU.SkillBridge.Application.Abstractions;
 using DNTU.SkillBridge.Application.Common.Options;
 using DNTU.SkillBridge.Domain.Identity;
+using DNTU.SkillBridge.Domain.Lecturers;
 using DNTU.SkillBridge.Domain.Students;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
@@ -26,10 +27,17 @@ public sealed class AuthService(
     {
         var normalizedEmail = request.Email.Trim().ToUpperInvariant();
         var normalizedStudentCode = request.StudentCode?.Trim().ToUpperInvariant();
+        var normalizedLecturerCode = request.LecturerCode?.Trim().ToUpperInvariant();
         var isDntuEmail = normalizedEmail.EndsWith("@DNTU.EDU.VN", StringComparison.Ordinal) ||
                           normalizedEmail.EndsWith("@SKILLBRIDGE.LOCAL", StringComparison.Ordinal);
         if (request.AccountType == RegistrationAccountType.Student &&
             (!isDntuEmail || string.IsNullOrWhiteSpace(normalizedStudentCode)))
+        {
+            return false;
+        }
+
+        if (request.AccountType == RegistrationAccountType.Lecturer &&
+            (!isDntuEmail || string.IsNullOrWhiteSpace(normalizedLecturerCode)))
         {
             return false;
         }
@@ -45,7 +53,18 @@ public sealed class AuthService(
             return false;
         }
 
-        var roleName = request.AccountType == RegistrationAccountType.Student ? RoleNames.Student : RoleNames.Company;
+        if (request.AccountType == RegistrationAccountType.Lecturer &&
+            await authRepository.LecturerCodeExistsAsync(normalizedLecturerCode!, cancellationToken))
+        {
+            return false;
+        }
+
+        var roleName = request.AccountType switch
+        {
+            RegistrationAccountType.Student => RoleNames.Student,
+            RegistrationAccountType.Lecturer => RoleNames.Lecturer,
+            _ => RoleNames.Company
+        };
         var role = await authRepository.FindRoleAsync(roleName, cancellationToken);
         var user = new User(request.Email, request.DisplayName, string.Empty);
         user.SetPasswordHash(passwordHasher.HashPassword(user, request.Password));
@@ -63,6 +82,14 @@ public sealed class AuthService(
             authRepository.AddStudentProfile(studentProfile);
         }
 
+        if (request.AccountType == RegistrationAccountType.Lecturer)
+        {
+            // Giảng viên tự đăng ký: hồ sơ chờ admin duyệt (ApprovalStatus = PENDING).
+            var lecturerProfile = new LecturerProfile(user.Id);
+            lecturerProfile.Update(normalizedLecturerCode, null, null, null, null, null, null, false, false);
+            authRepository.AddLecturerProfile(lecturerProfile);
+        }
+
         try
         {
             await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -70,7 +97,7 @@ public sealed class AuthService(
         }
         catch (PersistenceException)
         {
-            // Unique email and student-code indexes are the final authority under concurrent registration.
+            // Unique email / student-code / lecturer-code indexes are the final authority under concurrent registration.
             return false;
         }
     }
@@ -212,7 +239,10 @@ public sealed class AuthService(
                 ? "COMPANY"
                 : lecturerProfileId.HasValue ? "LECTURER" : null;
         var profileCompleted = studentProfileId.HasValue && await authRepository.IsStudentProfileCompletedAsync(studentProfileId.Value, cancellationToken);
-        return new CurrentUserResponse(user.Id, user.Email, user.DisplayName, user.EmailVerified, user.IsActive, roles, permissions, profileType, studentProfileId, companyId, lecturerProfileId, profileCompleted);
+        var lecturerApprovalStatus = lecturerProfileId.HasValue
+            ? await authRepository.FindLecturerApprovalStatusAsync(userId, cancellationToken)
+            : null;
+        return new CurrentUserResponse(user.Id, user.Email, user.DisplayName, user.EmailVerified, user.IsActive, roles, permissions, profileType, studentProfileId, companyId, lecturerProfileId, profileCompleted, lecturerApprovalStatus?.ToString());
     }
 
     private async Task<AuthResponse> CreateSessionAsync(User user, CancellationToken cancellationToken)

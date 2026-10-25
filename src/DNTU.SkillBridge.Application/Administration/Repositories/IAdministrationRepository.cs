@@ -1,5 +1,7 @@
 using DNTU.SkillBridge.Application.Administration;
 using DNTU.SkillBridge.Domain.Administration;
+using DNTU.SkillBridge.Domain.Companies;
+using DNTU.SkillBridge.Domain.Lecturers;
 
 namespace DNTU.SkillBridge.Application.Administration;
 
@@ -17,4 +19,16 @@ public interface IAdministrationRepository
     void AddPolicy(AdminPolicySetting policy);
 
     void AddAuditLog(AuditLog auditLog);
+
+    /// <summary>Danh sách hồ sơ giảng viên theo trạng thái duyệt (null = tất cả).</summary>
+    Task<IReadOnlyCollection<AdminLecturerReviewItem>> ListLecturersForReviewAsync(string? status, CancellationToken cancellationToken);
+
+    /// <summary>Đọc hồ sơ giảng viên dạng tracked để duyệt/từ chối.</summary>
+    Task<LecturerProfile?> FindLecturerForUpdateAsync(Guid lecturerId, CancellationToken cancellationToken);
+
+    /// <summary>Danh sách công ty theo trạng thái xác minh (null = tất cả).</summary>
+    Task<IReadOnlyCollection<AdminCompanyReviewItem>> ListCompaniesForReviewAsync(string? status, CancellationToken cancellationToken);
+
+    /// <summary>Đọc công ty dạng tracked để verify/reject.</summary>
+    Task<Company?> FindCompanyForUpdateAsync(Guid companyId, CancellationToken cancellationToken);
 }

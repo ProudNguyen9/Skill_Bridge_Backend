@@ -1,4 +1,5 @@
 using DNTU.SkillBridge.Domain.Identity;
+using DNTU.SkillBridge.Domain.Lecturers;
 using DNTU.SkillBridge.Domain.Students;
 
 namespace DNTU.SkillBridge.Application.Authentication;
@@ -7,9 +8,12 @@ public interface IAuthRepository
 {
     Task<bool> EmailExistsAsync(string normalizedEmail, CancellationToken cancellationToken);
     Task<bool> StudentCodeExistsAsync(string normalizedStudentCode, CancellationToken cancellationToken);
+    Task<bool> LecturerCodeExistsAsync(string normalizedLecturerCode, CancellationToken cancellationToken);
     Task<Role> FindRoleAsync(string normalizedName, CancellationToken cancellationToken);
     void AddUser(User user);
     void AddStudentProfile(StudentProfile profile);
+    void AddLecturerProfile(LecturerProfile profile);
+    Task<LecturerApprovalStatus?> FindLecturerApprovalStatusAsync(Guid userId, CancellationToken cancellationToken);
     Task<User?> FindUserByEmailWithPermissionsAsync(string normalizedEmail, CancellationToken cancellationToken);
     Task<User?> FindUserByGoogleSubjectWithPermissionsAsync(string googleSubjectId, CancellationToken cancellationToken);
     Task<User?> FindUserByStudentCodeWithPermissionsAsync(string normalizedStudentCode, CancellationToken cancellationToken);

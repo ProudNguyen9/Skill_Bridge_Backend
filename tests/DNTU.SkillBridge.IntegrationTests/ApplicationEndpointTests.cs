@@ -1082,6 +1082,10 @@ public sealed class ApplicationEndpointTests(CatalogApiFactory factory)
             new("session_id", Guid.NewGuid().ToString()),
             new(ClaimTypes.Role, role)
         };
+        foreach (var permission in DNTU.SkillBridge.Infrastructure.Persistence.Seed.IdentitySeed.GetPermissionsForRole(role))
+        {
+            claims.Add(new Claim("permission", permission));
+        }
         var credentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SigningKey)), SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken("DNTU.SkillBridge.Api", "DNTU.SkillBridge.Web", claims, DateTime.UtcNow, DateTime.UtcNow.AddMinutes(15), credentials);
         return new JwtSecurityTokenHandler().WriteToken(token);

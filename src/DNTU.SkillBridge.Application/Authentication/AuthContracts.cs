@@ -5,7 +5,8 @@ namespace DNTU.SkillBridge.Application.Authentication;
 public enum RegistrationAccountType
 {
     Student,
-    Company
+    Company,
+    Lecturer
 }
 
 public sealed class RegisterRequest : IValidatableObject
@@ -19,6 +20,9 @@ public sealed class RegisterRequest : IValidatableObject
     [StringLength(32)]
     public string? StudentCode { get; init; }
 
+    [StringLength(32)]
+    public string? LecturerCode { get; init; }
+
     [Required, StringLength(128, MinimumLength = 12)]
     public string Password { get; init; } = string.Empty;
 
@@ -27,29 +31,44 @@ public sealed class RegisterRequest : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (AccountType != RegistrationAccountType.Student)
+        if (AccountType == RegistrationAccountType.Student)
         {
-            yield break;
+            if (!IsCampusEmail())
+            {
+                yield return new ValidationResult(
+                    "Sinh viên cần đăng ký bằng email @dntu.edu.vn.",
+                    [nameof(Email)]);
+            }
+
+            if (string.IsNullOrWhiteSpace(StudentCode))
+            {
+                yield return new ValidationResult(
+                    "Mã số sinh viên là bắt buộc.",
+                    [nameof(StudentCode)]);
+            }
         }
-
-        var isDntuEmail = !string.IsNullOrWhiteSpace(Email) &&
-            (Email.Trim().EndsWith("@dntu.edu.vn", StringComparison.OrdinalIgnoreCase) ||
-             Email.Trim().EndsWith("@skillbridge.local", StringComparison.OrdinalIgnoreCase));
-
-        if (!isDntuEmail)
+        else if (AccountType == RegistrationAccountType.Lecturer)
         {
-            yield return new ValidationResult(
-                "Sinh viên cần đăng ký bằng email @dntu.edu.vn.",
-                [nameof(Email)]);
-        }
+            if (!IsCampusEmail())
+            {
+                yield return new ValidationResult(
+                    "Giảng viên cần đăng ký bằng email @dntu.edu.vn.",
+                    [nameof(Email)]);
+            }
 
-        if (string.IsNullOrWhiteSpace(StudentCode))
-        {
-            yield return new ValidationResult(
-                "Mã số sinh viên là bắt buộc.",
-                [nameof(StudentCode)]);
+            if (string.IsNullOrWhiteSpace(LecturerCode))
+            {
+                yield return new ValidationResult(
+                    "Mã giảng viên là bắt buộc.",
+                    [nameof(LecturerCode)]);
+            }
         }
     }
+
+    private bool IsCampusEmail() =>
+        !string.IsNullOrWhiteSpace(Email) &&
+        (Email.Trim().EndsWith("@dntu.edu.vn", StringComparison.OrdinalIgnoreCase) ||
+         Email.Trim().EndsWith("@skillbridge.local", StringComparison.OrdinalIgnoreCase));
 }
 
 public sealed class LoginRequest
@@ -134,7 +153,8 @@ public sealed record CurrentUserResponse(
     Guid? StudentId,
     Guid? CompanyId,
     Guid? LecturerId,
-    bool ProfileCompleted);
+    bool ProfileCompleted,
+    string? LecturerApprovalStatus);
 
 public sealed record SessionResponse(
     Guid Id,

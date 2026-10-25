@@ -116,6 +116,8 @@ public sealed class LecturerService(ILecturerRepository lecturerRepository, IUni
         }
 
         profile = new LecturerProfile(userId);
+        // Lecturer reaching /lecturers/me comes from admin-provisioned or verified Google staff accounts.
+        profile.Approve(DateTimeOffset.UtcNow);
         lecturerRepository.AddProfile(profile);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return profile;

@@ -19,17 +19,39 @@ API đọc `.env` tại thư mục Backend khi chạy Development, hoặc tại 
 
 ### Tài khoản kiểm thử
 
-Khi API chạy với `ASPNETCORE_ENVIRONMENT=Development` và `Authentication:SeedTestAccounts=true`, backend tự seed các tài khoản dưới đây. Có thể dùng chung mật khẩu `SkillBridge.Test#2026`:
+Khi API chạy với `ASPNETCORE_ENVIRONMENT=Development` và `Authentication:SeedTestAccounts=true`, backend tự seed các tài khoản dưới đây. **Mật khẩu chung cho tất cả: `SkillBridge.Test#2026`**
 
-| Role | Email | Mã sinh viên |
+#### 🎓 Sinh viên (5 tài khoản)
+
+| # | Email | Mã sinh viên | Tên hiển thị |
+|---|---|---|---|
+| 1 | `student1.test@skillbridge.local` | `TEST0001` | Nguyễn Văn An |
+| 2 | `student2.test@skillbridge.local` | `TEST0002` | Trần Thị Bích |
+| 3 | `student3.test@skillbridge.local` | `TEST0003` | Lê Văn Cường |
+| 4 | `student4.test@skillbridge.local` | `TEST0004` | Phạm Thị Dung |
+| 5 | `student5.test@skillbridge.local` | `TEST0005` | Hoàng Văn Em |
+
+*Đăng nhập bằng email hoặc mã sinh viên. Sau đăng nhập vào `/student/dashboard`.*
+
+#### 🏢 Doanh nghiệp (5 tài khoản — công ty đã VERIFIED, đăng bài toán được ngay)
+
+| # | Email | Công ty |
 |---|---|---|
-| Sinh viên | `student.test@skillbridge.local` | `TEST0001` |
-| Doanh nghiệp | `company.test@skillbridge.local` | — |
-| Giảng viên | `lecturer.test@skillbridge.local` | — |
-| Quản trị viên | `admin.test@skillbridge.local` | — |
-| Quản trị viên cấp cao | `superadmin.test@skillbridge.local` | — |
+| 1 | `company1.test@skillbridge.local` | FPT Software Biên Hòa |
+| 2 | `company2.test@skillbridge.local` | Cảng Đồng Nai |
+| 3 | `company3.test@skillbridge.local` | Viettel IDC Đồng Nai |
+| 4 | `company4.test@skillbridge.local` | GreenTech Smart Agriculture |
+| 5 | `company5.test@skillbridge.local` | Dong Nai Fintech Lab |
 
-Các tài khoản này chỉ dành cho Development. Khởi động lại API sau khi cấu hình database để seed hoặc đồng bộ lại mật khẩu. Xem thêm [hướng dẫn tài khoản kiểm thử](docs/auth-test-accounts.md).
+#### 👨‍🏫 Giảng viên & Quản trị
+
+| Role | Email | Ghi chú |
+|---|---|---|
+| Giảng viên | `lecturer.test@skillbridge.local` | Hồ sơ APPROVED (Mã GV: GV001) |
+| Quản trị viên | `admin.test@skillbridge.local` | Duyệt giảng viên/công ty/đề tài |
+| Quản trị cấp cao | `superadmin.test@skillbridge.local` | Toàn quyền hệ thống |
+
+Các tài khoản này chỉ dành cho Development. Khởi động lại API sau khi cấu hình database để seed hoặc đồng bộ lại mật khẩu. Xem thêm [hướng dẫn tài khoản kiểm thử](docs/auth-test-accounts.md) và [hướng dẫn phân quyền](docs/authorization-guide.md).
 
 ## Cấu trúc repository
 

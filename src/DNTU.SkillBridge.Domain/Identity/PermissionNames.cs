@@ -22,4 +22,18 @@ public static class PermissionNames
     public const string PaymentsReconcile = "payments.reconcile";
     public const string DisbursementsManage = "disbursements.manage";
     public const string AdminSettingsManage = "admin.settings.manage";
+    public const string CompaniesVerify = "companies.verify";
+    public const string LecturersApprove = "lecturers.approve";
+
+    /// <summary>Danh sách toàn bộ permission (reflection vì các field là const string).</summary>
+    public static IReadOnlyList<string> All =>
+    [
+        FilesUpload, FilesRead, FilesDelete,
+        ProjectsCreate, ProjectsApprove, ProjectsApply,
+        ApplicationsReview, TasksManage, MeetingsManage,
+        SubmissionsCreate, SubmissionsReviewTechnical, SubmissionsReviewBusiness,
+        RubricsManage, EvaluationsManage, SkillsVerify,
+        PaymentsView, PaymentsFund, PaymentsReconcile, DisbursementsManage,
+        AdminSettingsManage, CompaniesVerify, LecturersApprove,
+    ];
 }

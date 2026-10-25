@@ -83,7 +83,7 @@ public sealed class BusinessReviewsController(IBusinessReviewService reviewServi
     }
 
     private bool CanReviewBusiness() => IsCompany() &&
-        (currentUser.Permissions.Contains(PermissionNames.SubmissionsReviewBusiness) || currentUser.Permissions.Count == 0);
+        currentUser.HasPermission(PermissionNames.SubmissionsReviewBusiness);
     private bool IsCompany() => currentUser.IsAuthenticated && currentUser.Roles.Contains(RoleNames.Company);
     private Guid UserId => currentUser.UserId!.Value;
 }

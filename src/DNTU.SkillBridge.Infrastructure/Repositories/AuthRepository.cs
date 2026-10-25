@@ -13,12 +13,17 @@ public sealed class AuthRepository(AppDbContext dbContext) : IAuthRepository
     public Task<bool> StudentCodeExistsAsync(string normalizedStudentCode, CancellationToken cancellationToken) =>
         dbContext.StudentProfiles.AnyAsync(profile => profile.StudentCode == normalizedStudentCode, cancellationToken);
 
+    public Task<bool> LecturerCodeExistsAsync(string normalizedLecturerCode, CancellationToken cancellationToken) =>
+        dbContext.LecturerProfiles.AnyAsync(profile => profile.LecturerCode == normalizedLecturerCode, cancellationToken);
+
     public Task<Role> FindRoleAsync(string normalizedName, CancellationToken cancellationToken) =>
         dbContext.Roles.SingleAsync(item => item.NormalizedName == normalizedName, cancellationToken);
 
     public void AddUser(User user) => dbContext.Users.Add(user);
 
     public void AddStudentProfile(DNTU.SkillBridge.Domain.Students.StudentProfile profile) => dbContext.StudentProfiles.Add(profile);
+
+    public void AddLecturerProfile(DNTU.SkillBridge.Domain.Lecturers.LecturerProfile profile) => dbContext.LecturerProfiles.Add(profile);
 
     public Task<User?> FindUserByEmailWithPermissionsAsync(string normalizedEmail, CancellationToken cancellationToken) =>
         dbContext.Users
@@ -125,6 +130,12 @@ public sealed class AuthRepository(AppDbContext dbContext) : IAuthRepository
         await dbContext.LecturerProfiles
             .Where(profile => profile.UserId == userId)
             .Select(profile => (Guid?)profile.Id)
+            .SingleOrDefaultAsync(cancellationToken);
+
+    public async Task<DNTU.SkillBridge.Domain.Lecturers.LecturerApprovalStatus?> FindLecturerApprovalStatusAsync(Guid userId, CancellationToken cancellationToken) =>
+        await dbContext.LecturerProfiles
+            .Where(profile => profile.UserId == userId)
+            .Select(profile => (DNTU.SkillBridge.Domain.Lecturers.LecturerApprovalStatus?)profile.ApprovalStatus)
             .SingleOrDefaultAsync(cancellationToken);
 
     public async Task<bool> IsStudentProfileCompletedAsync(Guid studentProfileId, CancellationToken cancellationToken) =>

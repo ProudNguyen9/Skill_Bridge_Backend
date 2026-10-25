@@ -137,7 +137,5 @@ public sealed class AdminProjectApprovalsController(IProjectApprovalService proj
     /// <summary>Permission-based or role-based authorization so crafted role JWTs (tests) and real permission grants both work.</summary>
     private bool CanApprove() =>
         currentUser.IsAuthenticated &&
-        (currentUser.Permissions.Contains(PermissionNames.ProjectsApprove) ||
-         currentUser.Roles.Contains(RoleNames.Admin) ||
-         currentUser.Roles.Contains(RoleNames.SuperAdmin));
+        currentUser.HasPermission(PermissionNames.ProjectsApprove);
 }
