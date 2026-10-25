@@ -8,6 +8,7 @@ public sealed class User : AuditableEntity
     public string NormalizedEmail { get; private set; } = string.Empty;
     public string DisplayName { get; private set; } = string.Empty;
     public string PasswordHash { get; private set; } = string.Empty;
+    public string? GoogleSubjectId { get; private set; }
     public bool EmailVerified { get; private set; }
     public bool IsActive { get; private set; } = true;
     public ICollection<UserRole> UserRoles { get; } = [];
@@ -25,6 +26,14 @@ public sealed class User : AuditableEntity
     public void AssignRole(Guid roleId) => UserRoles.Add(new UserRole(Id, roleId));
 
     public void SetPasswordHash(string passwordHash) => PasswordHash = passwordHash;
+
+    public bool LinkGoogleIdentity(string googleSubjectId)
+    {
+        if (string.IsNullOrWhiteSpace(googleSubjectId)) return false;
+        if (GoogleSubjectId is not null && !string.Equals(GoogleSubjectId, googleSubjectId, StringComparison.Ordinal)) return false;
+        GoogleSubjectId = googleSubjectId;
+        return true;
+    }
 
     public void SetEmailVerified() => EmailVerified = true;
 
@@ -82,6 +91,14 @@ public sealed class RolePermission
     public Role Role { get; private set; } = null!;
     public Guid PermissionId { get; private set; }
     public Permission Permission { get; private set; } = null!;
+
+    private RolePermission() { }
+
+    public RolePermission(Guid roleId, Guid permissionId)
+    {
+        RoleId = roleId;
+        PermissionId = permissionId;
+    }
 }
 
 public static class RoleNames

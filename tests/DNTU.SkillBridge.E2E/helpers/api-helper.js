@@ -12,13 +12,15 @@ async function registerUser(request, {
   email,
   password = 'TestPassword@2026!',
   displayName = 'Automated Test User',
-  accountType = 'Student' // 'Student' | 'Company'
+  accountType = 'Student',
+  studentCode = '22' + Math.floor(100000 + Math.random() * 900000)
 }) {
   const payload = {
     email,
     password,
     displayName,
-    accountType
+    accountType,
+    ...(accountType === 'Student' ? { studentCode } : {})
   };
 
   const response = await request.post('/api/v1/auth/register', {
@@ -54,15 +56,45 @@ async function loginUser(request, email, password = 'TestPassword@2026!') {
 }
 
 async function createAuthenticatedUser(request, accountType = 'Student', namePrefix = 'Tester') {
-  const email = generateTestEmail(accountType.toLowerCase());
+  const typeLower = (accountType || 'student').toLowerCase();
+
+  if (typeLower.includes('lecturer')) {
+    const email = 'lecturer.test@skillbridge.local';
+    const password = 'SkillBridge.Test#2026';
+    const loginResult = await loginUser(request, email, password);
+    return {
+      email,
+      password,
+      displayName: `${namePrefix} Lecturer`,
+      accountType: 'Lecturer',
+      ...loginResult
+    };
+  }
+
+  if (typeLower.includes('admin')) {
+    const email = 'admin.test@skillbridge.local';
+    const password = 'SkillBridge.Test#2026';
+    const loginResult = await loginUser(request, email, password);
+    return {
+      email,
+      password,
+      displayName: `${namePrefix} Admin`,
+      accountType: 'Admin',
+      ...loginResult
+    };
+  }
+
+  const email = generateTestEmail(typeLower);
   const password = 'TestUser@2026!Strong';
   const displayName = `${namePrefix} ${accountType}`;
+  const studentCode = '22' + Math.floor(100000 + Math.random() * 900000);
 
   await registerUser(request, {
     email,
     password,
     displayName,
-    accountType: accountType === 'Company' ? 'Company' : 'Student'
+    accountType: typeLower.includes('company') ? 'Company' : 'Student',
+    studentCode
   });
 
   const loginResult = await loginUser(request, email, password);

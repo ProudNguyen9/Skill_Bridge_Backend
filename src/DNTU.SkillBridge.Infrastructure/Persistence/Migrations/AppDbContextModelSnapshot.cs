@@ -1103,6 +1103,9 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("ExpiresAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("int");
+
                     b.Property<int>("Purpose")
                         .HasColumnType("int");
 
@@ -1270,6 +1273,10 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.Property<bool>("EmailVerified")
                         .HasColumnType("bit");
 
+                    b.Property<string>("GoogleSubjectId")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -1287,6 +1294,10 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                         .HasColumnType("datetimeoffset");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("GoogleSubjectId")
+                        .IsUnique()
+                        .HasFilter("[GoogleSubjectId] IS NOT NULL");
 
                     b.HasIndex("NormalizedEmail")
                         .IsUnique();
@@ -1401,6 +1412,11 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<int>("ApprovalStatus")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<string>("Bio")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -1429,6 +1445,13 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<bool>("ShowContactInfo")
                         .HasColumnType("bit");

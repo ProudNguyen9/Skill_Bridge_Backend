@@ -239,8 +239,12 @@ public sealed class SubmissionTechnicalReviewEndpointTests(CatalogApiFactory fac
         {
             new(ClaimTypes.NameIdentifier, userId.ToString()),
             new("session_id", Guid.NewGuid().ToString()),
-            new(ClaimTypes.Role, role)
+                        new(ClaimTypes.Role, role)
         };
+        foreach (var permission in DNTU.SkillBridge.Infrastructure.Persistence.Seed.IdentitySeed.GetPermissionsForRole(role))
+        {
+            claims.Add(new Claim("permission", permission));
+        }
         var credentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SigningKey)), SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken("DNTU.SkillBridge.Api", "DNTU.SkillBridge.Web", claims, expires: DateTime.UtcNow.AddMinutes(15), signingCredentials: credentials);
         return new JwtSecurityTokenHandler().WriteToken(token);

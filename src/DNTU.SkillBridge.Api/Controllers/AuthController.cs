@@ -6,6 +6,8 @@ using DNTU.SkillBridge.Application.Common.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
+using Google.Apis.Auth;
 
 namespace DNTU.SkillBridge.Api.Controllers;
 
@@ -13,7 +15,11 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [ApiVersion("1.0")]
 [Route("api/v1/auth")]
 [Produces("application/json")]
-public sealed class AuthController(IAuthService authService, ICurrentUser currentUser, IAccountEmailSender accountEmailSender) : ControllerBase
+public sealed class AuthController(
+    IAuthService authService,
+    ICurrentUser currentUser,
+    IAccountEmailSender accountEmailSender,
+    IOptions<GoogleAuthOptions> googleAuthOptions) : ControllerBase
 {
     [HttpPost("register")]
     [AllowAnonymous]
@@ -28,13 +34,13 @@ public sealed class AuthController(IAuthService authService, ICurrentUser curren
             return ValidationProblem(ModelState);
         }
 
-        var verificationToken = await authService.CreateAccountTokenAsync(request.Email, DNTU.SkillBridge.Domain.Identity.AccountTokenPurpose.EmailVerification, cancellationToken);
-        if (verificationToken is not null)
+        var verificationOtp = await authService.CreateAccountTokenAsync(request.Email, DNTU.SkillBridge.Domain.Identity.AccountTokenPurpose.EmailVerification, cancellationToken);
+        if (verificationOtp is not null)
         {
-            await accountEmailSender.SendVerificationAsync(request.Email, verificationToken, cancellationToken);
+            await accountEmailSender.SendVerificationAsync(request.Email, verificationOtp, cancellationToken);
         }
 
-        return Created("", new ApiResponse<object>(new { message = "Registration completed." }));
+        return Created("", new ApiResponse<object>(new { message = "Registration completed. Check your email for the verification code." }));
     }
 
     [HttpPost("login")]
@@ -44,6 +50,54 @@ public sealed class AuthController(IAuthService authService, ICurrentUser curren
     public async Task<ActionResult<ApiResponse<AuthResponse>>> Login(LoginRequest request, CancellationToken cancellationToken)
     {
         var result = await authService.LoginAsync(request, cancellationToken);
+        return result is null ? Unauthorized() : Ok(new ApiResponse<AuthResponse>(result));
+    }
+
+    [HttpPost("google")]
+    [AllowAnonymous]
+    [EnableRateLimiting("login")]
+    [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<ApiResponse<AuthResponse>>> LoginWithGoogle(GoogleLoginRequest request, CancellationToken cancellationToken)
+    {
+        var clientId = googleAuthOptions.Value.ClientId.Trim();
+        if (clientId.Length == 0)
+        {
+            return Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Google sign-in is not configured.");
+        }
+
+        GoogleJsonWebSignature.Payload payload;
+        try
+        {
+            payload = await GoogleJsonWebSignature.ValidateAsync(
+                request.Credential,
+                new GoogleJsonWebSignature.ValidationSettings
+                {
+                    Audience = [clientId],
+                    HostedDomain = GoogleAuthOptions.DntuHostedDomain
+                });
+        }
+        catch (InvalidJwtException)
+        {
+            return Unauthorized();
+        }
+
+        var email = payload.Email?.Trim();
+        if (!payload.EmailVerified || string.IsNullOrWhiteSpace(payload.Subject) || !IsDntuEmail(email))
+        {
+            return Unauthorized();
+        }
+
+        var emailAddress = email!;
+        var displayName = payload.Name?.Trim();
+        if (string.IsNullOrWhiteSpace(displayName))
+        {
+            displayName = emailAddress[..emailAddress.IndexOf('@')];
+        }
+        var result = await authService.LoginWithGoogleAsync(
+            new GoogleIdentity(payload.Subject, emailAddress, displayName),
+            cancellationToken);
         return result is null ? Unauthorized() : Ok(new ApiResponse<AuthResponse>(result));
     }
 
@@ -129,18 +183,18 @@ public sealed class AuthController(IAuthService authService, ICurrentUser curren
     [HttpPost("verify-email")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> VerifyEmail(TokenRequest request, CancellationToken cancellationToken) =>
-        await authService.VerifyEmailAsync(request.Token, cancellationToken) ? NoContent() : Unauthorized();
+    public async Task<IActionResult> VerifyEmail(VerifyEmailOtpRequest request, CancellationToken cancellationToken) =>
+        await authService.VerifyEmailAsync(request.Email, request.Otp, cancellationToken) ? NoContent() : Unauthorized();
 
     [HttpPost("resend-verification")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     public async Task<IActionResult> ResendVerification(EmailRequest request, CancellationToken cancellationToken)
     {
-        var token = await authService.CreateAccountTokenAsync(request.Email, DNTU.SkillBridge.Domain.Identity.AccountTokenPurpose.EmailVerification, cancellationToken);
-        if (token is not null)
+        var otp = await authService.CreateAccountTokenAsync(request.Email, DNTU.SkillBridge.Domain.Identity.AccountTokenPurpose.EmailVerification, cancellationToken);
+        if (otp is not null)
         {
-            await accountEmailSender.SendVerificationAsync(request.Email, token, cancellationToken);
+            await accountEmailSender.SendVerificationAsync(request.Email, otp, cancellationToken);
         }
 
         return Accepted();
@@ -179,5 +233,12 @@ public sealed class AuthController(IAuthService authService, ICurrentUser curren
         }
 
         return await authService.ChangePasswordAsync(userId, request.CurrentPassword, request.NewPassword, cancellationToken) ? NoContent() : Unauthorized();
+    }
+
+    private static bool IsDntuEmail(string? email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return false;
+        var separator = email.LastIndexOf('@');
+        return separator > 0 && email[(separator + 1)..].Equals(GoogleAuthOptions.DntuHostedDomain, StringComparison.OrdinalIgnoreCase);
     }
 }

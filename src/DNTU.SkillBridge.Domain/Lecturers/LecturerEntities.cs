@@ -1,8 +1,19 @@
 namespace DNTU.SkillBridge.Domain.Lecturers;
 
 /// <summary>
-/// Academic profile of a DNTU lecturer. Accounts are provisioned by admins (Task 38), so the row is
-/// created lazily on first /lecturers/me access; supervision is only valid while the profile is active.
+/// Trạng thái duyệt hồ sơ giảng viên: tự đăng ký cần admin duyệt trước khi dùng portal.
+/// </summary>
+public enum LecturerApprovalStatus
+{
+    PENDING = 1,
+    APPROVED = 2,
+    REJECTED = 3
+}
+
+/// <summary>
+/// Academic profile of a DNTU lecturer. Self-registered lecturers stay PENDING until an admin
+/// approves them; admin-provisioned/Google staff profiles are APPROVED at creation.
+/// Supervision is only valid while the profile is active and approved.
 /// </summary>
 public sealed class LecturerProfile : Common.AuditableEntity
 {
@@ -17,6 +28,9 @@ public sealed class LecturerProfile : Common.AuditableEntity
     public bool IsProfilePublic { get; private set; }
     public bool ShowContactInfo { get; private set; }
     public bool IsActive { get; private set; } = true;
+    public LecturerApprovalStatus ApprovalStatus { get; private set; } = LecturerApprovalStatus.PENDING;
+    public DateTimeOffset? ReviewedAt { get; private set; }
+    public string? ReviewNote { get; private set; }
     public ICollection<LecturerAssignment> Assignments { get; } = [];
 
     private LecturerProfile() { }
@@ -53,6 +67,28 @@ public sealed class LecturerProfile : Common.AuditableEntity
 
     public void Suspend() => IsActive = false;
 
+    /// <summary>Admin duyệt hồ sơ giảng viên tự đăng ký.</summary>
+    public void Approve(DateTimeOffset at)
+    {
+        if (ApprovalStatus == LecturerApprovalStatus.APPROVED)
+        {
+            return;
+        }
+
+        ApprovalStatus = LecturerApprovalStatus.APPROVED;
+        ReviewedAt = at;
+        ReviewNote = null;
+        IsActive = true;
+    }
+
+    /// <summary>Admin từ chối hồ sơ giảng viên tự đăng ký kèm lý do.</summary>
+    public void Reject(DateTimeOffset at, string? note)
+    {
+        ApprovalStatus = LecturerApprovalStatus.REJECTED;
+        ReviewedAt = at;
+        ReviewNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+    }
+
     /// <summary>Creates an INVITED supervision assignment; the lecturer accepts it to make it ACTIVE.</summary>
     public LecturerAssignment AssignProject(Guid projectId, LecturerAssignmentRole role, string? note)
     {
@@ -61,8 +97,8 @@ public sealed class LecturerProfile : Common.AuditableEntity
         return assignment;
     }
 
-    /// <summary>Only active lecturers may take (or keep) supervision assignments.</summary>
-    public bool CanTakeAssignments() => IsActive;
+    /// <summary>Only active, approved lecturers may take (or keep) supervision assignments.</summary>
+    public bool CanTakeAssignments() => IsActive && ApprovalStatus == LecturerApprovalStatus.APPROVED;
 
     private static string? NullIfEmpty(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

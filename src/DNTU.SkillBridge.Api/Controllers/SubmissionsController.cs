@@ -133,6 +133,6 @@ public sealed class SubmissionsController(ISubmissionService submissionService, 
     }
 
     private bool CanCreate() => currentUser.Roles.Contains(RoleNames.Student) &&
-        (currentUser.Permissions.Contains(PermissionNames.SubmissionsCreate) || currentUser.Permissions.Count == 0);
+        currentUser.HasPermission(PermissionNames.SubmissionsCreate);
     private Guid UserId => currentUser.UserId!.Value;
 }

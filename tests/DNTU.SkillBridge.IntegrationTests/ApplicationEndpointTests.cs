@@ -1062,6 +1062,7 @@ public sealed class ApplicationEndpointTests(CatalogApiFactory factory)
         {
             email,
             displayName = "Sinh viên Ứng tuyển",
+            studentCode = "22" + Random.Shared.Next(100000, 999999),
             password = Password,
             accountType = "Student"
         }, Json);
@@ -1081,6 +1082,10 @@ public sealed class ApplicationEndpointTests(CatalogApiFactory factory)
             new("session_id", Guid.NewGuid().ToString()),
             new(ClaimTypes.Role, role)
         };
+        foreach (var permission in DNTU.SkillBridge.Infrastructure.Persistence.Seed.IdentitySeed.GetPermissionsForRole(role))
+        {
+            claims.Add(new Claim("permission", permission));
+        }
         var credentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SigningKey)), SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken("DNTU.SkillBridge.Api", "DNTU.SkillBridge.Web", claims, DateTime.UtcNow, DateTime.UtcNow.AddMinutes(15), credentials);
         return new JwtSecurityTokenHandler().WriteToken(token);
@@ -1181,5 +1186,7 @@ public sealed class ApplicationEndpointTests(CatalogApiFactory factory)
             objects.TryRemove(storageKey, out _);
             return Task.CompletedTask;
         }
+        public Task<Uri> DirectUploadAsync(string storageKey, Stream content, string contentType, CancellationToken cancellationToken) => Task.FromResult(new Uri($"https://storage.test/files/{Uri.EscapeDataString(storageKey)}"));
+        public Task<IReadOnlyList<StorageItemDto>> ListObjectsAsync(string? prefix, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<StorageItemDto>>([]);
     }
 }

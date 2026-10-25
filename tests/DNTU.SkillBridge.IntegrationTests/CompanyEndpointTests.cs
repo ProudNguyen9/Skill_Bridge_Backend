@@ -196,6 +196,13 @@ public sealed class CompanyEndpointTests(CatalogApiFactory factory)
             accountType = "Company"
         }, Json);
 
+        await factory.RunWithDbContextAsync(async dbContext =>
+        {
+            var u = await dbContext.Users.SingleAsync(x => x.Email == email);
+            u.SetEmailVerified();
+            await dbContext.SaveChangesAsync();
+        });
+
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email, password = Password }, Json);
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
         var auth = (await login.Content.ReadFromJsonAsync<Envelope<AuthDto>>(Json))!.Data;

@@ -8,6 +8,10 @@ public static class AuditActions
     public const string DisbursementPaid = "DISBURSEMENT_PAID";
     public const string PolicyUpdated = "POLICY_UPDATED";
     public const string ReportExportRequested = "REPORT_EXPORT_REQUESTED";
+    public const string LecturerApproved = "LECTURER_APPROVED";
+    public const string LecturerRejected = "LECTURER_REJECTED";
+    public const string CompanyVerified = "COMPANY_VERIFIED";
+    public const string CompanyRejected = "COMPANY_REJECTED";
 }
 
 public sealed class AuditLog : BaseEntity

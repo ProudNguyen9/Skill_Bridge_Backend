@@ -1,13 +1,14 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Xml.Linq;
 using DNTU.SkillBridge.Application.Common.Options;
 using DNTU.SkillBridge.Application.Files;
 using Microsoft.Extensions.Options;
 
 namespace DNTU.SkillBridge.Api.Files;
 
-/// <summary>Private S3-compatible storage adapter for MinIO and AWS S3. It only creates scoped, expiring URLs.</summary>
+/// <summary>Private S3-compatible storage adapter for MinIO, AWS S3, and Filebase.</summary>
 public sealed class S3CompatibleFileStorage(IHttpClientFactory httpClientFactory, IOptions<StorageOptions> options) : IFileStorage
 {
     private const string Algorithm = "AWS4-HMAC-SHA256";
@@ -18,6 +19,68 @@ public sealed class S3CompatibleFileStorage(IHttpClientFactory httpClientFactory
     public Task<Uri> CreateDownloadUrlAsync(string storageKey, TimeSpan lifetime, CancellationToken cancellationToken) =>
         Task.FromResult(CreatePresignedUrl("GET", storageKey, lifetime, null));
 
+    public async Task<Uri> DirectUploadAsync(string storageKey, Stream content, string contentType, CancellationToken cancellationToken)
+    {
+        var uri = BuildObjectUri(storageKey);
+        using var request = new HttpRequestMessage(HttpMethod.Put, uri);
+        request.Content = new StreamContent(content);
+        request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
+            string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType);
+
+        SignRequest(request, payloadHash: "UNSIGNED-PAYLOAD");
+        using var client = httpClientFactory.CreateClient(nameof(S3CompatibleFileStorage));
+        using var response = await client.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        return uri;
+    }
+
+    public async Task<IReadOnlyList<StorageItemDto>> ListObjectsAsync(string? prefix, CancellationToken cancellationToken)
+    {
+        var query = "list-type=2";
+        if (!string.IsNullOrWhiteSpace(prefix))
+        {
+            query += $"&prefix={Uri.EscapeDataString(prefix)}";
+        }
+
+        var uri = BuildBucketUri(query);
+        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        SignRequest(request, payloadHash: "UNSIGNED-PAYLOAD");
+
+        using var client = httpClientFactory.CreateClient(nameof(S3CompatibleFileStorage));
+        using var response = await client.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var xml = await response.Content.ReadAsStringAsync(cancellationToken);
+        var doc = XDocument.Parse(xml);
+        var ns = doc.Root?.Name.Namespace ?? XNamespace.None;
+        var items = new List<StorageItemDto>();
+
+        foreach (var elem in doc.Descendants(ns + "Contents"))
+        {
+            var key = elem.Element(ns + "Key")?.Value;
+            if (string.IsNullOrWhiteSpace(key)) continue;
+
+            var sizeStr = elem.Element(ns + "Size")?.Value;
+            long.TryParse(sizeStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out var size);
+
+            var lmStr = elem.Element(ns + "LastModified")?.Value;
+            DateTimeOffset.TryParse(lmStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out var lastModified);
+
+            var etag = elem.Element(ns + "ETag")?.Value?.Trim('"');
+            var itemUri = BuildObjectUri(key);
+
+            items.Add(new StorageItemDto(
+                Key: key,
+                Size: size,
+                LastModified: lastModified == default ? null : lastModified,
+                Url: itemUri.ToString(),
+                ETag: etag));
+        }
+
+        return items;
+    }
+
     public async Task<StoredObjectMetadata?> GetMetadataAsync(string storageKey, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, BuildObjectUri(storageKey));
@@ -26,8 +89,7 @@ public sealed class S3CompatibleFileStorage(IHttpClientFactory httpClientFactory
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
         response.EnsureSuccessStatusCode();
 
-        // Do not trust provider checksum or Content-Type metadata, which was supplied by the uploader.
-        // Files in Task 23 are capped at 50 MiB, so bounded in-memory inspection is intentional here.
+        // Files capped at 50 MiB, so bounded in-memory inspection is intentional here.
         const long maximumInspectableBytes = 50L * 1024 * 1024;
         var declaredLength = response.Content.Headers.ContentLength;
         if (declaredLength is <= 0 or > maximumInspectableBytes) return null;
@@ -53,12 +115,13 @@ public sealed class S3CompatibleFileStorage(IHttpClientFactory httpClientFactory
 
     private Uri CreatePresignedUrl(string method, string storageKey, TimeSpan lifetime, string? contentType)
     {
-        if (lifetime <= TimeSpan.Zero || lifetime > TimeSpan.FromHours(1)) throw new ArgumentOutOfRangeException(nameof(lifetime));
+        if (lifetime <= TimeSpan.Zero || lifetime > TimeSpan.FromHours(24)) throw new ArgumentOutOfRangeException(nameof(lifetime));
         var settings = options.Value;
+        var region = ResolveRegion(settings.Region);
         var now = DateTimeOffset.UtcNow;
         var dateStamp = now.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
         var timestamp = now.ToString("yyyyMMddTHHmmssZ", CultureInfo.InvariantCulture);
-        var credentialScope = $"{dateStamp}/{settings.Region}/s3/aws4_request";
+        var credentialScope = $"{dateStamp}/{region}/s3/aws4_request";
         var uri = BuildObjectUri(storageKey);
         var query = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
@@ -71,13 +134,14 @@ public sealed class S3CompatibleFileStorage(IHttpClientFactory httpClientFactory
         var canonicalQuery = CanonicalQuery(query);
         var canonicalRequest = $"{method}\n{uri.AbsolutePath}\n{canonicalQuery}\nhost:{uri.Host}{PortSuffix(uri)}\n\nhost\nUNSIGNED-PAYLOAD";
         var stringToSign = $"{Algorithm}\n{timestamp}\n{credentialScope}\n{HexSha256(canonicalRequest)}";
-        query["X-Amz-Signature"] = Hex(Hmac(SigningKey(dateStamp), stringToSign));
+        query["X-Amz-Signature"] = Hex(Hmac(SigningKey(dateStamp, region), stringToSign));
         return new UriBuilder(uri) { Query = CanonicalQuery(query) }.Uri;
     }
 
     private void SignRequest(HttpRequestMessage request, string payloadHash)
     {
         var settings = options.Value;
+        var region = ResolveRegion(settings.Region);
         var now = DateTimeOffset.UtcNow;
         var dateStamp = now.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
         var timestamp = now.ToString("yyyyMMddTHHmmssZ", CultureInfo.InvariantCulture);
@@ -86,9 +150,10 @@ public sealed class S3CompatibleFileStorage(IHttpClientFactory httpClientFactory
         request.Headers.TryAddWithoutValidation("x-amz-content-sha256", payloadHash);
         var canonicalHeaders = $"host:{host}\nx-amz-content-sha256:{payloadHash}\nx-amz-date:{timestamp}\n";
         var signedHeaders = "host;x-amz-content-sha256;x-amz-date";
-        var canonicalRequest = $"{request.Method.Method}\n{request.RequestUri.AbsolutePath}\n{request.RequestUri.Query.TrimStart('?')}\n{canonicalHeaders}\n{signedHeaders}\n{payloadHash}";
-        var scope = $"{dateStamp}/{settings.Region}/s3/aws4_request";
-        var signature = Hex(Hmac(SigningKey(dateStamp), $"{Algorithm}\n{timestamp}\n{scope}\n{HexSha256(canonicalRequest)}"));
+        var canonicalQuery = GetCanonicalQuery(request.RequestUri);
+        var canonicalRequest = $"{request.Method.Method}\n{request.RequestUri.AbsolutePath}\n{canonicalQuery}\n{canonicalHeaders}\n{signedHeaders}\n{payloadHash}";
+        var scope = $"{dateStamp}/{region}/s3/aws4_request";
+        var signature = Hex(Hmac(SigningKey(dateStamp, region), $"{Algorithm}\n{timestamp}\n{scope}\n{HexSha256(canonicalRequest)}"));
         request.Headers.TryAddWithoutValidation("Authorization", $"{Algorithm} Credential={settings.AccessKey}/{scope}, SignedHeaders={signedHeaders}, Signature={signature}");
     }
 
@@ -104,14 +169,57 @@ public sealed class S3CompatibleFileStorage(IHttpClientFactory httpClientFactory
             : new UriBuilder(endpoint.Scheme, $"{settings.Bucket}.{endpoint.Host}", endpoint.IsDefaultPort ? -1 : endpoint.Port, escapedKey).Uri;
     }
 
-    private byte[] SigningKey(string dateStamp)
+    private Uri BuildBucketUri(string? query = null)
+    {
+        var settings = options.Value;
+        var endpoint = new Uri(settings.Endpoint!, UriKind.Absolute);
+        var authority = endpoint.GetLeftPart(UriPartial.Authority);
+        var path = settings.UsePathStyle
+            ? $"{authority.TrimEnd('/')}/{Uri.EscapeDataString(settings.Bucket!)}"
+            : new UriBuilder(endpoint.Scheme, $"{settings.Bucket}.{endpoint.Host}", endpoint.IsDefaultPort ? -1 : endpoint.Port).Uri.ToString().TrimEnd('/');
+
+        var builder = new UriBuilder(path);
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            builder.Query = query.TrimStart('?');
+        }
+        return builder.Uri;
+    }
+
+    private static string ResolveRegion(string? region) =>
+        string.IsNullOrWhiteSpace(region) || string.Equals(region, "auto", StringComparison.OrdinalIgnoreCase)
+            ? "us-east-1"
+            : region;
+
+    private byte[] SigningKey(string dateStamp, string region)
     {
         var settings = options.Value;
         var date = Hmac(Encoding.UTF8.GetBytes($"AWS4{settings.SecretKey}"), dateStamp);
-        return Hmac(Hmac(Hmac(date, settings.Region), "s3"), "aws4_request");
+        return Hmac(Hmac(Hmac(date, region), "s3"), "aws4_request");
     }
 
     private static string PortSuffix(Uri uri) => uri.IsDefaultPort ? string.Empty : $":{uri.Port}";
+
+    private static string GetCanonicalQuery(Uri uri)
+    {
+        if (string.IsNullOrEmpty(uri.Query)) return string.Empty;
+        var query = uri.Query.TrimStart('?');
+        if (string.IsNullOrEmpty(query)) return string.Empty;
+
+        var parsed = query.Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Select(p =>
+            {
+                var parts = p.Split('=', 2);
+                var k = Uri.UnescapeDataString(parts[0]);
+                var v = parts.Length > 1 ? Uri.UnescapeDataString(parts[1]) : string.Empty;
+                return new KeyValuePair<string, string>(k, v);
+            })
+            .OrderBy(p => p.Key, StringComparer.Ordinal)
+            .Select(p => $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}");
+
+        return string.Join("&", parsed);
+    }
+
     private static string CanonicalQuery(IEnumerable<KeyValuePair<string, string>> values) => string.Join("&", values.Select(x => $"{Uri.EscapeDataString(x.Key)}={Uri.EscapeDataString(x.Value)}"));
     private static byte[] Hmac(byte[] key, string text) => HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(text));
     private static string HexSha256(string text) => Hex(SHA256.HashData(Encoding.UTF8.GetBytes(text)));

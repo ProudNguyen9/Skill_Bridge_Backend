@@ -61,12 +61,15 @@ public sealed class RefreshToken : AuditableEntity
 
 public sealed class AccountToken : AuditableEntity
 {
+    public const int MaximumFailedAttempts = 5;
+
     public Guid UserId { get; private set; }
     public User User { get; private set; } = null!;
     public AccountTokenPurpose Purpose { get; private set; }
     public string TokenHash { get; private set; } = string.Empty;
     public DateTimeOffset ExpiresAt { get; private set; }
     public DateTimeOffset? ConsumedAt { get; private set; }
+    public int FailedAttempts { get; private set; }
 
     private AccountToken() { }
 
@@ -78,7 +81,19 @@ public sealed class AccountToken : AuditableEntity
         ExpiresAt = expiresAt;
     }
 
-    public bool IsUsable(DateTimeOffset now) => ConsumedAt is null && ExpiresAt > now;
+    public bool IsUsable(DateTimeOffset now) =>
+        ConsumedAt is null && ExpiresAt > now && FailedAttempts < MaximumFailedAttempts;
 
     public void Consume(DateTimeOffset consumedAt) => ConsumedAt ??= consumedAt;
+
+    public void RegisterFailedAttempt(DateTimeOffset attemptedAt)
+    {
+        if (!IsUsable(attemptedAt)) return;
+
+        FailedAttempts++;
+        if (FailedAttempts >= MaximumFailedAttempts)
+        {
+            Consume(attemptedAt);
+        }
+    }
 }

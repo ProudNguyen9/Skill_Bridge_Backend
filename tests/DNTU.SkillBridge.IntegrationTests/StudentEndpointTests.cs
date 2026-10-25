@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace DNTU.SkillBridge.IntegrationTests;
@@ -22,7 +23,7 @@ public sealed class StudentEndpointTests(CatalogApiFactory factory)
         var payload = await response.Content.ReadFromJsonAsync<Envelope<StudentProfileDto>>(Json);
         Assert.NotNull(payload);
         Assert.False(payload!.Data.Privacy.IsProfilePublic);
-        Assert.Equal(0, payload.Data.ProfileCompletionPercent);
+        Assert.Equal(12, payload.Data.ProfileCompletionPercent);
     }
 
     [Fact]
@@ -242,15 +243,23 @@ public sealed class StudentEndpointTests(CatalogApiFactory factory)
 
     private async Task<HttpClient> RegisterStudentAsync()
     {
-        var email = $"student-{Guid.NewGuid():N}@skillbridge.local";
+        var email = $"student-{Guid.NewGuid():N}@dntu.edu.vn";
         var client = factory.CreateClient();
         await client.PostAsJsonAsync("/api/v1/auth/register", new
         {
             email,
             displayName = "Sinh viên Kiểm thử",
+            studentCode = "22" + Random.Shared.Next(100000, 999999),
             password = Password,
             accountType = "Student"
         }, Json);
+
+        await factory.RunWithDbContextAsync(async dbContext =>
+        {
+            var u = await dbContext.Users.SingleAsync(x => x.Email == email);
+            u.SetEmailVerified();
+            await dbContext.SaveChangesAsync();
+        });
 
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email, password = Password }, Json);
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);

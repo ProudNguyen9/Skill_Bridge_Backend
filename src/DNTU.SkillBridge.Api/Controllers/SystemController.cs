@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace DNTU.SkillBridge.Api.Controllers;
 
@@ -9,6 +10,30 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v1/system")]
 public sealed class SystemController : ControllerBase
 {
+    [HttpGet("health")]
+    [ProducesResponseType(typeof(ApiResponse<SystemHealthResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<SystemHealthResponse>), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<ApiResponse<SystemHealthResponse>>> GetHealth(
+        [FromServices] HealthCheckService healthCheckService,
+        CancellationToken cancellationToken)
+    {
+        var report = await healthCheckService.CheckHealthAsync(cancellationToken);
+        var response = new ApiResponse<SystemHealthResponse>(new SystemHealthResponse(
+            report.Status.ToString().ToLowerInvariant(),
+            DateTimeOffset.UtcNow,
+            report.Entries.Select(entry => new SystemHealthCheckResponse(
+                entry.Key,
+                entry.Value.Status.ToString().ToLowerInvariant(),
+                entry.Value.Duration.TotalMilliseconds)).ToArray()));
+
+        if (report.Status == HealthStatus.Unhealthy)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, response);
+        }
+
+        return Ok(response);
+    }
+
     [HttpGet("contract")]
     [ProducesResponseType(typeof(ApiResponse<SystemContractResponse>), StatusCodes.Status200OK)]
     public ActionResult<ApiResponse<SystemContractResponse>> GetContract() =>
@@ -32,3 +57,8 @@ public sealed class SystemController : ControllerBase
 }
 
 public sealed record SystemContractResponse(string ApiVersion, DateTimeOffset GeneratedAt);
+public sealed record SystemHealthResponse(
+    string Status,
+    DateTimeOffset CheckedAt,
+    IReadOnlyList<SystemHealthCheckResponse> Checks);
+public sealed record SystemHealthCheckResponse(string Name, string Status, double DurationMs);

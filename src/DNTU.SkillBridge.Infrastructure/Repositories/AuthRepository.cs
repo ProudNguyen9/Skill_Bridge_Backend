@@ -10,10 +10,20 @@ public sealed class AuthRepository(AppDbContext dbContext) : IAuthRepository
     public Task<bool> EmailExistsAsync(string normalizedEmail, CancellationToken cancellationToken) =>
         dbContext.Users.AnyAsync(user => user.NormalizedEmail == normalizedEmail, cancellationToken);
 
+    public Task<bool> StudentCodeExistsAsync(string normalizedStudentCode, CancellationToken cancellationToken) =>
+        dbContext.StudentProfiles.AnyAsync(profile => profile.StudentCode == normalizedStudentCode, cancellationToken);
+
+    public Task<bool> LecturerCodeExistsAsync(string normalizedLecturerCode, CancellationToken cancellationToken) =>
+        dbContext.LecturerProfiles.AnyAsync(profile => profile.LecturerCode == normalizedLecturerCode, cancellationToken);
+
     public Task<Role> FindRoleAsync(string normalizedName, CancellationToken cancellationToken) =>
         dbContext.Roles.SingleAsync(item => item.NormalizedName == normalizedName, cancellationToken);
 
     public void AddUser(User user) => dbContext.Users.Add(user);
+
+    public void AddStudentProfile(DNTU.SkillBridge.Domain.Students.StudentProfile profile) => dbContext.StudentProfiles.Add(profile);
+
+    public void AddLecturerProfile(DNTU.SkillBridge.Domain.Lecturers.LecturerProfile profile) => dbContext.LecturerProfiles.Add(profile);
 
     public Task<User?> FindUserByEmailWithPermissionsAsync(string normalizedEmail, CancellationToken cancellationToken) =>
         dbContext.Users
@@ -22,6 +32,23 @@ public sealed class AuthRepository(AppDbContext dbContext) : IAuthRepository
             .ThenInclude(item => item.RolePermissions)
             .ThenInclude(item => item.Permission)
             .SingleOrDefaultAsync(item => item.NormalizedEmail == normalizedEmail, cancellationToken);
+
+    public Task<User?> FindUserByGoogleSubjectWithPermissionsAsync(string googleSubjectId, CancellationToken cancellationToken) =>
+        dbContext.Users
+            .Include(item => item.UserRoles)
+            .ThenInclude(item => item.Role)
+            .ThenInclude(item => item.RolePermissions)
+            .ThenInclude(item => item.Permission)
+            .SingleOrDefaultAsync(item => item.GoogleSubjectId == googleSubjectId, cancellationToken);
+
+    public Task<User?> FindUserByStudentCodeWithPermissionsAsync(string normalizedStudentCode, CancellationToken cancellationToken) =>
+        dbContext.Users
+            .Where(user => dbContext.StudentProfiles.Any(profile => profile.UserId == user.Id && profile.StudentCode == normalizedStudentCode))
+            .Include(item => item.UserRoles)
+            .ThenInclude(item => item.Role)
+            .ThenInclude(item => item.RolePermissions)
+            .ThenInclude(item => item.Permission)
+            .SingleOrDefaultAsync(cancellationToken);
 
     public Task<RefreshToken?> FindRefreshTokenWithSessionAsync(string tokenHash, CancellationToken cancellationToken) =>
         dbContext.RefreshTokens
@@ -105,6 +132,12 @@ public sealed class AuthRepository(AppDbContext dbContext) : IAuthRepository
             .Select(profile => (Guid?)profile.Id)
             .SingleOrDefaultAsync(cancellationToken);
 
+    public async Task<DNTU.SkillBridge.Domain.Lecturers.LecturerApprovalStatus?> FindLecturerApprovalStatusAsync(Guid userId, CancellationToken cancellationToken) =>
+        await dbContext.LecturerProfiles
+            .Where(profile => profile.UserId == userId)
+            .Select(profile => (DNTU.SkillBridge.Domain.Lecturers.LecturerApprovalStatus?)profile.ApprovalStatus)
+            .SingleOrDefaultAsync(cancellationToken);
+
     public async Task<bool> IsStudentProfileCompletedAsync(Guid studentProfileId, CancellationToken cancellationToken) =>
         await dbContext.StudentProfiles
             .Where(profile => profile.Id == studentProfileId)
@@ -121,6 +154,14 @@ public sealed class AuthRepository(AppDbContext dbContext) : IAuthRepository
             .AsTracking()
             .Where(item => item.UserId == userId && item.Purpose == purpose && item.ConsumedAt == null)
             .ToListAsync(cancellationToken);
+
+    public Task<AccountToken?> FindLatestActiveAccountTokenWithUserAsync(Guid userId, AccountTokenPurpose purpose, CancellationToken cancellationToken) =>
+        dbContext.AccountTokens
+            .Include(item => item.User)
+            .AsTracking()
+            .Where(item => item.UserId == userId && item.Purpose == purpose && item.ConsumedAt == null)
+            .OrderByDescending(item => item.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
 
     public void AddAccountToken(AccountToken token) => dbContext.AccountTokens.Add(token);
 

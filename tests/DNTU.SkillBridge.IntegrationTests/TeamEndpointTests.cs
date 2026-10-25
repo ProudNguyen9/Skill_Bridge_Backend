@@ -71,7 +71,7 @@ public sealed class TeamEndpointTests(CatalogApiFactory factory)
     {
         var email = $"team-{label}-{Guid.NewGuid():N}@skillbridge.local";
         var client = factory.CreateClient();
-        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/v1/auth/register", new { email, displayName = $"Student {label}", password = Password, accountType = "Student" }, Json)).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/v1/auth/register", new { email, displayName = $"Student {label}", studentCode = "22" + Random.Shared.Next(100000, 999999), password = Password, accountType = "Student" }, Json)).StatusCode);
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email, password = Password }, Json);
         var token = (await login.Content.ReadFromJsonAsync<Envelope<AuthDto>>(Json))!.Data.AccessToken;
         client.DefaultRequestHeaders.Authorization = new("Bearer", token);

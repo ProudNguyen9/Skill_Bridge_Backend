@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Asp.Versioning;
 using DNTU.SkillBridge.Api.Authentication;
@@ -19,8 +20,10 @@ using DNTU.SkillBridge.Infrastructure.Persistence.Seed;
 using DNTU.SkillBridge.Api.Middleware;
 using DNTU.SkillBridge.Infrastructure.Persistence;
 using DNTU.SkillBridge.Infrastructure.Repositories;
+using DNTU.SkillBridge.Domain.Identity;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
@@ -39,6 +42,50 @@ if (File.Exists(envFile))
     builder.Configuration.AddInMemoryCollection(envSettings)
         .AddEnvironmentVariables()
         .AddCommandLine(args);
+}
+
+var fbEndpoint = builder.Configuration["FILEBASE_ENDPOINT"];
+if (!string.IsNullOrWhiteSpace(fbEndpoint))
+{
+    var region = builder.Configuration["FILEBASE_REGION"];
+    builder.Configuration["Storage:Enabled"] = "true";
+    builder.Configuration["Storage:Provider"] = "Filebase";
+    builder.Configuration["Storage:Endpoint"] = fbEndpoint;
+    builder.Configuration["Storage:Region"] = string.IsNullOrWhiteSpace(region) || string.Equals(region, "auto", StringComparison.OrdinalIgnoreCase) ? "us-east-1" : region;
+    builder.Configuration["Storage:Bucket"] = builder.Configuration["FILEBASE_BUCKET"] ?? "my-web-storage";
+    builder.Configuration["Storage:AccessKey"] = builder.Configuration["FILEBASE_ACCESS_KEY"] ?? string.Empty;
+    builder.Configuration["Storage:SecretKey"] = builder.Configuration["FILEBASE_SECRET_KEY"] ?? string.Empty;
+    builder.Configuration["Storage:UsePathStyle"] = "true";
+    builder.Configuration["Storage:UseSsl"] = "true";
+}
+
+// Keep SQL Server connection details as separate environment variables. Build the
+// connection string here so credentials never need to live in one opaque env value.
+var databaseHost = builder.Configuration["Database:Host"];
+if (!string.IsNullOrWhiteSpace(databaseHost))
+{
+    var databasePort = builder.Configuration["Database:Port"];
+    var connectionString = new SqlConnectionStringBuilder
+    {
+        DataSource = string.IsNullOrWhiteSpace(databasePort)
+            ? databaseHost
+            : $"{databaseHost},{databasePort}",
+        InitialCatalog = builder.Configuration["Database:Name"] ?? string.Empty,
+        UserID = builder.Configuration["Database:Username"] ?? string.Empty,
+        Password = builder.Configuration["Database:Password"] ?? string.Empty,
+        Encrypt = !bool.TryParse(builder.Configuration["Database:Encrypt"], out var encrypt) || encrypt,
+        TrustServerCertificate = bool.TryParse(
+            builder.Configuration["Database:TrustServerCertificate"], out var trustServerCertificate)
+            && trustServerCertificate,
+        ConnectTimeout = int.TryParse(builder.Configuration["Database:ConnectTimeout"], out var connectTimeout)
+            ? connectTimeout
+            : 15
+    }.ConnectionString;
+
+    builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+    {
+        ["ConnectionStrings:Default"] = connectionString
+    });
 }
 
 builder.Services
@@ -115,6 +162,7 @@ builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>("postgresql")
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.Configure<GoogleAuthOptions>(builder.Configuration.GetSection(GoogleAuthOptions.SectionName));
 builder.Services.AddScoped<ICatalogService, CatalogService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Students.IStudentService, DNTU.SkillBridge.Application.Students.StudentService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Companies.ICompanyService, DNTU.SkillBridge.Application.Companies.CompanyService>();
@@ -148,6 +196,7 @@ builder.Services.AddScoped<DNTU.SkillBridge.Application.Academics.IAcademicEvalu
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Payments.IPaymentService, DNTU.SkillBridge.Application.Payments.PaymentService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.SePay.ISePayService, DNTU.SkillBridge.Application.SePay.SePayService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Administration.IAdminGovernanceService, DNTU.SkillBridge.Application.Administration.AdminGovernanceService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Administration.IAdminVerificationService, DNTU.SkillBridge.Application.Administration.AdminVerificationService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Analytics.IAnalyticsService, DNTU.SkillBridge.Application.Analytics.AnalyticsService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<NotificationWriter>();
@@ -158,7 +207,7 @@ builder.Services.AddHostedService<DNTU.SkillBridge.Infrastructure.Files.FileClea
 builder.Services.AddSignalR();
 builder.Services.AddHttpClient(nameof(DNTU.SkillBridge.Api.Files.S3CompatibleFileStorage));
 var storageOptions = builder.Configuration.GetSection(StorageOptions.SectionName).Get<StorageOptions>() ?? new StorageOptions();
-if (storageOptions.Enabled && (string.Equals(storageOptions.Provider, "MinIO", StringComparison.OrdinalIgnoreCase) || string.Equals(storageOptions.Provider, "S3", StringComparison.OrdinalIgnoreCase)))
+if (storageOptions.Enabled && (string.Equals(storageOptions.Provider, "MinIO", StringComparison.OrdinalIgnoreCase) || string.Equals(storageOptions.Provider, "S3", StringComparison.OrdinalIgnoreCase) || string.Equals(storageOptions.Provider, "Filebase", StringComparison.OrdinalIgnoreCase)))
 {
     builder.Services.AddSingleton<DNTU.SkillBridge.Application.Files.IFileStorage, DNTU.SkillBridge.Api.Files.S3CompatibleFileStorage>();
 }
@@ -166,7 +215,7 @@ else
 {
     builder.Services.AddSingleton<DNTU.SkillBridge.Application.Files.IFileStorage, DNTU.SkillBridge.Application.Files.DisabledFileStorage>();
 }
-builder.Services.AddSingleton<IAccountEmailSender, NullAccountEmailSender>();
+builder.Services.AddHttpClient<IAccountEmailSender, ResendAccountEmailSender>();
 builder.Services.AddScoped<Microsoft.AspNetCore.Identity.IPasswordHasher<DNTU.SkillBridge.Domain.Identity.User>, Microsoft.AspNetCore.Identity.PasswordHasher<DNTU.SkillBridge.Domain.Identity.User>>();
 
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
@@ -197,7 +246,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             }
         };
     });
-builder.Services.AddAuthorization();
+builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, DNTU.SkillBridge.Api.Security.PermissionAuthorizationHandler>();
+builder.Services.AddAuthorization(options =>
+{
+    // Sinh policy cho từng permission: "permission:<tên>" — dùng với [Authorize(Policy = ...)].
+    // PermissionAuthorizationHandler kiểm tra claim "permission" trong JWT (SUPER_ADMIN luôn pass).
+    foreach (var permissionName in DNTU.SkillBridge.Domain.Identity.PermissionNames.All)
+    {
+        options.AddPolicy(DNTU.SkillBridge.Api.Security.AuthorizationPolicies.For(permissionName), policy =>
+        {
+            policy.RequireAuthenticatedUser();
+            policy.AddRequirements(new DNTU.SkillBridge.Api.Security.PermissionRequirement(permissionName));
+        });
+    }
+});
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -264,6 +326,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         [new OpenApiSecuritySchemeReference("Bearer", document)] = []
     });
+    options.DocumentFilter<SwaggerTagDescriptionsDocumentFilter>();
 });
 
 var app = builder.Build();
@@ -276,6 +339,13 @@ using (var scope = app.Services.CreateScope())
         await dbContext.Database.MigrateAsync();
     }
     await IdentitySeed.SeedAsync(dbContext, CancellationToken.None);
+    if (app.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("Authentication:SeedTestAccounts"))
+    {
+        await DevelopmentTestAccountSeed.SeedAsync(
+            dbContext,
+            scope.ServiceProvider.GetRequiredService<IPasswordHasher<User>>(),
+            CancellationToken.None);
+    }
     await CatalogSeed.SeedAsync(dbContext, CancellationToken.None);
 }
 
@@ -319,5 +389,26 @@ app.MapHealthChecks("/health/ready");
 app.MapControllers();
 
 app.Run();
+
+public sealed class SwaggerTagDescriptionsDocumentFilter : Swashbuckle.AspNetCore.SwaggerGen.IDocumentFilter
+{
+    public void Apply(OpenApiDocument swaggerDoc, Swashbuckle.AspNetCore.SwaggerGen.DocumentFilterContext context)
+    {
+        swaggerDoc.Tags ??= new HashSet<OpenApiTag>();
+        var filesTag = swaggerDoc.Tags.FirstOrDefault(t => t.Name == "Files");
+        if (filesTag is not null)
+        {
+            filesTag.Description = "Upload file";
+        }
+        else
+        {
+            swaggerDoc.Tags.Add(new OpenApiTag
+            {
+                Name = "Files",
+                Description = "Upload file"
+            });
+        }
+    }
+}
 
 public partial class Program;

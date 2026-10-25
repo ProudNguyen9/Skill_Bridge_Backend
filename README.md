@@ -4,7 +4,7 @@ Backend modular monolith cho quy trình phối hợp dự án thực tế giữa
 
 ## Bắt đầu nhanh
 
-**Yêu cầu:** .NET SDK 10, SQL Server 2022+ cho API/integration tests. Backend đọc connection string từ `.env`, kết nối host `backend.phelieuminhduc.com,32022`, database `backendskillbridge`; không cần Docker.
+**Yêu cầu:** .NET SDK 10, SQL Server 2022+ cho API/integration tests. Backend đọc cấu hình SQL Server từ các biến riêng trong `.env`; không cần Docker.
 
 ```powershell
 # Restore và build
@@ -15,7 +15,43 @@ dotnet build .\DNTU.SkillBridge.slnx --configuration Debug --no-restore /warnase
 dotnet run --project .\src\DNTU.SkillBridge.Api
 ```
 
-API đọc `.env` tại thư mục Backend khi chạy Development, hoặc tại thư mục ứng dụng khi deploy. Biến môi trường hệ thống và tham số command line được ưu tiên hơn `.env`. Điền mật khẩu vào `.env`; `.env.example` chỉ chứa placeholder. Backup cho host 2022: `artifacts/database/backendskillbridge-sqlserver2022.bak`.
+API đọc `.env` tại thư mục Backend khi chạy Development, hoặc tại thư mục ứng dụng khi deploy. Database được cấu hình qua `Database__Host`, `Database__Port`, `Database__Name`, `Database__Username`, `Database__Password` và các tùy chọn kết nối; API tự ghép thành connection string lúc khởi động. Biến môi trường hệ thống và tham số command line được ưu tiên hơn `.env`. Chỉ điền credential thật trong `.env`; `.env.example` dùng placeholder. Backup cho SQL Server 2022: `artifacts/database/backendskillbridge-sqlserver2022.bak`.
+
+### Tài khoản kiểm thử
+
+Khi API chạy với `ASPNETCORE_ENVIRONMENT=Development` và `Authentication:SeedTestAccounts=true`, backend tự seed các tài khoản dưới đây. **Mật khẩu chung cho tất cả: `SkillBridge.Test#2026`**
+
+#### 🎓 Sinh viên (5 tài khoản)
+
+| # | Email | Mã sinh viên | Tên hiển thị |
+|---|---|---|---|
+| 1 | `student1.test@skillbridge.local` | `TEST0001` | Nguyễn Văn An |
+| 2 | `student2.test@skillbridge.local` | `TEST0002` | Trần Thị Bích |
+| 3 | `student3.test@skillbridge.local` | `TEST0003` | Lê Văn Cường |
+| 4 | `student4.test@skillbridge.local` | `TEST0004` | Phạm Thị Dung |
+| 5 | `student5.test@skillbridge.local` | `TEST0005` | Hoàng Văn Em |
+
+*Đăng nhập bằng email hoặc mã sinh viên. Sau đăng nhập vào `/student/dashboard`.*
+
+#### 🏢 Doanh nghiệp (5 tài khoản — công ty đã VERIFIED, đăng bài toán được ngay)
+
+| # | Email | Công ty |
+|---|---|---|
+| 1 | `company1.test@skillbridge.local` | FPT Software Biên Hòa |
+| 2 | `company2.test@skillbridge.local` | Cảng Đồng Nai |
+| 3 | `company3.test@skillbridge.local` | Viettel IDC Đồng Nai |
+| 4 | `company4.test@skillbridge.local` | GreenTech Smart Agriculture |
+| 5 | `company5.test@skillbridge.local` | Dong Nai Fintech Lab |
+
+#### 👨‍🏫 Giảng viên & Quản trị
+
+| Role | Email | Ghi chú |
+|---|---|---|
+| Giảng viên | `lecturer.test@skillbridge.local` | Hồ sơ APPROVED (Mã GV: GV001) |
+| Quản trị viên | `admin.test@skillbridge.local` | Duyệt giảng viên/công ty/đề tài |
+| Quản trị cấp cao | `superadmin.test@skillbridge.local` | Toàn quyền hệ thống |
+
+Các tài khoản này chỉ dành cho Development. Khởi động lại API sau khi cấu hình database để seed hoặc đồng bộ lại mật khẩu. Xem thêm [hướng dẫn tài khoản kiểm thử](docs/auth-test-accounts.md) và [hướng dẫn phân quyền](docs/authorization-guide.md).
 
 ## Cấu trúc repository
 

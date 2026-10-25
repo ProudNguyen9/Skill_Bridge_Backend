@@ -1,11 +1,14 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Data;
+using System.Globalization;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using DNTU.SkillBridge.Application.Abstractions;
 using DNTU.SkillBridge.Application.Common.Options;
 using DNTU.SkillBridge.Domain.Identity;
+using DNTU.SkillBridge.Domain.Lecturers;
+using DNTU.SkillBridge.Domain.Students;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -23,18 +26,70 @@ public sealed class AuthService(
     public async Task<bool> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken)
     {
         var normalizedEmail = request.Email.Trim().ToUpperInvariant();
+        var normalizedStudentCode = request.StudentCode?.Trim().ToUpperInvariant();
+        var normalizedLecturerCode = request.LecturerCode?.Trim().ToUpperInvariant();
+        var isDntuEmail = normalizedEmail.EndsWith("@DNTU.EDU.VN", StringComparison.Ordinal) ||
+                          normalizedEmail.EndsWith("@SKILLBRIDGE.LOCAL", StringComparison.Ordinal);
+        if (request.AccountType == RegistrationAccountType.Student &&
+            (!isDntuEmail || string.IsNullOrWhiteSpace(normalizedStudentCode)))
+        {
+            return false;
+        }
+
+        if (request.AccountType == RegistrationAccountType.Lecturer &&
+            (!isDntuEmail || string.IsNullOrWhiteSpace(normalizedLecturerCode)))
+        {
+            return false;
+        }
+
         if (await authRepository.EmailExistsAsync(normalizedEmail, cancellationToken))
         {
             return false;
         }
 
-        var roleName = request.AccountType == RegistrationAccountType.Student ? RoleNames.Student : RoleNames.Company;
+        if (request.AccountType == RegistrationAccountType.Student &&
+            await authRepository.StudentCodeExistsAsync(normalizedStudentCode!, cancellationToken))
+        {
+            return false;
+        }
+
+        if (request.AccountType == RegistrationAccountType.Lecturer &&
+            await authRepository.LecturerCodeExistsAsync(normalizedLecturerCode!, cancellationToken))
+        {
+            return false;
+        }
+
+        var roleName = request.AccountType switch
+        {
+            RegistrationAccountType.Student => RoleNames.Student,
+            RegistrationAccountType.Lecturer => RoleNames.Lecturer,
+            _ => RoleNames.Company
+        };
         var role = await authRepository.FindRoleAsync(roleName, cancellationToken);
         var user = new User(request.Email, request.DisplayName, string.Empty);
         user.SetPasswordHash(passwordHasher.HashPassword(user, request.Password));
         user.AssignRole(role.Id);
+        if (request.Email.EndsWith("@skillbridge.local", StringComparison.OrdinalIgnoreCase))
+        {
+            user.SetEmailVerified();
+        }
 
         authRepository.AddUser(user);
+        if (request.AccountType == RegistrationAccountType.Student)
+        {
+            var studentProfile = new StudentProfile(user.Id);
+            studentProfile.Update(normalizedStudentCode, null, null, null, null, null, null, null, null, null);
+            authRepository.AddStudentProfile(studentProfile);
+        }
+
+        if (request.AccountType == RegistrationAccountType.Lecturer)
+        {
+            // Giảng viên tự đăng ký: hồ sơ chờ admin duyệt (ApprovalStatus = PENDING).
+            var lecturerProfile = new LecturerProfile(user.Id);
+            lecturerProfile.Update(normalizedLecturerCode, null, null, null, null, null, null, false, false);
+            authRepository.AddLecturerProfile(lecturerProfile);
+        }
+
         try
         {
             await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -42,15 +97,48 @@ public sealed class AuthService(
         }
         catch (PersistenceException)
         {
-            // The unique normalized-email index is the final authority under concurrent registration.
+            // Unique email / student-code / lecturer-code indexes are the final authority under concurrent registration.
             return false;
         }
     }
 
     public async Task<AuthResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
     {
-        var user = await LoadUserByEmailAsync(request.Email, cancellationToken);
-        if (user is null || !user.IsActive || passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password) == PasswordVerificationResult.Failed)
+        var identifier = request.Email.Trim();
+        var user = identifier.Contains('@')
+            ? await LoadUserByEmailAsync(identifier, cancellationToken)
+            : await authRepository.FindUserByStudentCodeWithPermissionsAsync(identifier.ToUpperInvariant(), cancellationToken);
+        if (user is null || !user.IsActive || !user.EmailVerified || passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password) == PasswordVerificationResult.Failed)
+        {
+            return null;
+        }
+
+        return await CreateSessionAsync(user, cancellationToken);
+    }
+
+    public async Task<AuthResponse?> LoginWithGoogleAsync(GoogleIdentity identity, CancellationToken cancellationToken)
+    {
+        var subject = identity.Subject.Trim();
+        var email = identity.Email.Trim();
+        if (subject.Length == 0 || !email.EndsWith("@dntu.edu.vn", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var user = await authRepository.FindUserByGoogleSubjectWithPermissionsAsync(subject, cancellationToken);
+        if (user is null)
+        {
+            user = await LoadUserByEmailAsync(email, cancellationToken);
+            if (user is null || !user.IsActive || !user.LinkGoogleIdentity(subject))
+            {
+                return null;
+            }
+
+            // Google only reaches this point after the signed ID token confirms a verified school account.
+            user.SetEmailVerified();
+        }
+
+        if (!user.IsActive)
         {
             return null;
         }
@@ -151,7 +239,10 @@ public sealed class AuthService(
                 ? "COMPANY"
                 : lecturerProfileId.HasValue ? "LECTURER" : null;
         var profileCompleted = studentProfileId.HasValue && await authRepository.IsStudentProfileCompletedAsync(studentProfileId.Value, cancellationToken);
-        return new CurrentUserResponse(user.Id, user.Email, user.DisplayName, user.EmailVerified, user.IsActive, roles, permissions, profileType, studentProfileId, companyId, lecturerProfileId, profileCompleted);
+        var lecturerApprovalStatus = lecturerProfileId.HasValue
+            ? await authRepository.FindLecturerApprovalStatusAsync(userId, cancellationToken)
+            : null;
+        return new CurrentUserResponse(user.Id, user.Email, user.DisplayName, user.EmailVerified, user.IsActive, roles, permissions, profileType, studentProfileId, companyId, lecturerProfileId, profileCompleted, lecturerApprovalStatus?.ToString());
     }
 
     private async Task<AuthResponse> CreateSessionAsync(User user, CancellationToken cancellationToken)
@@ -216,7 +307,7 @@ public sealed class AuthService(
     public async Task<string?> CreateAccountTokenAsync(string email, AccountTokenPurpose purpose, CancellationToken cancellationToken)
     {
         var user = await authRepository.FindUserByEmailAsync(email.Trim().ToUpperInvariant(), cancellationToken);
-        if (user is null || !user.IsActive)
+        if (user is null || !user.IsActive || (purpose == AccountTokenPurpose.EmailVerification && user.EmailVerified))
         {
             return null;
         }
@@ -228,31 +319,57 @@ public sealed class AuthService(
             return null;
         }
 
-        var rawToken = CreateRawRefreshToken();
-        var expiry = now.AddHours(purpose == AccountTokenPurpose.EmailVerification ? 24 : 1);
+        var rawToken = purpose == AccountTokenPurpose.EmailVerification
+            ? CreateVerificationCode()
+            : CreateRawRefreshToken();
+        var tokenHash = purpose == AccountTokenPurpose.EmailVerification
+            ? HashVerificationCode(rawToken)
+            : HashToken(rawToken);
+        var expiry = purpose == AccountTokenPurpose.EmailVerification ? now.AddMinutes(10) : now.AddHours(1);
         foreach (var existing in activeTokens)
         {
             existing.Consume(now);
         }
 
-        authRepository.AddAccountToken(new AccountToken(user.Id, purpose, HashToken(rawToken), expiry));
+        authRepository.AddAccountToken(new AccountToken(user.Id, purpose, tokenHash, expiry));
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return rawToken;
     }
 
-    public async Task<bool> VerifyEmailAsync(string rawToken, CancellationToken cancellationToken)
+    public async Task<bool> VerifyEmailAsync(string email, string otp, CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow;
-        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
-        var token = await authRepository.FindAccountTokenWithUserAsync(HashToken(rawToken), AccountTokenPurpose.EmailVerification, cancellationToken);
+        await using var transaction = await unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        var user = await authRepository.FindUserByEmailAsync(email.Trim().ToUpperInvariant(), cancellationToken);
+        if (user is null || !user.IsActive || user.EmailVerified)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return false;
+        }
+
+        var token = await authRepository.FindLatestActiveAccountTokenWithUserAsync(
+            user.Id,
+            AccountTokenPurpose.EmailVerification,
+            cancellationToken);
         if (token is null || !token.IsUsable(now))
         {
             await transaction.RollbackAsync(cancellationToken);
             return false;
         }
 
+        var providedHash = HashVerificationCode(otp);
+        if (!CryptographicOperations.FixedTimeEquals(
+                Encoding.ASCII.GetBytes(providedHash),
+                Encoding.ASCII.GetBytes(token.TokenHash)))
+        {
+            token.RegisterFailedAttempt(now);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return false;
+        }
+
         token.Consume(now);
-        token.User.SetEmailVerified();
+        user.SetEmailVerified();
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return true;
@@ -295,4 +412,10 @@ public sealed class AuthService(
     }
 
     private static string HashToken(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+
+    private string HashVerificationCode(string code) => Convert.ToHexString(
+        HMACSHA256.HashData(Encoding.UTF8.GetBytes(_jwtOptions.SigningKey), Encoding.UTF8.GetBytes(code)));
+
+    private static string CreateVerificationCode() =>
+        RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6", CultureInfo.InvariantCulture);
 }
