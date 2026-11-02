@@ -42,10 +42,10 @@ public sealed class StudentProfile : Common.AuditableEntity
         AcademicYear = NullIfEmpty(academicYear);
         PhoneNumber = NullIfEmpty(phoneNumber);
         Bio = NullIfEmpty(bio);
-        GithubUrl = NullIfEmpty(githubUrl);
-        LinkedinUrl = NullIfEmpty(linkedinUrl);
-        PortfolioUrl = NullIfEmpty(portfolioUrl);
-        CvUrl = NullIfEmpty(cvUrl);
+        GithubUrl = NormalizeUrl(githubUrl);
+        LinkedinUrl = NormalizeUrl(linkedinUrl);
+        PortfolioUrl = NormalizeUrl(portfolioUrl);
+        CvUrl = NormalizeUrl(cvUrl);
     }
 
     public int ComputeCompletionPercent()
@@ -69,6 +69,18 @@ public sealed class StudentProfile : Common.AuditableEntity
         && FacultyId.HasValue
         && !string.IsNullOrWhiteSpace(AcademicYear)
         && !string.IsNullOrWhiteSpace(PhoneNumber);
+
+        private static string? NormalizeUrl(string? value)
+    {
+        var cleaned = NullIfEmpty(value);
+        if (cleaned is null) return null;
+        if (!cleaned.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !cleaned.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return "https://" + cleaned;
+        }
+        return cleaned;
+    }
 
     private static string? NullIfEmpty(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

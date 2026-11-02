@@ -107,6 +107,12 @@ public sealed class SubmissionsController(ISubmissionService submissionService, 
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<SubmissionResponse>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IReadOnlyCollection<SubmissionResponse>>>> ListProjectSubmissions(Guid projectId, CancellationToken cancellationToken)
     {
+        if (currentUser.Roles.Contains(RoleNames.Admin) || currentUser.Roles.Contains(RoleNames.SuperAdmin))
+        {
+            var adminList = await submissionService.ListByProjectAsync(projectId, cancellationToken);
+            return Ok(new ApiResponse<IReadOnlyCollection<SubmissionResponse>>(adminList));
+        }
+
         var list = currentUser.Roles.Contains(RoleNames.Lecturer)
             ? await submissionService.ListLecturerAsync(UserId, cancellationToken)
             : currentUser.Roles.Contains(RoleNames.Company)

@@ -31,6 +31,8 @@ public interface IAcademicEvaluationRepository
 
     Task<bool> HasAcceptedSubmissionAsync(Guid projectId, CancellationToken cancellationToken);
 
+    Task<RubricResponse?> GetProjectRubricAsync(Guid projectId, CancellationToken cancellationToken);
+
     /// <summary>Saves pending changes; returns false when a concurrency conflict was detected.</summary>
     Task<bool> TrySaveChangesAsync(CancellationToken cancellationToken);
 }

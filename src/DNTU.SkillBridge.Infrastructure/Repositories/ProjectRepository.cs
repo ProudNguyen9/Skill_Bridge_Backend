@@ -734,10 +734,11 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
     public async Task<PublicProjectDetailResponse?> GetPublicProjectBySlugAsync(
         string slug, CancellationToken cancellationToken)
     {
+        var isGuid = Guid.TryParse(slug, out var pid);
         var project = await dbContext.Projects
             .AsNoTracking()
             .Include(item => item.Deliverables)
-            .SingleOrDefaultAsync(item => item.Slug == slug && item.IsActive && PubliclyVisibleStatuses.Contains(item.Status), cancellationToken);
+            .SingleOrDefaultAsync(item => (item.Slug == slug || (isGuid && item.Id == pid)) && item.IsActive && PubliclyVisibleStatuses.Contains(item.Status), cancellationToken);
         if (project is null)
         {
             return null;
@@ -920,10 +921,65 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             .ToList();
     }
 
-    /// <summary>Public milestones are delivered by the milestone module (Task 24); empty until then.</summary>
-    public Task<IReadOnlyCollection<object>> ListPublicProjectMilestonesAsync(
-        Guid projectId, CancellationToken cancellationToken) =>
-        Task.FromResult<IReadOnlyCollection<object>>([]);
+    /// <summary>Lists public milestones and deliverables for an active published project.</summary>
+    public async Task<IReadOnlyCollection<object>> ListPublicProjectMilestonesAsync(
+        Guid projectId, CancellationToken cancellationToken)
+    {
+        var rawMilestones = await dbContext.ProjectMilestones
+            .AsNoTracking()
+            .Where(milestone => milestone.ProjectId == projectId)
+            .OrderBy(milestone => milestone.Sequence)
+            .ThenBy(milestone => milestone.DueAt)
+            .Select(milestone => new
+            {
+                milestone.Id,
+                milestone.ProjectId,
+                milestone.Title,
+                milestone.Description,
+                milestone.Sequence,
+                milestone.DueAt,
+                Status = milestone.Status.ToString()
+            })
+            .ToListAsync(cancellationToken);
+
+        if (rawMilestones.Count == 0)
+        {
+            return [];
+        }
+
+        var milestoneIds = rawMilestones.Select(m => m.Id).ToList();
+
+        var deliverables = await dbContext.MilestoneDeliverables
+            .AsNoTracking()
+            .Where(deliverable => milestoneIds.Contains(deliverable.MilestoneId))
+            .Select(deliverable => new
+            {
+                deliverable.Id,
+                deliverable.MilestoneId,
+                deliverable.Name,
+                deliverable.Criteria
+            })
+            .ToListAsync(cancellationToken);
+
+        var deliverablesByMilestone = deliverables
+            .GroupBy(d => d.MilestoneId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyCollection<PublicProjectMilestoneDeliverableResponse>)g
+                    .Select(d => new PublicProjectMilestoneDeliverableResponse(d.Id, d.Name, d.Criteria))
+                    .ToList());
+
+        return rawMilestones.Select(m => new PublicProjectMilestoneResponse(
+            m.Id,
+            m.ProjectId,
+            m.Title,
+            m.Description,
+            m.Sequence,
+            m.DueAt,
+            m.Status,
+            deliverablesByMilestone.GetValueOrDefault(m.Id, [])))
+            .ToList();
+    }
 
     /// <summary>Is the project active and publicly visible? Guards sub-resource endpoints.</summary>
     public async Task<bool> IsPubliclyAccessibleAsync(Guid projectId, CancellationToken cancellationToken) =>
@@ -1009,14 +1065,36 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
         return Enum.TryParse<ProjectStatus>(status.Trim(), ignoreCase: true, out var parsed) ? parsed : null;
     }
 
-    /// <summary>Team composition arrives with Task 17; drafts always have no team yet.</summary>
+    /// <summary>Returns the active team members for a company-owned project.</summary>
     public async Task<IReadOnlyCollection<object>?> GetProjectTeamAsync(
         Guid companyId, Guid projectId, CancellationToken cancellationToken)
     {
         var exists = await dbContext.Projects
             .AsNoTracking()
             .AnyAsync(project => project.Id == projectId && project.CompanyId == companyId && project.IsActive, cancellationToken);
-        return exists ? [] : null;
+
+        if (!exists)
+        {
+            return null;
+        }
+
+        var teamMembers = await (
+            from member in dbContext.ProjectMembers.AsNoTracking()
+            where member.ProjectId == projectId && member.IsActive
+            join student in dbContext.StudentProfiles.AsNoTracking() on member.StudentId equals student.Id
+            join user in dbContext.Users.AsNoTracking() on student.UserId equals user.Id
+            orderby member.CreatedAt
+            select new ProjectTeamMemberResponse(
+                member.StudentId,
+                student.UserId,
+                user.DisplayName,
+                student.StudentCode,
+                user.Email,
+                member.Role.ToString(),
+                member.CreatedAt)
+        ).ToListAsync(cancellationToken);
+
+        return teamMembers;
     }
 
     public async Task<CompanyProjectProgressResponse?> GetProjectProgressAsync(

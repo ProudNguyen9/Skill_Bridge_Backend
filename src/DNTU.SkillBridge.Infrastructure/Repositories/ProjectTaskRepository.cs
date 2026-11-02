@@ -1,4 +1,6 @@
 using DNTU.SkillBridge.Application.Workspaces;
+using DNTU.SkillBridge.Domain.Identity;
+using DNTU.SkillBridge.Domain.Lecturers;
 using DNTU.SkillBridge.Domain.Workspaces;
 using DNTU.SkillBridge.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -8,8 +10,28 @@ namespace DNTU.SkillBridge.Infrastructure.Repositories;
 /// <summary>EF Core implementation of the project task data operations.</summary>
 public sealed class ProjectTaskRepository(AppDbContext dbContext) : IProjectTaskRepository
 {
-    public Task<bool> IsMemberAsync(Guid userId, Guid projectId, CancellationToken cancellationToken) =>
-        dbContext.ProjectMembers.AnyAsync(member => member.ProjectId == projectId && member.IsActive && member.Student.UserId == userId, cancellationToken);
+    public async Task<bool> IsMemberAsync(Guid userId, Guid projectId, CancellationToken cancellationToken)
+    {
+        // 1. Active student member
+        if (await dbContext.ProjectMembers.AnyAsync(member => member.ProjectId == projectId && member.IsActive && member.Student.UserId == userId, cancellationToken))
+            return true;
+
+        // 2. Company member of the project
+        if (await dbContext.Projects.AnyAsync(project => project.Id == projectId && project.Company.Members.Any(member => member.UserId == userId), cancellationToken))
+            return true;
+
+        // 3. Assigned active lecturer
+        if (await dbContext.LecturerAssignments
+            .Join(dbContext.LecturerProfiles, a => a.LecturerId, l => l.Id, (a, l) => new { a, l })
+            .AnyAsync(item => item.a.ProjectId == projectId && item.a.Status == LecturerAssignmentStatus.ACTIVE && item.l.UserId == userId, cancellationToken))
+            return true;
+
+        // 4. Admin or SuperAdmin
+        if (await dbContext.UserRoles.AnyAsync(ur => ur.UserId == userId && (ur.Role.Name == RoleNames.Admin || ur.Role.Name == RoleNames.SuperAdmin), cancellationToken))
+            return true;
+
+        return false;
+    }
 
     public Task<int?> GetMaxBacklogSortOrderAsync(Guid projectId, CancellationToken cancellationToken) =>
         dbContext.ProjectTasks.Where(task => task.ProjectId == projectId && task.Status == ProjectTaskStatus.BACKLOG && !task.IsDeleted).Select(task => (int?)task.SortOrder).MaxAsync(cancellationToken);

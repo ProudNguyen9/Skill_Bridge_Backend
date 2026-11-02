@@ -25,11 +25,20 @@ public sealed class WorkspaceRepository(AppDbContext dbContext) : IWorkspaceRepo
 
     public async Task<IReadOnlyCollection<WorkspaceMemberResponse>> ListTeamAsync(Guid projectId, CancellationToken cancellationToken)
     {
-        var raw = await dbContext.ProjectMembers.AsNoTracking().Where(member => member.ProjectId == projectId && member.IsActive)
-            .Join(dbContext.StudentProfiles.AsNoTracking(), member => member.StudentId, student => student.Id,
-                (member, student) => new { member.StudentId, DisplayName = student.StudentCode ?? "Student", member.CreatedAt })
-            .OrderBy(member => member.DisplayName).ToListAsync(cancellationToken);
-        return raw.Select(m => new WorkspaceMemberResponse(m.StudentId, m.DisplayName, m.CreatedAt)).ToList();
+        var raw = await (from member in dbContext.ProjectMembers.AsNoTracking()
+                         where member.ProjectId == projectId && member.IsActive
+                         join student in dbContext.StudentProfiles.AsNoTracking() on member.StudentId equals student.Id
+                         join user in dbContext.Users.AsNoTracking() on student.UserId equals user.Id into userGroup
+                         from u in userGroup.DefaultIfEmpty()
+                         select new
+                         {
+                             member.StudentId,
+                             DisplayName = (u != null && !string.IsNullOrWhiteSpace(u.DisplayName)) ? u.DisplayName : (student.StudentCode ?? "Student"),
+                             JoinedAt = member.CreatedAt
+                         })
+                         .OrderBy(m => m.DisplayName)
+                         .ToListAsync(cancellationToken);
+        return raw.Select(m => new WorkspaceMemberResponse(m.StudentId, m.DisplayName, m.JoinedAt)).ToList();
     }
 
     public async Task<(int TotalCount, IReadOnlyCollection<WorkspaceActivityResponse> Items)> ListActivityAsync(Guid projectId, string? eventType, WorkspaceActivityQuery query, CancellationToken cancellationToken)

@@ -18,7 +18,8 @@ public sealed record StudentProfileResponse(
     string? PortfolioUrl,
     string? CvUrl,
     StudentPrivacyResponse Privacy,
-    int ProfileCompletionPercent);
+    int ProfileCompletionPercent,
+    string? FullName = null);
 
 public sealed record StudentPrivacyResponse(
     bool IsProfilePublic,
@@ -28,6 +29,9 @@ public sealed record StudentPrivacyResponse(
 
 public sealed class UpdateStudentProfileRequest
 {
+    [StringLength(100)]
+    public string? FullName { get; init; }
+
     [StringLength(32)]
     public string? StudentCode { get; init; }
 
@@ -38,22 +42,22 @@ public sealed class UpdateStudentProfileRequest
     [StringLength(16)]
     public string? AcademicYear { get; init; }
 
-    [Phone, StringLength(20)]
+    [StringLength(30)]
     public string? PhoneNumber { get; init; }
 
     [StringLength(1000)]
     public string? Bio { get; init; }
 
-    [Url, StringLength(500)]
+    [StringLength(500)]
     public string? GithubUrl { get; init; }
 
-    [Url, StringLength(500)]
+    [StringLength(500)]
     public string? LinkedinUrl { get; init; }
 
-    [Url, StringLength(500)]
+    [StringLength(500)]
     public string? PortfolioUrl { get; init; }
 
-    [Url, StringLength(500)]
+    [StringLength(500)]
     public string? CvUrl { get; init; }
 }
 

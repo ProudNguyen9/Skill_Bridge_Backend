@@ -5,6 +5,8 @@ using DNTU.SkillBridge.Application.Common.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+using DNTU.SkillBridge.Application.Workspaces;
+
 namespace DNTU.SkillBridge.Api.Controllers;
 
 [ApiController]
@@ -12,7 +14,10 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v1")]
 [Authorize]
 [Produces("application/json")]
-public sealed class MilestonesController(IMilestoneService milestoneService, ICurrentUser currentUser) : ControllerBase
+public sealed class MilestonesController(
+    IMilestoneService milestoneService,
+    ICurrentUser currentUser,
+    IProjectRealtimeNotifier realtimeNotifier) : ControllerBase
 {
     /// <summary>Creates a planned milestone. Company owners/managers and active assigned lecturers manage the milestone plan.</summary>
     [HttpPost("projects/{projectId:guid}/milestones")]
@@ -23,6 +28,10 @@ public sealed class MilestonesController(IMilestoneService milestoneService, ICu
     public async Task<ActionResult<ApiResponse<MilestoneResponse>>> Create(Guid projectId, [FromBody] CreateMilestoneRequest request, CancellationToken cancellationToken)
     {
         var milestone = await milestoneService.CreateAsync(UserId, projectId, request, cancellationToken);
+        if (milestone is not null)
+        {
+            await realtimeNotifier.NotifyMilestoneUpdatedAsync(projectId, milestone, cancellationToken);
+        }
         return milestone is null ? Conflict() : Created($"milestones/{milestone.Id}", new ApiResponse<MilestoneResponse>(milestone));
     }
 
@@ -54,6 +63,10 @@ public sealed class MilestonesController(IMilestoneService milestoneService, ICu
     public async Task<ActionResult<ApiResponse<MilestoneResponse>>> Update(Guid milestoneId, [FromBody] UpdateMilestoneRequest request, CancellationToken cancellationToken)
     {
         var milestone = await milestoneService.UpdateAsync(UserId, milestoneId, request, cancellationToken);
+        if (milestone is not null)
+        {
+            await realtimeNotifier.NotifyMilestoneUpdatedAsync(milestone.ProjectId, milestone, cancellationToken);
+        }
         return milestone is null ? Conflict() : Ok(new ApiResponse<MilestoneResponse>(milestone));
     }
 
@@ -93,9 +106,25 @@ public sealed class MilestonesController(IMilestoneService milestoneService, ICu
     public Task<ActionResult<ApiResponse<MilestoneResponse>>> Approve(Guid milestoneId, [FromBody] TransitionMilestoneRequest request, CancellationToken cancellationToken) =>
         Transition(milestoneId, "approve", request, cancellationToken);
 
+    public sealed record TransitionMilestoneEnvelope(string? Action, string? Note, Guid Version);
+
+    [HttpPost("milestones/{milestoneId:guid}/transition")]
+    [ProducesResponseType(typeof(ApiResponse<MilestoneResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public Task<ActionResult<ApiResponse<MilestoneResponse>>> TransitionAdapter(Guid milestoneId, [FromBody] TransitionMilestoneEnvelope request, [FromQuery] string? action, CancellationToken cancellationToken)
+    {
+        var targetAction = !string.IsNullOrWhiteSpace(request.Action) ? request.Action : (!string.IsNullOrWhiteSpace(action) ? action : "start");
+        return Transition(milestoneId, targetAction, new TransitionMilestoneRequest { Note = request.Note, Version = request.Version }, cancellationToken);
+    }
+
     private async Task<ActionResult<ApiResponse<MilestoneResponse>>> Transition(Guid milestoneId, string action, TransitionMilestoneRequest request, CancellationToken cancellationToken)
     {
         var milestone = await milestoneService.TransitionAsync(UserId, milestoneId, action, request, cancellationToken);
+        if (milestone is not null)
+        {
+            await realtimeNotifier.NotifyMilestoneUpdatedAsync(milestone.ProjectId, milestone, cancellationToken);
+        }
         return milestone is null ? Conflict() : Ok(new ApiResponse<MilestoneResponse>(milestone));
     }
 

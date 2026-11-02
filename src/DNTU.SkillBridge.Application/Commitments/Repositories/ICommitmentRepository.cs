@@ -1,4 +1,5 @@
 using DNTU.SkillBridge.Domain.Commitments;
+using DNTU.SkillBridge.Domain.Projects;
 using DNTU.SkillBridge.Domain.Workspaces;
 
 namespace DNTU.SkillBridge.Application.Commitments;
@@ -14,6 +15,9 @@ public interface ICommitmentRepository
 
     /// <summary>Reads a project commitment as a tracked entity so mutations are persisted.</summary>
     Task<ProjectCommitment?> FindCommitmentForUpdateAsync(Guid projectId, Guid studentId, CancellationToken cancellationToken);
+
+    /// <summary>Reads a project as a tracked entity so state changes are persisted.</summary>
+    Task<Project?> FindProjectForUpdateAsync(Guid projectId, CancellationToken cancellationToken);
 
     Task<bool> HasProjectMembershipAsync(Guid projectId, Guid studentId, CancellationToken cancellationToken);
 

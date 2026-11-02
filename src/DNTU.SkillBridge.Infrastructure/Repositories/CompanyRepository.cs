@@ -1,5 +1,7 @@
 using DNTU.SkillBridge.Application.Companies;
+using DNTU.SkillBridge.Application.Projects;
 using DNTU.SkillBridge.Domain.Companies;
+using DNTU.SkillBridge.Domain.Projects;
 using DNTU.SkillBridge.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -185,5 +187,74 @@ public sealed class CompanyRepository(AppDbContext dbContext) : ICompanyReposito
         return await dbContext.Industries
             .Where(industry => ids.Contains(industry.Id))
             .ToDictionaryAsync(industry => industry.Id, industry => industry.Name, cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<object>> ListPublicProjectsByCompanyIdAsync(
+        Guid companyId, CancellationToken cancellationToken)
+    {
+        var rawProjects = await dbContext.Projects
+            .AsNoTracking()
+            .Where(project => project.CompanyId == companyId
+                && project.IsActive
+                && (project.Status == ProjectStatus.APPROVED
+                    || project.Status == ProjectStatus.RECRUITING
+                    || project.Status == ProjectStatus.IN_PROGRESS
+                    || project.Status == ProjectStatus.COMPLETED))
+            .OrderByDescending(project => project.CreatedAt)
+            .Select(project => new
+            {
+                project.Id,
+                project.Code,
+                project.Title,
+                project.Slug,
+                project.Summary,
+                Status = project.Status.ToString(),
+                Difficulty = project.Difficulty.ToString(),
+                WorkType = project.WorkType.ToString(),
+                project.DurationWeeks,
+                project.ApplicationDeadline,
+                project.ExpectedStudentCount,
+                project.AllowanceAmount,
+                project.AllowanceCurrency,
+                CompanyName = project.Company.Name,
+                CompanySlug = project.Company.Slug
+            })
+            .ToListAsync(cancellationToken);
+
+        if (rawProjects.Count == 0)
+        {
+            return [];
+        }
+
+        var projectIds = rawProjects.Select(p => p.Id).ToList();
+
+        var skills = await dbContext.ProjectSkills
+            .AsNoTracking()
+            .Where(ps => projectIds.Contains(ps.ProjectId))
+            .Join(dbContext.Skills.AsNoTracking(), ps => ps.SkillId, s => s.Id, (ps, s) => new { ps.ProjectId, s.Name })
+            .ToListAsync(cancellationToken);
+
+        var skillNamesByProject = skills
+            .GroupBy(x => x.ProjectId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyCollection<string>)g.Select(x => x.Name).ToList());
+
+        return rawProjects.Select(p => new PublicProjectListItemResponse(
+            p.Id,
+            p.Code,
+            p.Title,
+            p.Slug,
+            p.Summary,
+            p.Status,
+            p.Difficulty,
+            p.WorkType,
+            p.DurationWeeks,
+            p.ApplicationDeadline,
+            p.ExpectedStudentCount,
+            p.AllowanceAmount,
+            p.AllowanceCurrency,
+            p.CompanyName,
+            p.CompanySlug,
+            skillNamesByProject.GetValueOrDefault(p.Id, [])))
+            .ToList();
     }
 }

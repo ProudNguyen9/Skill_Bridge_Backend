@@ -103,6 +103,44 @@ public sealed class PortfolioRepository(AppDbContext dbContext) : IPortfolioRepo
         dbContext.StudentProfiles.AsNoTracking()
             .AnyAsync(profile => profile.Id == studentId && profile.Privacy.IsProfilePublic, cancellationToken);
 
+    public async Task<IReadOnlyCollection<SkillPassportCertificateResponse>> ListCertificatesAsync(Guid studentId, CancellationToken cancellationToken)
+    {
+        var evaluations = await dbContext.AcademicEvaluations.AsNoTracking()
+            .Where(e => e.StudentId == studentId && e.Status == AcademicEvaluationStatus.FINALIZED && e.FinalizedAt.HasValue)
+            .Join(dbContext.Projects.AsNoTracking(),
+                e => e.ProjectId,
+                p => p.Id,
+                (e, p) => new { Evaluation = e, Project = p })
+            .ToListAsync(cancellationToken);
+
+        var list = new List<SkillPassportCertificateResponse>();
+        foreach (var item in evaluations)
+        {
+            var company = await dbContext.Companies.AsNoTracking()
+                .Where(c => c.Id == item.Project.CompanyId)
+                .Select(c => c.Name)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            var hash = item.Evaluation.ProofHash ?? AcademicEvaluation.ComputeProofHash(item.Evaluation.StudentId, item.Evaluation.ProjectId, item.Evaluation.TotalScore, item.Evaluation.FinalizedAt!.Value);
+            var grade = item.Evaluation.TotalScore >= 90m ? "Xuất Sắc (Điểm A+)" :
+                        item.Evaluation.TotalScore >= 80m ? "Giỏi (Điểm A)" :
+                        item.Evaluation.TotalScore >= 70m ? "Khá (Điểm B)" :
+                        item.Evaluation.TotalScore >= 50m ? "Trung Bình (Điểm C)" : "Không Đạt (Điểm F)";
+
+            list.Add(new SkillPassportCertificateResponse(
+                item.Project.Id,
+                item.Project.Title,
+                $"#PRJ-{item.Project.Id.ToString()[..8].ToUpperInvariant()}",
+                company ?? "DNTU Partner",
+                item.Evaluation.TotalScore,
+                grade,
+                hash,
+                item.Evaluation.FinalizedAt!.Value));
+        }
+
+        return list;
+    }
+
     private async Task<IReadOnlyCollection<VerifiedSkillResponse>> ProjectVerifiedSkillsAsync(IQueryable<VerifiedSkill> query, CancellationToken cancellationToken)
     {
         var rows = await query
@@ -112,19 +150,33 @@ public sealed class PortfolioRepository(AppDbContext dbContext) : IPortfolioRepo
             .ThenBy(row => row.ProjectTitle)
             .ToListAsync(cancellationToken);
 
-        return rows.Select(row => new VerifiedSkillResponse(
-            row.verified.Id,
-            row.verified.StudentId,
-            row.verified.SkillId,
-            row.SkillName,
-            row.verified.ProjectId,
-            row.ProjectTitle,
-            row.verified.Level,
-            row.verified.IsRevoked,
-            row.verified.VerifiedAt,
-            row.verified.RevokedAt,
-            row.verified.EvidenceSubmissionId,
-            row.verified.EvidenceEvaluationId)).ToList();
+        var evalIds = rows.Where(r => r.verified.EvidenceEvaluationId.HasValue).Select(r => r.verified.EvidenceEvaluationId!.Value).Distinct().ToList();
+        var evaluations = evalIds.Count > 0
+            ? await dbContext.AcademicEvaluations.AsNoTracking().Where(e => evalIds.Contains(e.Id)).ToListAsync(cancellationToken)
+            : [];
+        var evalHashMap = evaluations.ToDictionary(e => e.Id, e => e.ProofHash);
+
+        return rows.Select(row => {
+            string? hash = null;
+            if (row.verified.EvidenceEvaluationId.HasValue)
+            {
+                evalHashMap.TryGetValue(row.verified.EvidenceEvaluationId.Value, out hash);
+            }
+            return new VerifiedSkillResponse(
+                row.verified.Id,
+                row.verified.StudentId,
+                row.verified.SkillId,
+                row.SkillName,
+                row.verified.ProjectId,
+                row.ProjectTitle,
+                row.verified.Level,
+                row.verified.IsRevoked,
+                row.verified.VerifiedAt,
+                row.verified.RevokedAt,
+                row.verified.EvidenceSubmissionId,
+                row.verified.EvidenceEvaluationId,
+                hash);
+        }).ToList();
     }
 
     private async Task<IReadOnlyCollection<PortfolioEntryResponse>> ProjectPortfolioAsync(IQueryable<PortfolioEntry> query, CancellationToken cancellationToken)

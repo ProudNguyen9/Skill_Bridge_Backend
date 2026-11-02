@@ -39,4 +39,6 @@ public interface IPortfolioRepository
     void AddPortfolioEntry(PortfolioEntry entry);
 
     Task<bool> IsProfilePublicAsync(Guid studentId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<SkillPassportCertificateResponse>> ListCertificatesAsync(Guid studentId, CancellationToken cancellationToken);
 }

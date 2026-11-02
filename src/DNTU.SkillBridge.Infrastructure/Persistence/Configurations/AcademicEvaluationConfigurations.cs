@@ -13,6 +13,7 @@ public sealed class AcademicEvaluationConfiguration : IEntityTypeConfiguration<A
         builder.Property(entity => entity.Status).HasConversion<string>().HasMaxLength(16).IsRequired();
         builder.Property(entity => entity.TotalScore).HasPrecision(5, 2);
         builder.Property(entity => entity.Version).IsConcurrencyToken();
+        builder.Ignore(entity => entity.ProofHash);
         builder.HasIndex(entity => new { entity.ProjectId, entity.StudentId, entity.RubricId }).IsUnique();
         builder.HasIndex(entity => new { entity.EvaluatorUserId, entity.Status });
         builder.HasMany(entity => entity.Scores).WithOne().HasForeignKey(entity => entity.EvaluationId).OnDelete(DeleteBehavior.Cascade);

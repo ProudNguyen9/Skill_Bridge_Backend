@@ -27,6 +27,13 @@ public sealed class TaskCollaborationRepository(AppDbContext dbContext) : ITaskC
     public Task<TaskChecklistItem?> FindChecklistItemAsync(Guid itemId, CancellationToken cancellationToken) =>
         dbContext.TaskChecklistItems.SingleOrDefaultAsync(entry => entry.Id == itemId, cancellationToken);
 
+    public async Task<IReadOnlyCollection<TaskChecklistItemResponse>> ListChecklistItemsAsync(Guid taskId, CancellationToken cancellationToken) =>
+        await dbContext.TaskChecklistItems.AsNoTracking()
+            .Where(item => item.ProjectTaskId == taskId)
+            .OrderBy(item => item.SortOrder).ThenBy(item => item.CreatedAt)
+            .Select(item => new TaskChecklistItemResponse(item.Id, item.ProjectTaskId, item.Title, item.IsCompleted, item.SortOrder))
+            .ToListAsync(cancellationToken);
+
     public Task<int?> GetMaxChecklistSortOrderAsync(Guid taskId, CancellationToken cancellationToken) =>
         dbContext.TaskChecklistItems.Where(item => item.ProjectTaskId == taskId).Select(item => (int?)item.SortOrder).MaxAsync(cancellationToken);
 

@@ -56,12 +56,52 @@ public sealed class AcademicEvaluationRepository(AppDbContext dbContext) : IAcad
         dbContext.Rubrics.Include(item => item.Criteria)
             .SingleOrDefaultAsync(item => item.Id == rubricId && item.IsLocked, cancellationToken);
 
-    public Task<bool> HasApprovedCourseProjectAsync(Guid projectId, Guid rubricId, CancellationToken cancellationToken) =>
-        dbContext.CourseProjects.AnyAsync(mapping =>
+    private static readonly Guid DefaultCapstoneRubricId = new("01a161b5-4ef3-7ce0-8ea9-0e14d201ca4e");
+
+    public async Task<bool> HasApprovedCourseProjectAsync(Guid projectId, Guid rubricId, CancellationToken cancellationToken)
+    {
+        var hasExplicit = await dbContext.CourseProjects.AnyAsync(mapping =>
             mapping.ProjectId == projectId &&
             mapping.RubricId == rubricId &&
             mapping.Status == CourseProjectStatus.APPROVED,
             cancellationToken);
+        if (hasExplicit) return true;
+
+        if (rubricId == DefaultCapstoneRubricId)
+        {
+            return await dbContext.Projects.AnyAsync(p => p.Id == projectId, cancellationToken);
+        }
+
+        return false;
+    }
+
+    public async Task<RubricResponse?> GetProjectRubricAsync(Guid projectId, CancellationToken cancellationToken)
+    {
+        var mappedRubricId = await dbContext.CourseProjects.AsNoTracking()
+            .Where(cp => cp.ProjectId == projectId && cp.Status == CourseProjectStatus.APPROVED)
+            .Select(cp => (Guid?)cp.RubricId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var targetRubricId = mappedRubricId ?? DefaultCapstoneRubricId;
+
+        var rubric = await dbContext.Rubrics.AsNoTracking()
+            .Include(r => r.Criteria)
+            .FirstOrDefaultAsync(r => r.Id == targetRubricId, cancellationToken);
+
+        if (rubric is not null && rubric.Criteria.Count > 0)
+        {
+            return new RubricResponse(
+                rubric.Id,
+                rubric.LecturerId,
+                rubric.Name,
+                rubric.IsLocked,
+                rubric.Criteria.OrderBy(c => c.SortOrder)
+                    .Select(c => new RubricCriterionResponse(c.Id, c.RubricId, c.Name, c.Weight, c.SortOrder))
+                    .ToList());
+        }
+
+        return null;
+    }
 
     public Task<bool> HasAcceptedSubmissionAsync(Guid projectId, CancellationToken cancellationToken) =>
         dbContext.ProjectSubmissions.AsNoTracking()

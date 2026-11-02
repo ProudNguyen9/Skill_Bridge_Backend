@@ -20,6 +20,7 @@ public sealed class FilesController(
     /// Lấy danh sách files từ S3/Filebase bucket hoặc thông tin chi tiết một file nếu truyền key.
     /// </summary>
     [HttpGet("/files")]
+    [HttpGet("api/v1/files")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(IReadOnlyList<StorageItemDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFiles(
@@ -58,6 +59,7 @@ public sealed class FilesController(
     /// Upload file trực tiếp lên Filebase S3 bucket.
     /// </summary>
     [HttpPost("/files")]
+    [HttpPost("api/v1/files")]
     [AllowAnonymous]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -111,6 +113,7 @@ public sealed class FilesController(
     /// Xóa file khỏi S3/Filebase bucket theo key.
     /// </summary>
     [HttpDelete("/files")]
+    [HttpDelete("api/v1/files")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

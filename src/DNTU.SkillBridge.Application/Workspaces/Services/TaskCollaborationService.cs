@@ -56,6 +56,12 @@ public sealed class TaskCollaborationService(ITaskCollaborationRepository collab
         return (TaskCollaborationOutcome.Success, Map(item));
     }
 
+    public async Task<IReadOnlyCollection<TaskChecklistItemResponse>?> ListChecklistItemsAsync(ICurrentUser currentUser, Guid taskId, CancellationToken cancellationToken)
+    {
+        if (await AccessibleTaskAsync(currentUser, taskId, cancellationToken) is null) return null;
+        return await collaborationRepository.ListChecklistItemsAsync(taskId, cancellationToken);
+    }
+
     public async Task<(TaskCollaborationOutcome Outcome, TaskChecklistItemResponse? Item)> UpdateChecklistItemAsync(ICurrentUser currentUser, Guid itemId, UpdateChecklistItemRequest request, CancellationToken cancellationToken)
     {
         var item = await collaborationRepository.FindChecklistItemAsync(itemId, cancellationToken);

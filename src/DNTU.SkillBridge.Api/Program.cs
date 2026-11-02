@@ -106,6 +106,34 @@ builder.Services
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+const string CorsPolicyName = "AllowFrontend";
+
+var defaultAllowedOrigins = new[]
+{
+    "http://localhost:5017",
+    "http://localhost:5173",
+    "http://localhost:3000"
+};
+
+var configuredOrigins = builder.Configuration
+    .GetSection(CorsOptions.SectionName)
+    .Get<CorsOptions>()?.AllowedOrigins ?? [];
+
+var effectiveOrigins = defaultAllowedOrigins
+    .Union(configuredOrigins, StringComparer.OrdinalIgnoreCase)
+    .ToArray();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(CorsPolicyName, policy =>
+    {
+        policy.WithOrigins(effectiveOrigins)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 builder.Services
     .AddOptions<StorageOptions>()
     .BindConfiguration(StorageOptions.SectionName)
@@ -205,6 +233,7 @@ builder.Services.AddScoped<IOutboxEnqueuer>(provider => provider.GetRequiredServ
 builder.Services.AddHostedService<OutboxProcessor>();
 builder.Services.AddHostedService<DNTU.SkillBridge.Infrastructure.Files.FileCleanupService>();
 builder.Services.AddSignalR();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Workspaces.IProjectRealtimeNotifier, DNTU.SkillBridge.Api.Realtime.ProjectRealtimeNotifier>();
 builder.Services.AddHttpClient(nameof(DNTU.SkillBridge.Api.Files.S3CompatibleFileStorage));
 var storageOptions = builder.Configuration.GetSection(StorageOptions.SectionName).Get<StorageOptions>() ?? new StorageOptions();
 if (storageOptions.Enabled && (string.Equals(storageOptions.Provider, "MinIO", StringComparison.OrdinalIgnoreCase) || string.Equals(storageOptions.Provider, "S3", StringComparison.OrdinalIgnoreCase) || string.Equals(storageOptions.Provider, "Filebase", StringComparison.OrdinalIgnoreCase)))
@@ -366,6 +395,7 @@ app.Use(async (context, next) =>
 });
 app.UseStatusCodePages();
 app.UseHttpsRedirection();
+app.UseCors(CorsPolicyName);
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();

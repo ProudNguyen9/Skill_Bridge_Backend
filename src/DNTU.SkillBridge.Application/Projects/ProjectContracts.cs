@@ -336,3 +336,27 @@ public sealed record PublicProjectDeliverableResponse(
     string Name,
     string? Description,
     int SortOrder);
+
+public sealed record PublicProjectMilestoneResponse(
+    Guid Id,
+    Guid ProjectId,
+    string Title,
+    string? Description,
+    int Sequence,
+    DateTimeOffset DueAt,
+    string Status,
+    IReadOnlyCollection<PublicProjectMilestoneDeliverableResponse> Deliverables);
+
+public sealed record PublicProjectMilestoneDeliverableResponse(
+    Guid Id,
+    string Name,
+    string? Criteria);
+
+public sealed record ProjectTeamMemberResponse(
+    Guid StudentId,
+    Guid UserId,
+    string DisplayName,
+    string? StudentCode,
+    string? Email,
+    string Role,
+    DateTimeOffset JoinedAt);
