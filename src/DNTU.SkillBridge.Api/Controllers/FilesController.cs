@@ -56,6 +56,29 @@ public sealed class FilesController(
     }
 
     /// <summary>
+    /// Chuyển hướng trực tiếp đến signed download URL để browser load ảnh được ngay không bị 403.
+    /// </summary>
+    [HttpGet("/files/view")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ViewFile([FromQuery] string key, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return BadRequest(new { message = "Key không hợp lệ." });
+        }
+
+        try
+        {
+            var downloadUrl = await fileStorage.CreateDownloadUrlAsync(key, TimeSpan.FromHours(24), cancellationToken);
+            return Redirect(downloadUrl.ToString());
+        }
+        catch (Exception ex)
+        {
+            return NotFound(new { message = $"Không tìm thấy file: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
     /// Upload file trực tiếp lên Filebase S3 bucket.
     /// </summary>
     [HttpPost("/files")]
@@ -89,6 +112,7 @@ public sealed class FilesController(
             {
                 return Conflict(new { message = "File key already exists or file metadata is invalid." });
             }
+            var viewUrl = $"{Request.Scheme}://{Request.Host}/files/view?key={Uri.EscapeDataString(storageKey)}";
 
             return Ok(new
             {
@@ -99,7 +123,7 @@ public sealed class FilesController(
                 fileName = file.FileName,
                 size = file.Length,
                 contentType = file.ContentType,
-                directUrl = upload.DirectUrl.ToString(),
+                directUrl = viewUrl,
                 downloadUrl = upload.DownloadUrl.ToString()
             });
         }

@@ -312,6 +312,19 @@ builder.Services.AddRateLimiter(options =>
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 
+builder.Services.AddCors(options =>
+{
+    var corsConfig = builder.Configuration.GetSection(CorsOptions.SectionName).Get<CorsOptions>();
+    var origins = corsConfig?.AllowedOrigins?.ToArray() ?? ["http://localhost:5173", "http://localhost:3000"];
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins(origins)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -408,6 +421,7 @@ app.UseStaticFiles(new StaticFileOptions
     ServeUnknownFileTypes = true
 });
 app.UseRateLimiter();
+app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapHub<NotificationHub>("/hubs/notifications");

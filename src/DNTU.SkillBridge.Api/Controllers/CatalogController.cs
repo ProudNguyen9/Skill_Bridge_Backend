@@ -26,6 +26,7 @@ public sealed class CatalogController(ICatalogService catalogService, ICurrentUs
 
     /// <summary>Lists active industries used to classify companies and projects.</summary>
     [HttpGet("industries")]
+    [HttpGet("/api/v1/industries")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<IndustryResponse>>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -36,6 +37,7 @@ public sealed class CatalogController(ICatalogService catalogService, ICurrentUs
 
     /// <summary>Lists active faculties; majors are grouped beneath each faculty.</summary>
     [HttpGet("faculties")]
+    [HttpGet("/api/v1/faculties")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<FacultyResponse>>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -46,6 +48,7 @@ public sealed class CatalogController(ICatalogService catalogService, ICurrentUs
 
     /// <summary>Lists active majors, optionally filtered to a single faculty.</summary>
     [HttpGet("majors")]
+    [HttpGet("/api/v1/majors")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<MajorResponse>>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -66,6 +69,7 @@ public sealed class CatalogController(ICatalogService catalogService, ICurrentUs
 
     /// <summary>Returns the configured project metadata: difficulties, work types, duration, team size, and allowance bounds.</summary>
     [HttpGet("project-metadata")]
+    [HttpGet("/api/v1/project-metadata")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(ApiResponse<ProjectMetadataResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<ProjectMetadataResponse>>> GetProjectMetadata(CancellationToken cancellationToken) =>

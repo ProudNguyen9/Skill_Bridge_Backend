@@ -35,7 +35,7 @@ public sealed class UpdateCompanyProfileRequest
     [StringLength(2000)]
     public string? Description { get; init; }
 
-    [Url, StringLength(500)]
+    [StringLength(500)]
     public string? LogoUrl { get; init; }
 
     [StringLength(500)]

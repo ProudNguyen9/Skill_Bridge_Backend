@@ -788,11 +788,11 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
     public async Task<PublicProjectDetailResponse?> GetPublicProjectBySlugAsync(
         string slug, CancellationToken cancellationToken)
     {
-        var isGuid = Guid.TryParse(slug, out var pid);
+        var isGuid = Guid.TryParse(slug, out var projectId);
         var project = await dbContext.Projects
             .AsNoTracking()
             .Include(item => item.Deliverables)
-            .SingleOrDefaultAsync(item => (item.Slug == slug || (isGuid && item.Id == pid)) && item.IsActive && PubliclyVisibleStatuses.Contains(item.Status), cancellationToken);
+            .SingleOrDefaultAsync(item => (item.Slug == slug || (isGuid && item.Id == projectId)) && item.IsActive && PubliclyVisibleStatuses.Contains(item.Status), cancellationToken);
         if (project is null)
         {
             return null;
