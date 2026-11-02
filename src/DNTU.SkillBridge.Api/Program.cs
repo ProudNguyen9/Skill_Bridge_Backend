@@ -30,6 +30,8 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
 var envFile = Path.Combine(builder.Environment.ContentRootPath, ".env");
 if (!File.Exists(envFile) && builder.Environment.IsDevelopment())
 {

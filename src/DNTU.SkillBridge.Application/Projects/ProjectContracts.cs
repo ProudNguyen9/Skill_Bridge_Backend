@@ -279,6 +279,11 @@ public sealed class PublicProjectFilterQuery : PageQuery
 /// Public project list row. Deliberately excludes private company documents,
 /// internal approval notes, team member data, and payment data (14.01).
 /// </summary>
+public sealed record PublicProjectMemberSummary(
+    Guid StudentId,
+    string? DisplayName,
+    string? AvatarUrl);
+
 public sealed record PublicProjectListItemResponse(
     Guid Id,
     string Code,
@@ -296,7 +301,8 @@ public sealed record PublicProjectListItemResponse(
     string CompanyName,
     string CompanySlug,
     IReadOnlyCollection<string> SkillNames,
-    int CurrentStudentCount = 0);
+    int CurrentStudentCount = 0,
+    IReadOnlyCollection<PublicProjectMemberSummary>? Members = null);
 
 /// <summary>Public project detail; never exposes internal workflow or private company data.</summary>
 public sealed record PublicProjectDetailResponse(
@@ -326,7 +332,8 @@ public sealed record PublicProjectDetailResponse(
     string? IndustryName,
     IReadOnlyCollection<PublicProjectSkillResponse> Skills,
     IReadOnlyCollection<PublicProjectDeliverableResponse> Deliverables,
-    int CurrentStudentCount = 0);
+    int CurrentStudentCount = 0,
+    IReadOnlyCollection<PublicProjectMemberSummary>? Members = null);
 
 public sealed record PublicProjectSkillResponse(
     Guid SkillId,

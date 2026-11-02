@@ -20,4 +20,5 @@ public sealed class ProjectMember : AuditableEntity
     }
 
     public void Deactivate() => IsActive = false;
+    public void AssignRole(ProjectMemberRole role) => Role = role;
 }

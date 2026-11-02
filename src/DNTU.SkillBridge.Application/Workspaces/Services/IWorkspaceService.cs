@@ -11,6 +11,8 @@ public interface IWorkspaceService
 
     Task<IReadOnlyCollection<WorkspaceMemberResponse>?> GetTeamAsync(ICurrentUser currentUser, Guid projectId, CancellationToken cancellationToken);
 
+    Task<bool> AssignLeaderAsync(ICurrentUser currentUser, Guid projectId, Guid newLeaderStudentId, CancellationToken cancellationToken);
+
     Task<PagedResponse<WorkspaceActivityResponse>?> GetActivityAsync(ICurrentUser currentUser, Guid projectId, WorkspaceActivityQuery query, CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<WorkspaceOverviewResponse>> ListMyProjectsAsync(ICurrentUser currentUser, CancellationToken cancellationToken);

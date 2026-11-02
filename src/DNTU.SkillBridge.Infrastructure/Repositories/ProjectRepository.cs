@@ -708,23 +708,47 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
         var projectIds = rows.Select(row => row.Id).ToList();
         var skillNamesByProject = await LoadSkillNamesAsync(projectIds, cancellationToken);
 
-        var memberStudentIds = await dbContext.ProjectMembers
-            .AsNoTracking()
-            .Where(m => projectIds.Contains(m.ProjectId) && m.IsActive)
-            .Select(m => new { m.ProjectId, m.StudentId })
-            .ToListAsync(cancellationToken);
+        var memberStudentRows = await (
+            from m in dbContext.ProjectMembers.AsNoTracking()
+            where projectIds.Contains(m.ProjectId) && m.IsActive
+            join s in dbContext.StudentProfiles.AsNoTracking() on m.StudentId equals s.Id
+            join u in dbContext.Users.AsNoTracking() on s.UserId equals u.Id
+            select new
+            {
+                m.ProjectId,
+                StudentId = s.Id,
+                u.DisplayName,
+                s.AvatarUrl
+            }
+        ).ToListAsync(cancellationToken);
 
-        var acceptedAppStudentIds = await dbContext.Applications
-            .AsNoTracking()
-            .Where(a => projectIds.Contains(a.ProjectId) && a.Status == ApplicationStatus.ACCEPTED)
-            .Select(a => new { a.ProjectId, a.StudentId })
-            .ToListAsync(cancellationToken);
+        var acceptedAppRows = await (
+            from a in dbContext.Applications.AsNoTracking()
+            where projectIds.Contains(a.ProjectId) && a.Status == ApplicationStatus.ACCEPTED
+            join s in dbContext.StudentProfiles.AsNoTracking() on a.StudentId equals s.Id
+            join u in dbContext.Users.AsNoTracking() on s.UserId equals u.Id
+            select new
+            {
+                a.ProjectId,
+                StudentId = s.Id,
+                u.DisplayName,
+                s.AvatarUrl
+            }
+        ).ToListAsync(cancellationToken);
 
-        var currentCountsByProject = memberStudentIds
-            .Concat(acceptedAppStudentIds)
-            .Distinct()
+        var allProjectMembers = memberStudentRows
+            .Concat(acceptedAppRows)
+            .GroupBy(x => new { x.ProjectId, x.StudentId })
+            .Select(g => g.First())
             .GroupBy(x => x.ProjectId)
-            .ToDictionary(g => g.Key, g => g.Count());
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyCollection<PublicProjectMemberSummary>)g
+                    .Select(x => new PublicProjectMemberSummary(x.StudentId, x.DisplayName, x.AvatarUrl))
+                    .ToList()
+            );
+
+        var currentCountsByProject = allProjectMembers.ToDictionary(g => g.Key, g => g.Value.Count);
 
         var items = rows
             .Select(row => new PublicProjectListItemResponse(
@@ -744,7 +768,8 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
                 row.CompanyName,
                 row.CompanySlug,
                 skillNamesByProject.GetValueOrDefault(row.Id, []),
-                currentCountsByProject.GetValueOrDefault(row.Id, 0)))
+                currentCountsByProject.GetValueOrDefault(row.Id, 0),
+                allProjectMembers.GetValueOrDefault(row.Id, [])))
             .ToList();
 
         return new PagedResponse<PublicProjectListItemResponse>(
@@ -792,19 +817,29 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             .Select(deliverable => new PublicProjectDeliverableResponse(deliverable.Name, deliverable.Description, deliverable.SortOrder))
             .ToList();
 
-        var memberStudentIds = await dbContext.ProjectMembers
-            .AsNoTracking()
-            .Where(m => m.ProjectId == project.Id && m.IsActive)
-            .Select(m => m.StudentId)
-            .ToListAsync(cancellationToken);
+        var memberStudentRows = await (
+            from m in dbContext.ProjectMembers.AsNoTracking()
+            where m.ProjectId == project.Id && m.IsActive
+            join s in dbContext.StudentProfiles.AsNoTracking() on m.StudentId equals s.Id
+            join u in dbContext.Users.AsNoTracking() on s.UserId equals u.Id
+            select new PublicProjectMemberSummary(s.Id, u.DisplayName, s.AvatarUrl)
+        ).ToListAsync(cancellationToken);
 
-        var acceptedAppStudentIds = await dbContext.Applications
-            .AsNoTracking()
-            .Where(a => a.ProjectId == project.Id && a.Status == ApplicationStatus.ACCEPTED)
-            .Select(a => a.StudentId)
-            .ToListAsync(cancellationToken);
+        var acceptedAppRows = await (
+            from a in dbContext.Applications.AsNoTracking()
+            where a.ProjectId == project.Id && a.Status == ApplicationStatus.ACCEPTED
+            join s in dbContext.StudentProfiles.AsNoTracking() on a.StudentId equals s.Id
+            join u in dbContext.Users.AsNoTracking() on s.UserId equals u.Id
+            select new PublicProjectMemberSummary(s.Id, u.DisplayName, s.AvatarUrl)
+        ).ToListAsync(cancellationToken);
 
-        var currentStudentCount = memberStudentIds.Concat(acceptedAppStudentIds).Distinct().Count();
+        var distinctMembers = memberStudentRows
+            .Concat(acceptedAppRows)
+            .GroupBy(x => x.StudentId)
+            .Select(g => g.First())
+            .ToList();
+
+        var currentStudentCount = distinctMembers.Count;
 
         return new PublicProjectDetailResponse(
             project.Id,
@@ -833,7 +868,8 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             industryName,
             skills.GetValueOrDefault(project.Id, []),
             deliverables,
-            currentStudentCount);
+            currentStudentCount,
+            distinctMembers);
     }
 
     /// <summary>Skill requirements of one publicly visible project; null when the project is not publicly accessible.</summary>
@@ -937,23 +973,47 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
         var relProjectIds = ordered.Select(row => row.Id).ToList();
         var skillNamesByProject = await LoadSkillNamesAsync(relProjectIds, cancellationToken);
 
-        var memberStudentIds = await dbContext.ProjectMembers
-            .AsNoTracking()
-            .Where(m => relProjectIds.Contains(m.ProjectId) && m.IsActive)
-            .Select(m => new { m.ProjectId, m.StudentId })
-            .ToListAsync(cancellationToken);
+        var memberStudentRowsRel = await (
+            from m in dbContext.ProjectMembers.AsNoTracking()
+            where relProjectIds.Contains(m.ProjectId) && m.IsActive
+            join s in dbContext.StudentProfiles.AsNoTracking() on m.StudentId equals s.Id
+            join u in dbContext.Users.AsNoTracking() on s.UserId equals u.Id
+            select new
+            {
+                m.ProjectId,
+                StudentId = s.Id,
+                u.DisplayName,
+                s.AvatarUrl
+            }
+        ).ToListAsync(cancellationToken);
 
-        var acceptedAppStudentIds = await dbContext.Applications
-            .AsNoTracking()
-            .Where(a => relProjectIds.Contains(a.ProjectId) && a.Status == ApplicationStatus.ACCEPTED)
-            .Select(a => new { a.ProjectId, a.StudentId })
-            .ToListAsync(cancellationToken);
+        var acceptedAppRowsRel = await (
+            from a in dbContext.Applications.AsNoTracking()
+            where relProjectIds.Contains(a.ProjectId) && a.Status == ApplicationStatus.ACCEPTED
+            join s in dbContext.StudentProfiles.AsNoTracking() on a.StudentId equals s.Id
+            join u in dbContext.Users.AsNoTracking() on s.UserId equals u.Id
+            select new
+            {
+                a.ProjectId,
+                StudentId = s.Id,
+                u.DisplayName,
+                s.AvatarUrl
+            }
+        ).ToListAsync(cancellationToken);
 
-        var currentCountsByProject = memberStudentIds
-            .Concat(acceptedAppStudentIds)
-            .Distinct()
+        var allRelProjectMembers = memberStudentRowsRel
+            .Concat(acceptedAppRowsRel)
+            .GroupBy(x => new { x.ProjectId, x.StudentId })
+            .Select(g => g.First())
             .GroupBy(x => x.ProjectId)
-            .ToDictionary(g => g.Key, g => g.Count());
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyCollection<PublicProjectMemberSummary>)g
+                    .Select(x => new PublicProjectMemberSummary(x.StudentId, x.DisplayName, x.AvatarUrl))
+                    .ToList()
+            );
+
+        var currentCountsByRelProject = allRelProjectMembers.ToDictionary(g => g.Key, g => g.Value.Count);
 
         return ordered
             .Select(row => new PublicProjectListItemResponse(
@@ -973,7 +1033,8 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
                 row.CompanyName,
                 row.CompanySlug,
                 skillNamesByProject.GetValueOrDefault(row.Id, []),
-                currentCountsByProject.GetValueOrDefault(row.Id, 0)))
+                currentCountsByRelProject.GetValueOrDefault(row.Id, 0),
+                allRelProjectMembers.GetValueOrDefault(row.Id, [])))
             .ToList();
     }
 

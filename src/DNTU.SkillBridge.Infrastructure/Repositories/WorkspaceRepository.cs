@@ -1,4 +1,5 @@
 using DNTU.SkillBridge.Application.Workspaces;
+using DNTU.SkillBridge.Domain.Lecturers;
 using DNTU.SkillBridge.Domain.Workspaces;
 using DNTU.SkillBridge.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -34,11 +35,71 @@ public sealed class WorkspaceRepository(AppDbContext dbContext) : IWorkspaceRepo
                          {
                              member.StudentId,
                              DisplayName = (u != null && !string.IsNullOrWhiteSpace(u.DisplayName)) ? u.DisplayName : (student.StudentCode ?? "Student"),
-                             JoinedAt = member.CreatedAt
+                             JoinedAt = member.CreatedAt,
+                             StudentCode = student.StudentCode,
+                             Email = u != null ? u.Email : null,
+                             Role = member.Role
                          })
-                         .OrderBy(m => m.DisplayName)
+                         .OrderBy(m => m.JoinedAt)
                          .ToListAsync(cancellationToken);
-        return raw.Select(m => new WorkspaceMemberResponse(m.StudentId, m.DisplayName, m.JoinedAt)).ToList();
+
+        if (raw.Count == 0) return [];
+
+        var explicitLeader = raw.FirstOrDefault(m => m.Role == ProjectMemberRole.LEADER);
+        var leaderStudentId = explicitLeader?.StudentId ?? raw.First().StudentId;
+
+        return raw.Select(m => new WorkspaceMemberResponse(
+            m.StudentId,
+            m.DisplayName,
+            m.JoinedAt,
+            m.StudentCode,
+            m.Email,
+            m.StudentId == leaderStudentId ? "LEADER" : m.Role.ToString(),
+            m.StudentId == leaderStudentId
+        )).ToList();
+    }
+
+    public async Task<(string? Name, string? Email, string? Department, string? Title)?> FindProjectSupervisorAsync(Guid projectId, CancellationToken cancellationToken)
+    {
+        var supervisor = await (from assignment in dbContext.LecturerAssignments.AsNoTracking()
+                                where assignment.ProjectId == projectId && assignment.Status == LecturerAssignmentStatus.ACTIVE
+                                join lecturer in dbContext.LecturerProfiles.AsNoTracking() on assignment.LecturerId equals lecturer.Id
+                                join user in dbContext.Users.AsNoTracking() on lecturer.UserId equals user.Id into userGroup
+                                from u in userGroup.DefaultIfEmpty()
+                                select new
+                                {
+                                    Name = u != null && !string.IsNullOrWhiteSpace(u.DisplayName) ? u.DisplayName : lecturer.LecturerCode,
+                                    Email = u != null ? u.Email : null,
+                                    Department = lecturer.Department,
+                                    Title = lecturer.AcademicTitle
+                                })
+                                .FirstOrDefaultAsync(cancellationToken);
+
+        return supervisor is null ? null : (supervisor.Name, supervisor.Email, supervisor.Department, supervisor.Title);
+    }
+
+    public async Task<bool> AssignProjectLeaderAsync(Guid projectId, Guid newLeaderStudentId, CancellationToken cancellationToken)
+    {
+        var members = await dbContext.ProjectMembers
+            .Where(m => m.ProjectId == projectId && m.IsActive)
+            .ToListAsync(cancellationToken);
+
+        var targetMember = members.FirstOrDefault(m => m.StudentId == newLeaderStudentId);
+        if (targetMember is null) return false;
+
+        foreach (var m in members)
+        {
+            if (m.StudentId == newLeaderStudentId)
+            {
+                m.AssignRole(ProjectMemberRole.LEADER);
+            }
+            else if (m.Role == ProjectMemberRole.LEADER)
+            {
+                m.AssignRole(ProjectMemberRole.STUDENT);
+            }
+        }
+
+        return true;
     }
 
     public async Task<(int TotalCount, IReadOnlyCollection<WorkspaceActivityResponse> Items)> ListActivityAsync(Guid projectId, string? eventType, WorkspaceActivityQuery query, CancellationToken cancellationToken)
@@ -59,20 +120,47 @@ public sealed class WorkspaceRepository(AppDbContext dbContext) : IWorkspaceRepo
     public async Task<IReadOnlyCollection<WorkspaceProjectSummaryRow>> ListMyProjectsAsync(Guid userId, CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow;
-        // Correlated counts preserve a single server-side projection rather than an N+1 overview loop.
-        return await dbContext.Projects.AsNoTracking()
+        var projects = await dbContext.Projects.AsNoTracking()
             .Where(project => dbContext.ProjectMembers.Any(member => member.ProjectId == project.Id && member.IsActive && member.Student.UserId == userId))
             .OrderByDescending(project => project.UpdatedAt)
             .ThenByDescending(project => project.Id)
-            .Select(project => new WorkspaceProjectSummaryRow(
+            .Select(project => new
+            {
                 project.Id,
                 project.Title,
                 project.Slug,
                 project.Status,
-                dbContext.ProjectMembers.Count(member => member.ProjectId == project.Id && member.IsActive),
-                dbContext.ProjectTasks.Count(task => task.ProjectId == project.Id && !task.IsDeleted && task.Status != ProjectTaskStatus.DONE),
-                dbContext.ProjectTasks.Count(task => task.ProjectId == project.Id && !task.IsDeleted && task.Status != ProjectTaskStatus.DONE && task.DueAt < now)))
+                MemberCount = dbContext.ProjectMembers.Count(member => member.ProjectId == project.Id && member.IsActive),
+                OpenTaskCount = dbContext.ProjectTasks.Count(task => task.ProjectId == project.Id && !task.IsDeleted && task.Status != ProjectTaskStatus.DONE),
+                OverdueTaskCount = dbContext.ProjectTasks.Count(task => task.ProjectId == project.Id && !task.IsDeleted && task.Status != ProjectTaskStatus.DONE && task.DueAt < now),
+                Supervisor = (from assignment in dbContext.LecturerAssignments
+                              where assignment.ProjectId == project.Id && assignment.Status == LecturerAssignmentStatus.ACTIVE
+                              join lecturer in dbContext.LecturerProfiles on assignment.LecturerId equals lecturer.Id
+                              join user in dbContext.Users on lecturer.UserId equals user.Id into userGroup
+                              from u in userGroup.DefaultIfEmpty()
+                              select new
+                              {
+                                  Name = u != null && !string.IsNullOrWhiteSpace(u.DisplayName) ? u.DisplayName : lecturer.LecturerCode,
+                                  Email = u != null ? u.Email : null,
+                                  Department = lecturer.Department,
+                                  Title = lecturer.AcademicTitle
+                              }).FirstOrDefault()
+            })
             .ToListAsync(cancellationToken);
+
+        return projects.Select(p => new WorkspaceProjectSummaryRow(
+            p.Id,
+            p.Title,
+            p.Slug,
+            p.Status,
+            p.MemberCount,
+            p.OpenTaskCount,
+            p.OverdueTaskCount,
+            p.Supervisor?.Name,
+            p.Supervisor?.Email,
+            p.Supervisor?.Department,
+            p.Supervisor?.Title
+        )).ToList();
     }
 
     public Task<WorkspaceSettings?> FindSettingsAsync(Guid projectId, CancellationToken cancellationToken) =>

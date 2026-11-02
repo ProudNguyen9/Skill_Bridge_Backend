@@ -31,6 +31,17 @@ public sealed class WorkspacesController(IWorkspaceService workspaceService, ICu
         return team is null ? NotFound() : Ok(new ApiResponse<IReadOnlyCollection<WorkspaceMemberResponse>>(team));
     }
 
+    [HttpPut("workspaces/{projectId:guid}/team/leader")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AssignLeader(Guid projectId, [FromBody] AssignProjectLeaderRequest request, CancellationToken cancellationToken)
+    {
+        var success = await workspaceService.AssignLeaderAsync(currentUser, projectId, request.StudentId, cancellationToken);
+        return success ? NoContent() : BadRequest();
+    }
+
     [HttpGet("workspaces/{projectId:guid}/activity")]
     [ProducesResponseType(typeof(PagedResponse<WorkspaceActivityResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedResponse<WorkspaceActivityResponse>>> Activity(Guid projectId, [FromQuery] WorkspaceActivityQuery query, CancellationToken cancellationToken)
