@@ -1,10 +1,15 @@
 using DNTU.SkillBridge.Application.Abstractions;
+using DNTU.SkillBridge.Application.Workspaces;
 using DNTU.SkillBridge.Domain.Commitments;
+using DNTU.SkillBridge.Domain.Projects;
 using DNTU.SkillBridge.Domain.Workspaces;
 
 namespace DNTU.SkillBridge.Application.Commitments;
 
-public sealed class CommitmentService(ICommitmentRepository commitmentRepository, IUnitOfWork unitOfWork) : ICommitmentService
+public sealed class CommitmentService(
+    ICommitmentRepository commitmentRepository,
+    IUnitOfWork unitOfWork,
+    IProjectRealtimeNotifier? realtimeNotifier = null) : ICommitmentService
 {
     public async Task<CommitmentResponse?> GetAsync(Guid userId, Guid projectId, CancellationToken cancellationToken)
     {
@@ -29,11 +34,25 @@ public sealed class CommitmentService(ICommitmentRepository commitmentRepository
         try { commitment.Confirm(DateTimeOffset.UtcNow); }
         catch (InvalidOperationException) { return null; }
 
+        var project = await commitmentRepository.FindProjectForUpdateAsync(projectId, cancellationToken);
+        var statusAdvanced = false;
+        if (project is not null && project.Status != ProjectStatus.IN_PROGRESS)
+        {
+            project.StartExecution();
+            statusAdvanced = true;
+        }
+
         var membershipExists = await commitmentRepository.HasProjectMembershipAsync(projectId, studentId.Value, cancellationToken);
         if (!membershipExists) commitmentRepository.AddProjectMember(new ProjectMember(projectId, studentId.Value));
         commitmentRepository.AddProjectActivity(new ProjectActivity(projectId, "COMMITMENT_CONFIRMED", userId));
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+
+        if (statusAdvanced && realtimeNotifier is not null)
+        {
+            await realtimeNotifier.NotifyProjectStatusChangedAsync(projectId, "IN_PROGRESS", cancellationToken);
+        }
+
         return await commitmentRepository.FindCommitmentAsync(projectId, studentId.Value, cancellationToken);
     }
 

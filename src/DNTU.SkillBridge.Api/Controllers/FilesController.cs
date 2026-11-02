@@ -20,6 +20,7 @@ public sealed class FilesController(
     /// Lấy danh sách files từ S3/Filebase bucket hoặc thông tin chi tiết một file nếu truyền key.
     /// </summary>
     [HttpGet("/files")]
+    [HttpGet("api/v1/files")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(IReadOnlyList<StorageItemDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFiles(
@@ -81,6 +82,7 @@ public sealed class FilesController(
     /// Upload file trực tiếp lên Filebase S3 bucket.
     /// </summary>
     [HttpPost("/files")]
+    [HttpPost("api/v1/files")]
     [AllowAnonymous]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -135,6 +137,7 @@ public sealed class FilesController(
     /// Xóa file khỏi S3/Filebase bucket theo key.
     /// </summary>
     [HttpDelete("/files")]
+    [HttpDelete("api/v1/files")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -175,6 +178,36 @@ public sealed class FilesController(
                 key
             });
         }
+    }
+
+        /// <summary>
+    /// Tải / xem file trực tiếp từ local storage.
+    /// </summary>
+    [HttpGet("/uploads/{*key}")]
+    [HttpGet("api/v1/files/raw")]
+    [AllowAnonymous]
+    public IActionResult GetRawUploadedFile([FromRoute] string? key = null, [FromQuery] string? queryKey = null)
+    {
+        var targetKey = key ?? queryKey;
+        if (string.IsNullOrWhiteSpace(targetKey)) return BadRequest();
+        var cleanKey = targetKey.TrimStart('/').Replace('\\', '/');
+        var webRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+        var filePath = Path.Combine(webRoot, "uploads", cleanKey);
+        if (!System.IO.File.Exists(filePath))
+        {
+            filePath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "uploads", cleanKey);
+            if (!System.IO.File.Exists(filePath))
+            {
+                return NotFound(new { message = "Không tìm thấy file trên máy chủ." });
+            }
+        }
+
+        var provider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+        if (!provider.TryGetContentType(filePath, out var contentType))
+        {
+            contentType = "application/octet-stream";
+        }
+        return PhysicalFile(Path.GetFullPath(filePath), contentType, enableRangeProcessing: true);
     }
 
     // =========================================================================

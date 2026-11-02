@@ -93,6 +93,8 @@ public sealed class PortfolioService(IPortfolioRepository portfolioRepository, I
 
         var skills = await ListVerifiedSkillsAsync(studentId, includeRevoked: !publicOnly, cancellationToken);
         var portfolio = await ListPortfolioAsync(studentId, publicOnly, cancellationToken);
-        return new SkillPassportResponse(studentId, skills, portfolio);
+        var certificates = await portfolioRepository.ListCertificatesAsync(studentId, cancellationToken);
+        var primaryProofHash = certificates.FirstOrDefault()?.ProofHash ?? skills.FirstOrDefault(s => !string.IsNullOrEmpty(s.ProofHash))?.ProofHash;
+        return new SkillPassportResponse(studentId, skills, portfolio, certificates, primaryProofHash);
     }
 }

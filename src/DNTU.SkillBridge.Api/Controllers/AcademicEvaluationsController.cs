@@ -15,6 +15,15 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Produces("application/json")]
 public sealed class AcademicEvaluationsController(IAcademicEvaluationService evaluationService, ICurrentUser currentUser) : ControllerBase
 {
+    [HttpGet("projects/{projectId:guid}/rubric")]
+    [ProducesResponseType(typeof(ApiResponse<RubricResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<RubricResponse>>> GetProjectRubric(Guid projectId, CancellationToken cancellationToken)
+    {
+        var rubric = await evaluationService.GetProjectRubricAsync(projectId, cancellationToken);
+        return rubric is null ? NotFound() : Ok(new ApiResponse<RubricResponse>(rubric));
+    }
+
     [HttpGet("lecturer/evaluations")]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<AcademicEvaluationResponse>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IReadOnlyCollection<AcademicEvaluationResponse>>>> ListMine(CancellationToken cancellationToken)

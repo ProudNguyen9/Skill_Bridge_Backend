@@ -60,6 +60,12 @@ public sealed class MeetingsController(IMeetingService meetingService, ICurrentU
     public async Task<IActionResult> Delete(Guid meetingId, CancellationToken cancellationToken) =>
         await meetingService.DeleteAsync(UserId, meetingId, cancellationToken) ? NoContent() : NotFound();
 
+    [HttpPost("meetings/{meetingId:guid}/cancel")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Cancel(Guid meetingId, CancellationToken cancellationToken) =>
+        await meetingService.DeleteAsync(UserId, meetingId, cancellationToken) ? NoContent() : NotFound();
+
     [HttpGet("meetings/{meetingId:guid}/participants")]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<MeetingParticipantResponse>>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

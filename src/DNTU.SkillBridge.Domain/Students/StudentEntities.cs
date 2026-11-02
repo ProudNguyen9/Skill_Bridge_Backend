@@ -13,6 +13,7 @@ public sealed class StudentProfile : Common.AuditableEntity
     public string? LinkedinUrl { get; private set; }
     public string? PortfolioUrl { get; private set; }
     public string? CvUrl { get; private set; }
+    public string? AvatarUrl { get; private set; }
     public StudentPrivacySettings Privacy { get; private set; } = null!;
 
     private StudentProfile() { }
@@ -34,7 +35,8 @@ public sealed class StudentProfile : Common.AuditableEntity
         string? githubUrl,
         string? linkedinUrl,
         string? portfolioUrl,
-        string? cvUrl)
+        string? cvUrl,
+        string? avatarUrl = null)
     {
         StudentCode = string.IsNullOrWhiteSpace(studentCode) ? null : studentCode.Trim().ToUpperInvariant();
         MajorId = majorId;
@@ -42,10 +44,11 @@ public sealed class StudentProfile : Common.AuditableEntity
         AcademicYear = NullIfEmpty(academicYear);
         PhoneNumber = NullIfEmpty(phoneNumber);
         Bio = NullIfEmpty(bio);
-        GithubUrl = NullIfEmpty(githubUrl);
-        LinkedinUrl = NullIfEmpty(linkedinUrl);
-        PortfolioUrl = NullIfEmpty(portfolioUrl);
-        CvUrl = NullIfEmpty(cvUrl);
+        GithubUrl = NormalizeUrl(githubUrl);
+        LinkedinUrl = NormalizeUrl(linkedinUrl);
+        PortfolioUrl = NormalizeUrl(portfolioUrl);
+        CvUrl = NormalizeUrl(cvUrl);
+        AvatarUrl = NullIfEmpty(avatarUrl);
     }
 
     public int ComputeCompletionPercent()
@@ -69,6 +72,18 @@ public sealed class StudentProfile : Common.AuditableEntity
         && FacultyId.HasValue
         && !string.IsNullOrWhiteSpace(AcademicYear)
         && !string.IsNullOrWhiteSpace(PhoneNumber);
+
+        private static string? NormalizeUrl(string? value)
+    {
+        var cleaned = NullIfEmpty(value);
+        if (cleaned is null) return null;
+        if (!cleaned.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !cleaned.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return "https://" + cleaned;
+        }
+        return cleaned;
+    }
 
     private static string? NullIfEmpty(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

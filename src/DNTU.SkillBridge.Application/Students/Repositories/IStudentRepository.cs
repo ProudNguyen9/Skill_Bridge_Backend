@@ -10,6 +10,10 @@ public interface IStudentRepository
 
     Task<bool> ValidateMajorFacultyAsync(Guid? majorId, Guid? facultyId, CancellationToken cancellationToken);
 
+    Task UpdateUserDisplayNameAsync(Guid userId, string displayName, CancellationToken cancellationToken);
+
+    Task<DNTU.SkillBridge.Domain.Catalog.Major?> FindMajorAsync(Guid majorId, CancellationToken cancellationToken);
+
     Task<StudentProfileResponse> ProjectProfileAsync(StudentProfile profile, CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<DeclaredSkillResponse>> ListSkillsAsync(Guid studentId, CancellationToken cancellationToken);

@@ -25,7 +25,12 @@ public sealed record SubmissionResponse(
     int CurrentVersionNumber,
     Guid SubmittedByStudentId,
     Guid Version,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    string? Summary = null,
+    string? GithubUrl = null,
+    string? DemoUrl = null,
+    string? VideoUrl = null,
+    Guid? FileId = null);
 
 public sealed record SubmissionVersionResponse(
     Guid Id,

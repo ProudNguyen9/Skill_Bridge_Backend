@@ -4,6 +4,7 @@ using DNTU.SkillBridge.Application.Projects;
 using DNTU.SkillBridge.Domain.Catalog;
 using DNTU.SkillBridge.Domain.Common;
 using DNTU.SkillBridge.Domain.Companies;
+using DNTU.SkillBridge.Domain.Applications;
 using DNTU.SkillBridge.Domain.Projects;
 using DNTU.SkillBridge.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -704,7 +705,50 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
                 })
             .ToListAsync(cancellationToken);
 
-        var skillNamesByProject = await LoadSkillNamesAsync(rows.Select(row => row.Id), cancellationToken);
+        var projectIds = rows.Select(row => row.Id).ToList();
+        var skillNamesByProject = await LoadSkillNamesAsync(projectIds, cancellationToken);
+
+        var memberStudentRows = await (
+            from m in dbContext.ProjectMembers.AsNoTracking()
+            where projectIds.Contains(m.ProjectId) && m.IsActive
+            join s in dbContext.StudentProfiles.AsNoTracking() on m.StudentId equals s.Id
+            join u in dbContext.Users.AsNoTracking() on s.UserId equals u.Id
+            select new
+            {
+                m.ProjectId,
+                StudentId = s.Id,
+                u.DisplayName,
+                s.AvatarUrl
+            }
+        ).ToListAsync(cancellationToken);
+
+        var acceptedAppRows = await (
+            from a in dbContext.Applications.AsNoTracking()
+            where projectIds.Contains(a.ProjectId) && a.Status == ApplicationStatus.ACCEPTED
+            join s in dbContext.StudentProfiles.AsNoTracking() on a.StudentId equals s.Id
+            join u in dbContext.Users.AsNoTracking() on s.UserId equals u.Id
+            select new
+            {
+                a.ProjectId,
+                StudentId = s.Id,
+                u.DisplayName,
+                s.AvatarUrl
+            }
+        ).ToListAsync(cancellationToken);
+
+        var allProjectMembers = memberStudentRows
+            .Concat(acceptedAppRows)
+            .GroupBy(x => new { x.ProjectId, x.StudentId })
+            .Select(g => g.First())
+            .GroupBy(x => x.ProjectId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyCollection<PublicProjectMemberSummary>)g
+                    .Select(x => new PublicProjectMemberSummary(x.StudentId, x.DisplayName, x.AvatarUrl))
+                    .ToList()
+            );
+
+        var currentCountsByProject = allProjectMembers.ToDictionary(g => g.Key, g => g.Value.Count);
 
         var items = rows
             .Select(row => new PublicProjectListItemResponse(
@@ -723,7 +767,9 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
                 row.AllowanceCurrency,
                 row.CompanyName,
                 row.CompanySlug,
-                skillNamesByProject.GetValueOrDefault(row.Id, [])))
+                skillNamesByProject.GetValueOrDefault(row.Id, []),
+                currentCountsByProject.GetValueOrDefault(row.Id, 0),
+                allProjectMembers.GetValueOrDefault(row.Id, [])))
             .ToList();
 
         return new PagedResponse<PublicProjectListItemResponse>(
@@ -734,11 +780,11 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
     public async Task<PublicProjectDetailResponse?> GetPublicProjectBySlugAsync(
         string slug, CancellationToken cancellationToken)
     {
-        var isGuid = Guid.TryParse(slug, out var parsedProjectId);
+        var isGuid = Guid.TryParse(slug, out var pid);
         var project = await dbContext.Projects
             .AsNoTracking()
             .Include(item => item.Deliverables)
-            .SingleOrDefaultAsync(item => (item.Slug == slug || (isGuid && item.Id == parsedProjectId)) && item.IsActive && PubliclyVisibleStatuses.Contains(item.Status), cancellationToken);
+            .SingleOrDefaultAsync(item => (item.Slug == slug || (isGuid && item.Id == pid)) && item.IsActive && PubliclyVisibleStatuses.Contains(item.Status), cancellationToken);
         if (project is null)
         {
             return null;
@@ -771,6 +817,30 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             .Select(deliverable => new PublicProjectDeliverableResponse(deliverable.Name, deliverable.Description, deliverable.SortOrder))
             .ToList();
 
+        var memberStudentRows = await (
+            from m in dbContext.ProjectMembers.AsNoTracking()
+            where m.ProjectId == project.Id && m.IsActive
+            join s in dbContext.StudentProfiles.AsNoTracking() on m.StudentId equals s.Id
+            join u in dbContext.Users.AsNoTracking() on s.UserId equals u.Id
+            select new PublicProjectMemberSummary(s.Id, u.DisplayName, s.AvatarUrl)
+        ).ToListAsync(cancellationToken);
+
+        var acceptedAppRows = await (
+            from a in dbContext.Applications.AsNoTracking()
+            where a.ProjectId == project.Id && a.Status == ApplicationStatus.ACCEPTED
+            join s in dbContext.StudentProfiles.AsNoTracking() on a.StudentId equals s.Id
+            join u in dbContext.Users.AsNoTracking() on s.UserId equals u.Id
+            select new PublicProjectMemberSummary(s.Id, u.DisplayName, s.AvatarUrl)
+        ).ToListAsync(cancellationToken);
+
+        var distinctMembers = memberStudentRows
+            .Concat(acceptedAppRows)
+            .GroupBy(x => x.StudentId)
+            .Select(g => g.First())
+            .ToList();
+
+        var currentStudentCount = distinctMembers.Count;
+
         return new PublicProjectDetailResponse(
             project.Id,
             project.Code,
@@ -797,7 +867,9 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             project.IndustryId,
             industryName,
             skills.GetValueOrDefault(project.Id, []),
-            deliverables);
+            deliverables,
+            currentStudentCount,
+            distinctMembers);
     }
 
     /// <summary>Skill requirements of one publicly visible project; null when the project is not publicly accessible.</summary>
@@ -898,7 +970,50 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             .OrderBy(row => orderIndex[row.Id])
             .ToList();
 
-        var skillNamesByProject = await LoadSkillNamesAsync(ordered.Select(row => row.Id), cancellationToken);
+        var relProjectIds = ordered.Select(row => row.Id).ToList();
+        var skillNamesByProject = await LoadSkillNamesAsync(relProjectIds, cancellationToken);
+
+        var memberStudentRowsRel = await (
+            from m in dbContext.ProjectMembers.AsNoTracking()
+            where relProjectIds.Contains(m.ProjectId) && m.IsActive
+            join s in dbContext.StudentProfiles.AsNoTracking() on m.StudentId equals s.Id
+            join u in dbContext.Users.AsNoTracking() on s.UserId equals u.Id
+            select new
+            {
+                m.ProjectId,
+                StudentId = s.Id,
+                u.DisplayName,
+                s.AvatarUrl
+            }
+        ).ToListAsync(cancellationToken);
+
+        var acceptedAppRowsRel = await (
+            from a in dbContext.Applications.AsNoTracking()
+            where relProjectIds.Contains(a.ProjectId) && a.Status == ApplicationStatus.ACCEPTED
+            join s in dbContext.StudentProfiles.AsNoTracking() on a.StudentId equals s.Id
+            join u in dbContext.Users.AsNoTracking() on s.UserId equals u.Id
+            select new
+            {
+                a.ProjectId,
+                StudentId = s.Id,
+                u.DisplayName,
+                s.AvatarUrl
+            }
+        ).ToListAsync(cancellationToken);
+
+        var allRelProjectMembers = memberStudentRowsRel
+            .Concat(acceptedAppRowsRel)
+            .GroupBy(x => new { x.ProjectId, x.StudentId })
+            .Select(g => g.First())
+            .GroupBy(x => x.ProjectId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyCollection<PublicProjectMemberSummary>)g
+                    .Select(x => new PublicProjectMemberSummary(x.StudentId, x.DisplayName, x.AvatarUrl))
+                    .ToList()
+            );
+
+        var currentCountsByRelProject = allRelProjectMembers.ToDictionary(g => g.Key, g => g.Value.Count);
 
         return ordered
             .Select(row => new PublicProjectListItemResponse(
@@ -917,14 +1032,71 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
                 row.AllowanceCurrency,
                 row.CompanyName,
                 row.CompanySlug,
-                skillNamesByProject.GetValueOrDefault(row.Id, [])))
+                skillNamesByProject.GetValueOrDefault(row.Id, []),
+                currentCountsByRelProject.GetValueOrDefault(row.Id, 0),
+                allRelProjectMembers.GetValueOrDefault(row.Id, [])))
             .ToList();
     }
 
-    /// <summary>Public milestones are delivered by the milestone module (Task 24); empty until then.</summary>
-    public Task<IReadOnlyCollection<object>> ListPublicProjectMilestonesAsync(
-        Guid projectId, CancellationToken cancellationToken) =>
-        Task.FromResult<IReadOnlyCollection<object>>([]);
+    /// <summary>Lists public milestones and deliverables for an active published project.</summary>
+    public async Task<IReadOnlyCollection<object>> ListPublicProjectMilestonesAsync(
+        Guid projectId, CancellationToken cancellationToken)
+    {
+        var rawMilestones = await dbContext.ProjectMilestones
+            .AsNoTracking()
+            .Where(milestone => milestone.ProjectId == projectId)
+            .OrderBy(milestone => milestone.Sequence)
+            .ThenBy(milestone => milestone.DueAt)
+            .Select(milestone => new
+            {
+                milestone.Id,
+                milestone.ProjectId,
+                milestone.Title,
+                milestone.Description,
+                milestone.Sequence,
+                milestone.DueAt,
+                Status = milestone.Status.ToString()
+            })
+            .ToListAsync(cancellationToken);
+
+        if (rawMilestones.Count == 0)
+        {
+            return [];
+        }
+
+        var milestoneIds = rawMilestones.Select(m => m.Id).ToList();
+
+        var deliverables = await dbContext.MilestoneDeliverables
+            .AsNoTracking()
+            .Where(deliverable => milestoneIds.Contains(deliverable.MilestoneId))
+            .Select(deliverable => new
+            {
+                deliverable.Id,
+                deliverable.MilestoneId,
+                deliverable.Name,
+                deliverable.Criteria
+            })
+            .ToListAsync(cancellationToken);
+
+        var deliverablesByMilestone = deliverables
+            .GroupBy(d => d.MilestoneId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyCollection<PublicProjectMilestoneDeliverableResponse>)g
+                    .Select(d => new PublicProjectMilestoneDeliverableResponse(d.Id, d.Name, d.Criteria))
+                    .ToList());
+
+        return rawMilestones.Select(m => new PublicProjectMilestoneResponse(
+            m.Id,
+            m.ProjectId,
+            m.Title,
+            m.Description,
+            m.Sequence,
+            m.DueAt,
+            m.Status,
+            deliverablesByMilestone.GetValueOrDefault(m.Id, [])))
+            .ToList();
+    }
 
     /// <summary>Is the project active and publicly visible? Guards sub-resource endpoints.</summary>
     public async Task<bool> IsPubliclyAccessibleAsync(Guid projectId, CancellationToken cancellationToken) =>
@@ -1010,14 +1182,36 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
         return Enum.TryParse<ProjectStatus>(status.Trim(), ignoreCase: true, out var parsed) ? parsed : null;
     }
 
-    /// <summary>Team composition arrives with Task 17; drafts always have no team yet.</summary>
+    /// <summary>Returns the active team members for a company-owned project.</summary>
     public async Task<IReadOnlyCollection<object>?> GetProjectTeamAsync(
         Guid companyId, Guid projectId, CancellationToken cancellationToken)
     {
         var exists = await dbContext.Projects
             .AsNoTracking()
             .AnyAsync(project => project.Id == projectId && project.CompanyId == companyId && project.IsActive, cancellationToken);
-        return exists ? [] : null;
+
+        if (!exists)
+        {
+            return null;
+        }
+
+        var teamMembers = await (
+            from member in dbContext.ProjectMembers.AsNoTracking()
+            where member.ProjectId == projectId && member.IsActive
+            join student in dbContext.StudentProfiles.AsNoTracking() on member.StudentId equals student.Id
+            join user in dbContext.Users.AsNoTracking() on student.UserId equals user.Id
+            orderby member.CreatedAt
+            select new ProjectTeamMemberResponse(
+                member.StudentId,
+                student.UserId,
+                user.DisplayName,
+                student.StudentCode,
+                user.Email,
+                member.Role.ToString(),
+                member.CreatedAt)
+        ).ToListAsync(cancellationToken);
+
+        return teamMembers;
     }
 
     public async Task<CompanyProjectProgressResponse?> GetProjectProgressAsync(

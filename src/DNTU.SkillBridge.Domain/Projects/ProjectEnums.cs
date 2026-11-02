@@ -23,7 +23,10 @@ public enum RequirementLevel
 {
     NICE_TO_HAVE = 1,
     IMPORTANT = 2,
-    MUST_HAVE = 3
+    MUST_HAVE = 3,
+    ADVANCED = 4,
+    BASIC = 5,
+    INTERMEDIATE = 6
 }
 
 /// <summary>

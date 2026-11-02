@@ -13,11 +13,21 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v1")]
 [Authorize]
 [Produces("application/json")]
-public sealed class ProjectTasksController(IProjectTaskService taskService, ICurrentUser currentUser) : ControllerBase
+public sealed class ProjectTasksController(
+    IProjectTaskService taskService,
+    ICurrentUser currentUser,
+    IProjectRealtimeNotifier realtimeNotifier) : ControllerBase
 {
     [HttpPost("projects/{projectId:guid}/tasks")]
-    public async Task<ActionResult<ApiResponse<ProjectTaskResponse>>> Create(Guid projectId, CreateProjectTaskRequest request, CancellationToken cancellationToken) =>
-        ToResult(await taskService.CreateAsync(UserId, projectId, request, cancellationToken), created: true);
+    public async Task<ActionResult<ApiResponse<ProjectTaskResponse>>> Create(Guid projectId, CreateProjectTaskRequest request, CancellationToken cancellationToken)
+    {
+        var result = await taskService.CreateAsync(UserId, projectId, request, cancellationToken);
+        if (result.Outcome == ProjectTaskOutcome.Success && result.Task is not null)
+        {
+            await realtimeNotifier.NotifyTaskCreatedAsync(projectId, result.Task, cancellationToken);
+        }
+        return ToResult(result, created: true);
+    }
 
     [HttpGet("projects/{projectId:guid}/tasks")]
     public async Task<ActionResult<KanbanBoardResponse>> List(Guid projectId, CancellationToken cancellationToken)
@@ -38,13 +48,25 @@ public sealed class ProjectTasksController(IProjectTaskService taskService, ICur
         ToResult(await taskService.GetAsync(UserId, taskId, cancellationToken));
 
     [HttpPut("tasks/{taskId:guid}")]
-    public async Task<ActionResult<ApiResponse<ProjectTaskResponse>>> Update(Guid taskId, UpdateProjectTaskRequest request, CancellationToken cancellationToken) =>
-        ToResult(await taskService.UpdateAsync(UserId, taskId, request, cancellationToken));
+    public async Task<ActionResult<ApiResponse<ProjectTaskResponse>>> Update(Guid taskId, UpdateProjectTaskRequest request, CancellationToken cancellationToken)
+    {
+        var result = await taskService.UpdateAsync(UserId, taskId, request, cancellationToken);
+        if (result.Outcome == ProjectTaskOutcome.Success && result.Task is not null)
+        {
+            await realtimeNotifier.NotifyTaskUpdatedAsync(result.Task.ProjectId, result.Task, cancellationToken);
+        }
+        return ToResult(result);
+    }
 
     [HttpDelete("tasks/{taskId:guid}")]
     public async Task<IActionResult> Delete(Guid taskId, [FromQuery] Guid version, CancellationToken cancellationToken)
     {
+        var existing = await taskService.GetAsync(UserId, taskId, cancellationToken);
         var outcome = await taskService.DeleteAsync(UserId, taskId, version, cancellationToken);
+        if (outcome == ProjectTaskOutcome.Success && existing.Task is not null)
+        {
+            await realtimeNotifier.NotifyTaskDeletedAsync(existing.Task.ProjectId, taskId, cancellationToken);
+        }
         return outcome switch
         {
             ProjectTaskOutcome.Success => NoContent(),
@@ -56,12 +78,26 @@ public sealed class ProjectTasksController(IProjectTaskService taskService, ICur
     }
 
     [HttpPost("tasks/{taskId:guid}/move")]
-    public async Task<ActionResult<ApiResponse<ProjectTaskResponse>>> Move(Guid taskId, MoveProjectTaskRequest request, CancellationToken cancellationToken) =>
-        ToResult(await taskService.MoveAsync(UserId, taskId, request, cancellationToken));
+    public async Task<ActionResult<ApiResponse<ProjectTaskResponse>>> Move(Guid taskId, MoveProjectTaskRequest request, CancellationToken cancellationToken)
+    {
+        var result = await taskService.MoveAsync(UserId, taskId, request, cancellationToken);
+        if (result.Outcome == ProjectTaskOutcome.Success && result.Task is not null)
+        {
+            await realtimeNotifier.NotifyTaskMovedAsync(result.Task.ProjectId, result.Task, cancellationToken);
+        }
+        return ToResult(result);
+    }
 
     [HttpPost("tasks/{taskId:guid}/assign")]
-    public async Task<ActionResult<ApiResponse<ProjectTaskResponse>>> Assign(Guid taskId, AssignProjectTaskRequest request, CancellationToken cancellationToken) =>
-        ToResult(await taskService.AssignAsync(UserId, taskId, request, cancellationToken));
+    public async Task<ActionResult<ApiResponse<ProjectTaskResponse>>> Assign(Guid taskId, AssignProjectTaskRequest request, CancellationToken cancellationToken)
+    {
+        var result = await taskService.AssignAsync(UserId, taskId, request, cancellationToken);
+        if (result.Outcome == ProjectTaskOutcome.Success && result.Task is not null)
+        {
+            await realtimeNotifier.NotifyTaskUpdatedAsync(result.Task.ProjectId, result.Task, cancellationToken);
+        }
+        return ToResult(result);
+    }
 
     [HttpPost("tasks/{taskId:guid}/unassign")]
     public Task<ActionResult<ApiResponse<ProjectTaskResponse>>> Unassign(Guid taskId, Guid version, CancellationToken cancellationToken) =>

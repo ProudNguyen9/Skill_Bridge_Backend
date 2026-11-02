@@ -14,7 +14,11 @@ public sealed record WorkspaceProjectSummaryRow(
     ProjectStatus Status,
     int MemberCount,
     int OpenTaskCount,
-    int OverdueTaskCount);
+    int OverdueTaskCount,
+    string? SupervisorName = null,
+    string? SupervisorEmail = null,
+    string? SupervisorDepartment = null,
+    string? SupervisorTitle = null);
 
 /// <summary>Read and write data operations for the workspace feature.</summary>
 public interface IWorkspaceRepository
@@ -28,6 +32,10 @@ public interface IWorkspaceRepository
     Task<int> CountOverdueTasksAsync(Guid projectId, DateTimeOffset now, CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<WorkspaceMemberResponse>> ListTeamAsync(Guid projectId, CancellationToken cancellationToken);
+
+    Task<(string? Name, string? Email, string? Department, string? Title)?> FindProjectSupervisorAsync(Guid projectId, CancellationToken cancellationToken);
+
+    Task<bool> AssignProjectLeaderAsync(Guid projectId, Guid newLeaderStudentId, CancellationToken cancellationToken);
 
     Task<(int TotalCount, IReadOnlyCollection<WorkspaceActivityResponse> Items)> ListActivityAsync(Guid projectId, string? eventType, WorkspaceActivityQuery query, CancellationToken cancellationToken);
 

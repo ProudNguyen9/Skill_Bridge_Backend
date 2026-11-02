@@ -279,6 +279,11 @@ public sealed class PublicProjectFilterQuery : PageQuery
 /// Public project list row. Deliberately excludes private company documents,
 /// internal approval notes, team member data, and payment data (14.01).
 /// </summary>
+public sealed record PublicProjectMemberSummary(
+    Guid StudentId,
+    string? DisplayName,
+    string? AvatarUrl);
+
 public sealed record PublicProjectListItemResponse(
     Guid Id,
     string Code,
@@ -295,7 +300,9 @@ public sealed record PublicProjectListItemResponse(
     string? AllowanceCurrency,
     string CompanyName,
     string CompanySlug,
-    IReadOnlyCollection<string> SkillNames);
+    IReadOnlyCollection<string> SkillNames,
+    int CurrentStudentCount = 0,
+    IReadOnlyCollection<PublicProjectMemberSummary>? Members = null);
 
 /// <summary>Public project detail; never exposes internal workflow or private company data.</summary>
 public sealed record PublicProjectDetailResponse(
@@ -324,7 +331,9 @@ public sealed record PublicProjectDetailResponse(
     Guid? IndustryId,
     string? IndustryName,
     IReadOnlyCollection<PublicProjectSkillResponse> Skills,
-    IReadOnlyCollection<PublicProjectDeliverableResponse> Deliverables);
+    IReadOnlyCollection<PublicProjectDeliverableResponse> Deliverables,
+    int CurrentStudentCount = 0,
+    IReadOnlyCollection<PublicProjectMemberSummary>? Members = null);
 
 public sealed record PublicProjectSkillResponse(
     Guid SkillId,
@@ -336,3 +345,27 @@ public sealed record PublicProjectDeliverableResponse(
     string Name,
     string? Description,
     int SortOrder);
+
+public sealed record PublicProjectMilestoneResponse(
+    Guid Id,
+    Guid ProjectId,
+    string Title,
+    string? Description,
+    int Sequence,
+    DateTimeOffset DueAt,
+    string Status,
+    IReadOnlyCollection<PublicProjectMilestoneDeliverableResponse> Deliverables);
+
+public sealed record PublicProjectMilestoneDeliverableResponse(
+    Guid Id,
+    string Name,
+    string? Criteria);
+
+public sealed record ProjectTeamMemberResponse(
+    Guid StudentId,
+    Guid UserId,
+    string DisplayName,
+    string? StudentCode,
+    string? Email,
+    string Role,
+    DateTimeOffset JoinedAt);

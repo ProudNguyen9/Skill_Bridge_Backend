@@ -12,13 +12,26 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v1")]
 [Authorize]
 [Produces("application/json")]
-public sealed class TaskCollaborationController(ITaskCollaborationService collaborationService, ICurrentUser currentUser) : ControllerBase
+public sealed class TaskCollaborationController(
+    ITaskCollaborationService collaborationService,
+    ITaskCollaborationRepository collaborationRepository,
+    ICurrentUser currentUser,
+    IProjectRealtimeNotifier realtimeNotifier) : ControllerBase
 {
     [HttpPost("tasks/{taskId:guid}/comments")]
     public async Task<ActionResult<ApiResponse<TaskCommentResponse>>> AddComment(Guid taskId, CreateTaskCommentRequest request, CancellationToken cancellationToken)
     {
         var comment = await collaborationService.AddCommentAsync(currentUser, taskId, request, cancellationToken);
-        return comment is null ? NotFound() : Created(string.Empty, new ApiResponse<TaskCommentResponse>(comment));
+        if (comment is not null)
+        {
+            var task = await collaborationRepository.FindTaskAsync(taskId, cancellationToken);
+            if (task is not null)
+            {
+                await realtimeNotifier.NotifyCommentAddedAsync(task.ProjectId, comment, cancellationToken);
+            }
+            return Created(string.Empty, new ApiResponse<TaskCommentResponse>(comment));
+        }
+        return NotFound();
     }
 
     [HttpGet("tasks/{taskId:guid}/comments")]
@@ -29,21 +42,71 @@ public sealed class TaskCollaborationController(ITaskCollaborationService collab
     }
 
     [HttpDelete("tasks/{taskId:guid}/comments/{commentId:guid}")]
-    public async Task<IActionResult> DeleteComment(Guid taskId, Guid commentId, CancellationToken cancellationToken) =>
-        await collaborationService.DeleteCommentAsync(currentUser, taskId, commentId, cancellationToken) ? NoContent() : NotFound();
+    public async Task<IActionResult> DeleteComment(Guid taskId, Guid commentId, CancellationToken cancellationToken)
+    {
+        var task = await collaborationRepository.FindTaskAsync(taskId, cancellationToken);
+        var deleted = await collaborationService.DeleteCommentAsync(currentUser, taskId, commentId, cancellationToken);
+        if (deleted)
+        {
+            if (task is not null)
+            {
+                await realtimeNotifier.NotifyCommentDeletedAsync(task.ProjectId, taskId, commentId, cancellationToken);
+            }
+            return NoContent();
+        }
+        return NotFound();
+    }
 
     [HttpPost("tasks/{taskId:guid}/checklist-items")]
-    public async Task<ActionResult<ApiResponse<TaskChecklistItemResponse>>> AddChecklist(Guid taskId, CreateChecklistItemRequest request, CancellationToken cancellationToken) =>
-        ToChecklistResult(await collaborationService.AddChecklistItemAsync(currentUser, taskId, request, cancellationToken), created: true);
+    public async Task<ActionResult<ApiResponse<TaskChecklistItemResponse>>> AddChecklist(Guid taskId, CreateChecklistItemRequest request, CancellationToken cancellationToken)
+    {
+        var result = await collaborationService.AddChecklistItemAsync(currentUser, taskId, request, cancellationToken);
+        if (result.Outcome == TaskCollaborationOutcome.Success && result.Item is not null)
+        {
+            var task = await collaborationRepository.FindTaskAsync(taskId, cancellationToken);
+            if (task is not null)
+            {
+                await realtimeNotifier.NotifyChecklistUpdatedAsync(task.ProjectId, result.Item, cancellationToken);
+            }
+        }
+        return ToChecklistResult(result, created: true);
+    }
+
+    [HttpGet("tasks/{taskId:guid}/checklist-items")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyCollection<TaskChecklistItemResponse>>>> ListChecklistItems(Guid taskId, CancellationToken cancellationToken)
+    {
+        var items = await collaborationService.ListChecklistItemsAsync(currentUser, taskId, cancellationToken);
+        return items is null ? NotFound() : Ok(new ApiResponse<IReadOnlyCollection<TaskChecklistItemResponse>>(items));
+    }
 
     [HttpPatch("checklist-items/{itemId:guid}")]
-    public async Task<ActionResult<ApiResponse<TaskChecklistItemResponse>>> UpdateChecklist(Guid itemId, UpdateChecklistItemRequest request, CancellationToken cancellationToken) =>
-        ToChecklistResult(await collaborationService.UpdateChecklistItemAsync(currentUser, itemId, request, cancellationToken));
+    public async Task<ActionResult<ApiResponse<TaskChecklistItemResponse>>> UpdateChecklist(Guid itemId, UpdateChecklistItemRequest request, CancellationToken cancellationToken)
+    {
+        var result = await collaborationService.UpdateChecklistItemAsync(currentUser, itemId, request, cancellationToken);
+        if (result.Outcome == TaskCollaborationOutcome.Success && result.Item is not null)
+        {
+            var task = await collaborationRepository.FindTaskAsync(result.Item.TaskId, cancellationToken);
+            if (task is not null)
+            {
+                await realtimeNotifier.NotifyChecklistUpdatedAsync(task.ProjectId, result.Item, cancellationToken);
+            }
+        }
+        return ToChecklistResult(result);
+    }
 
     [HttpDelete("checklist-items/{itemId:guid}")]
     public async Task<IActionResult> DeleteChecklist(Guid itemId, [FromQuery] Guid version, CancellationToken cancellationToken)
     {
+        var existing = await collaborationRepository.FindChecklistItemAsync(itemId, cancellationToken);
         var outcome = await collaborationService.DeleteChecklistItemAsync(currentUser, itemId, version, cancellationToken);
+        if (outcome == TaskCollaborationOutcome.Success && existing is not null)
+        {
+            var task = await collaborationRepository.FindTaskAsync(existing.ProjectTaskId, cancellationToken);
+            if (task is not null)
+            {
+                await realtimeNotifier.NotifyChecklistUpdatedAsync(task.ProjectId, new TaskChecklistItemResponse(existing.Id, existing.ProjectTaskId, existing.Title, existing.IsCompleted, existing.SortOrder), cancellationToken);
+            }
+        }
         return outcome switch
         {
             TaskCollaborationOutcome.Success => NoContent(),

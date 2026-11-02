@@ -24,4 +24,5 @@ public interface ICompanyRepository
     Task<IReadOnlyCollection<PublicCompanyResponse>> ListPublicCompaniesAsync(CancellationToken cancellationToken);
     Task<Guid?> FindPublicCompanyIdBySlugAsync(string slug, CancellationToken cancellationToken);
     Task<PublicCompanyResponse?> ProjectPublicCompanyAsync(Guid companyId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<object>> ListPublicProjectsByCompanyIdAsync(Guid companyId, CancellationToken cancellationToken);
 }

@@ -28,4 +28,5 @@ public sealed record AcademicEvaluationResponse(
     bool IsPassed,
     string Status,
     Guid Version,
-    DateTimeOffset? FinalizedAt);
+    DateTimeOffset? FinalizedAt,
+    string? ProofHash = null);

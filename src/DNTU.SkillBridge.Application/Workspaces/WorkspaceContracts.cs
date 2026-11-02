@@ -11,9 +11,28 @@ public sealed record WorkspaceOverviewResponse(
     int MemberCount,
     int OpenTaskCount,
     int OverdueTaskCount,
-    IReadOnlySet<string> Capabilities);
+    IReadOnlySet<string> Capabilities,
+    string? SupervisorName = null,
+    string? SupervisorEmail = null,
+    string? SupervisorDepartment = null,
+    string? SupervisorTitle = null);
 
-public sealed record WorkspaceMemberResponse(Guid StudentId, string DisplayName, DateTimeOffset JoinedAt);
+public sealed record WorkspaceMemberResponse(
+    Guid StudentId,
+    string DisplayName,
+    DateTimeOffset JoinedAt,
+    string? StudentCode = null,
+    string? Email = null,
+    string Role = "STUDENT",
+    bool IsLeader = false,
+    string? AvatarUrl = null);
+
+public sealed class AssignProjectLeaderRequest
+{
+    [Required]
+    public Guid StudentId { get; init; }
+}
+
 public sealed record WorkspaceActivityResponse(Guid Id, string EventType, DateTimeOffset CreatedAt);
 
 public sealed class WorkspaceActivityQuery : PageQuery

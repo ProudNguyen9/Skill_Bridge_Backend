@@ -1,5 +1,6 @@
 using DNTU.SkillBridge.Application.Commitments;
 using DNTU.SkillBridge.Domain.Commitments;
+using DNTU.SkillBridge.Domain.Projects;
 using DNTU.SkillBridge.Domain.Workspaces;
 using DNTU.SkillBridge.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,8 @@ public sealed class CommitmentRepository(AppDbContext dbContext) : ICommitmentRe
     public Task<CommitmentResponse?> FindCommitmentAsync(Guid projectId, Guid studentId, CancellationToken cancellationToken) => dbContext.ProjectCommitments.AsNoTracking().Where(item => item.ProjectId == projectId && item.StudentId == studentId).Select(item => new CommitmentResponse(item.Id, item.ProjectId, item.StudentId, item.Status, item.PolicyVersion, item.ConfirmationDeadline, item.ConfirmedAt)).SingleOrDefaultAsync(cancellationToken);
 
     public Task<ProjectCommitment?> FindCommitmentForUpdateAsync(Guid projectId, Guid studentId, CancellationToken cancellationToken) => dbContext.ProjectCommitments.AsTracking().SingleOrDefaultAsync(item => item.ProjectId == projectId && item.StudentId == studentId, cancellationToken);
+
+    public Task<Project?> FindProjectForUpdateAsync(Guid projectId, CancellationToken cancellationToken) => dbContext.Projects.AsTracking().SingleOrDefaultAsync(item => item.Id == projectId, cancellationToken);
 
     public Task<bool> HasProjectMembershipAsync(Guid projectId, Guid studentId, CancellationToken cancellationToken) =>
         dbContext.ProjectMembers.AnyAsync(item => item.ProjectId == projectId && item.StudentId == studentId, cancellationToken);

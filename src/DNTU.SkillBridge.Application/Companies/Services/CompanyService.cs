@@ -180,9 +180,17 @@ public sealed class CompanyService(ICompanyRepository companyRepository, IUnitOf
         return companyId.HasValue ? await companyRepository.ProjectPublicCompanyAsync(companyId.Value, cancellationToken) : null;
     }
 
-    /// <summary>Public project list per company; projects arrive with Tasks 12/14 and return empty until then.</summary>
-    public Task<IReadOnlyCollection<object>> ListPublicCompanyProjectsAsync(string slug, CancellationToken cancellationToken) =>
-        Task.FromResult<IReadOnlyCollection<object>>([]);
+    /// <summary>Lists public projects for a verified company by slug.</summary>
+    public async Task<IReadOnlyCollection<object>> ListPublicCompanyProjectsAsync(string slug, CancellationToken cancellationToken)
+    {
+        var companyId = await companyRepository.FindPublicCompanyIdBySlugAsync(slug, cancellationToken);
+        if (!companyId.HasValue)
+        {
+            return [];
+        }
+
+        return await companyRepository.ListPublicProjectsByCompanyIdAsync(companyId.Value, cancellationToken);
+    }
 
     public async Task<Guid?> ResolveCompanyIdAsync(Guid userId, CancellationToken cancellationToken) =>
         await companyRepository.ResolveCompanyIdAsync(userId, cancellationToken);

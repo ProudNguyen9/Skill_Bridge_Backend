@@ -19,8 +19,9 @@ public sealed class StudentProfileConfiguration : IEntityTypeConfiguration<Stude
         builder.Property(entity => entity.LinkedinUrl).HasMaxLength(500);
         builder.Property(entity => entity.PortfolioUrl).HasMaxLength(500);
         builder.Property(entity => entity.CvUrl).HasMaxLength(500);
+        builder.Property(entity => entity.AvatarUrl).HasMaxLength(500);
         builder.HasIndex(entity => entity.UserId).IsUnique();
-        builder.HasIndex(entity => entity.StudentCode).IsUnique();
+        builder.HasIndex(entity => entity.StudentCode).IsUnique().HasFilter("[StudentCode] IS NOT NULL");
         builder.HasOne(entity => entity.Privacy)
             .WithOne()
             .HasForeignKey<StudentPrivacySettings>(settings => settings.StudentProfileId)

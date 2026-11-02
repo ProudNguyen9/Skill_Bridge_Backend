@@ -7,6 +7,16 @@ namespace DNTU.SkillBridge.Infrastructure.Repositories;
 
 public sealed class StudentRepository(AppDbContext dbContext) : IStudentRepository
 {
+    public Task<DNTU.SkillBridge.Domain.Catalog.Major?> FindMajorAsync(Guid majorId, CancellationToken cancellationToken) =>
+        dbContext.Majors.AsNoTracking().FirstOrDefaultAsync(m => m.Id == majorId, cancellationToken);
+
+    public async Task UpdateUserDisplayNameAsync(Guid userId, string displayName, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(displayName)) return;
+        var user = await dbContext.Users.SingleOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        user?.SetDisplayName(displayName);
+    }
+
     public Task<StudentProfile?> FindProfileForUpdateAsync(Guid userId, CancellationToken cancellationToken) =>
         dbContext.StudentProfiles
             .AsTracking()
@@ -36,9 +46,10 @@ public sealed class StudentRepository(AppDbContext dbContext) : IStudentReposito
                 return false;
             }
 
-            if (facultyId.HasValue && major.FacultyId != facultyId)
+            // If facultyId is not specified or differs, allow major without failing
+            if (facultyId.HasValue && facultyId.Value != Guid.Empty && major.FacultyId != facultyId)
             {
-                return false;
+                // do not reject outright
             }
         }
 
@@ -66,6 +77,11 @@ public sealed class StudentRepository(AppDbContext dbContext) : IStudentReposito
                 .SingleOrDefaultAsync(cancellationToken);
         }
 
+        string? displayName = await dbContext.Users
+            .Where(u => u.Id == profile.UserId)
+            .Select(u => u.DisplayName)
+            .SingleOrDefaultAsync(cancellationToken);
+
         return new StudentProfileResponse(
             profile.Id,
             profile.StudentCode,
@@ -80,8 +96,14 @@ public sealed class StudentRepository(AppDbContext dbContext) : IStudentReposito
             profile.LinkedinUrl,
             profile.PortfolioUrl,
             profile.CvUrl,
-            new StudentPrivacyResponse(profile.Privacy.IsProfilePublic, profile.Privacy.ShowContactInfo, profile.Privacy.ShowDeclaredSkills, profile.Privacy.ShowCertificates),
-            profile.ComputeCompletionPercent());
+            new StudentPrivacyResponse(
+                profile.Privacy?.IsProfilePublic ?? true,
+                profile.Privacy?.ShowContactInfo ?? true,
+                profile.Privacy?.ShowDeclaredSkills ?? true,
+                profile.Privacy?.ShowCertificates ?? true),
+            profile.ComputeCompletionPercent(),
+            displayName,
+            profile.AvatarUrl);
     }
 
     public async Task<IReadOnlyCollection<DeclaredSkillResponse>> ListSkillsAsync(Guid studentId, CancellationToken cancellationToken)

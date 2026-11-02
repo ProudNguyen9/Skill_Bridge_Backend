@@ -19,13 +19,24 @@ public sealed class MeetingRepository(AppDbContext dbContext) : IMeetingReposito
     private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> ConversionLocks = new();
     public async Task<MeetingResponse?> CreateAsync(Guid userId, Guid projectId, CreateMeetingRequest request, CancellationToken cancellationToken)
     {
-        if (!await CanScheduleAsync(userId, projectId, cancellationToken) || !IsFutureUtcRange(request.StartAt, request.EndAt)) return null;
-        var participantIds = request.ParticipantStudentIds.Distinct().ToArray();
+        var startAt = request.ResolvedStartAt;
+        var endAt = request.ResolvedEndAt;
+        var externalUrl = request.ResolvedUrl;
+
+        if (!await CanScheduleAsync(userId, projectId, cancellationToken) || !IsFutureUtcRange(startAt, endAt)) return null;
+        var participantIds = request.ParticipantStudentIds?.Distinct().ToArray() ?? [];
+        if (participantIds.Length == 0)
+        {
+            participantIds = await dbContext.ProjectMembers
+                .Where(m => m.ProjectId == projectId && m.IsActive)
+                .Select(m => m.StudentId)
+                .ToArrayAsync(cancellationToken);
+        }
         if (participantIds.Length == 0 || !await AreActiveMembersAsync(projectId, participantIds, cancellationToken)) return null;
 
         try
         {
-            var meeting = new ProjectMeeting(projectId, request.Title, request.Description, request.StartAt, request.EndAt, request.ExternalUrl);
+            var meeting = new ProjectMeeting(projectId, request.Title, request.Description, startAt, endAt, externalUrl);
             dbContext.ProjectMeetings.Add(meeting);
             foreach (var studentId in participantIds) dbContext.MeetingParticipants.Add(new MeetingParticipant(meeting.Id, studentId));
             AddEvent(meeting, participantIds, "MEETING_CREATED", userId);
@@ -55,11 +66,14 @@ public sealed class MeetingRepository(AppDbContext dbContext) : IMeetingReposito
     public async Task<MeetingResponse?> UpdateAsync(Guid userId, Guid meetingId, UpdateMeetingRequest request, CancellationToken cancellationToken)
     {
         var meeting = await dbContext.ProjectMeetings.SingleOrDefaultAsync(item => item.Id == meetingId, cancellationToken);
-        if (meeting is null || !await CanManageAsync(userId, meeting.ProjectId, cancellationToken) || !IsFutureUtcRange(request.StartAt, request.EndAt)) return null;
+        var startAt = request.ResolvedStartAt;
+        var endAt = request.ResolvedEndAt;
+        var externalUrl = request.ResolvedUrl;
+        if (meeting is null || !await CanManageAsync(userId, meeting.ProjectId, cancellationToken) || !IsFutureUtcRange(startAt, endAt)) return null;
 
         try
         {
-            meeting.Update(request.Title, request.Description, request.StartAt, request.EndAt, request.ExternalUrl);
+            meeting.Update(request.Title, request.Description, startAt, endAt, externalUrl);
             var participantIds = await dbContext.MeetingParticipants.Where(item => item.MeetingId == meeting.Id).Select(item => item.StudentId).ToArrayAsync(cancellationToken);
             AddEvent(meeting, participantIds, "MEETING_UPDATED", userId);
             await dbContext.SaveChangesAsync(cancellationToken);

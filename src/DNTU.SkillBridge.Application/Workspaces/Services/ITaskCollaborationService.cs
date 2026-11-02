@@ -16,6 +16,8 @@ public interface ITaskCollaborationService
 
     Task<(TaskCollaborationOutcome Outcome, TaskChecklistItemResponse? Item)> AddChecklistItemAsync(ICurrentUser currentUser, Guid taskId, CreateChecklistItemRequest request, CancellationToken cancellationToken);
 
+    Task<IReadOnlyCollection<TaskChecklistItemResponse>?> ListChecklistItemsAsync(ICurrentUser currentUser, Guid taskId, CancellationToken cancellationToken);
+
     Task<(TaskCollaborationOutcome Outcome, TaskChecklistItemResponse? Item)> UpdateChecklistItemAsync(ICurrentUser currentUser, Guid itemId, UpdateChecklistItemRequest request, CancellationToken cancellationToken);
 
     Task<TaskCollaborationOutcome> DeleteChecklistItemAsync(ICurrentUser currentUser, Guid itemId, Guid version, CancellationToken cancellationToken);
