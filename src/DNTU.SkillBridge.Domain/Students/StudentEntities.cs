@@ -13,6 +13,7 @@ public sealed class StudentProfile : Common.AuditableEntity
     public string? LinkedinUrl { get; private set; }
     public string? PortfolioUrl { get; private set; }
     public string? CvUrl { get; private set; }
+    public string? AvatarUrl { get; private set; }
     public StudentPrivacySettings Privacy { get; private set; } = null!;
 
     private StudentProfile() { }
@@ -34,7 +35,8 @@ public sealed class StudentProfile : Common.AuditableEntity
         string? githubUrl,
         string? linkedinUrl,
         string? portfolioUrl,
-        string? cvUrl)
+        string? cvUrl,
+        string? avatarUrl = null)
     {
         StudentCode = string.IsNullOrWhiteSpace(studentCode) ? null : studentCode.Trim().ToUpperInvariant();
         MajorId = majorId;
@@ -46,6 +48,7 @@ public sealed class StudentProfile : Common.AuditableEntity
         LinkedinUrl = NormalizeUrl(linkedinUrl);
         PortfolioUrl = NormalizeUrl(portfolioUrl);
         CvUrl = NormalizeUrl(cvUrl);
+        AvatarUrl = NullIfEmpty(avatarUrl);
     }
 
     public int ComputeCompletionPercent()

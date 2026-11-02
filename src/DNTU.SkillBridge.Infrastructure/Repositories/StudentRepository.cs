@@ -102,7 +102,8 @@ public sealed class StudentRepository(AppDbContext dbContext) : IStudentReposito
                 profile.Privacy?.ShowDeclaredSkills ?? true,
                 profile.Privacy?.ShowCertificates ?? true),
             profile.ComputeCompletionPercent(),
-            displayName);
+            displayName,
+            profile.AvatarUrl);
     }
 
     public async Task<IReadOnlyCollection<DeclaredSkillResponse>> ListSkillsAsync(Guid studentId, CancellationToken cancellationToken)

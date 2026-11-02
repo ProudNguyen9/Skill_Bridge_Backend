@@ -156,6 +156,36 @@ public sealed class FilesController(
         }
     }
 
+        /// <summary>
+    /// Tải / xem file trực tiếp từ local storage.
+    /// </summary>
+    [HttpGet("/uploads/{*key}")]
+    [HttpGet("api/v1/files/raw")]
+    [AllowAnonymous]
+    public IActionResult GetRawUploadedFile([FromRoute] string? key = null, [FromQuery] string? queryKey = null)
+    {
+        var targetKey = key ?? queryKey;
+        if (string.IsNullOrWhiteSpace(targetKey)) return BadRequest();
+        var cleanKey = targetKey.TrimStart('/').Replace('\\', '/');
+        var webRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+        var filePath = Path.Combine(webRoot, "uploads", cleanKey);
+        if (!System.IO.File.Exists(filePath))
+        {
+            filePath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "uploads", cleanKey);
+            if (!System.IO.File.Exists(filePath))
+            {
+                return NotFound(new { message = "Không tìm thấy file trên máy chủ." });
+            }
+        }
+
+        var provider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+        if (!provider.TryGetContentType(filePath, out var contentType))
+        {
+            contentType = "application/octet-stream";
+        }
+        return PhysicalFile(Path.GetFullPath(filePath), contentType, enableRangeProcessing: true);
+    }
+
     // =========================================================================
     // Legacy internal endpoints (authenticated)
     // =========================================================================

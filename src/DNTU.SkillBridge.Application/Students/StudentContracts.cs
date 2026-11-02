@@ -19,7 +19,8 @@ public sealed record StudentProfileResponse(
     string? CvUrl,
     StudentPrivacyResponse Privacy,
     int ProfileCompletionPercent,
-    string? FullName = null);
+    string? FullName = null,
+    string? AvatarUrl = null);
 
 public sealed record StudentPrivacyResponse(
     bool IsProfilePublic,
@@ -59,6 +60,8 @@ public sealed class UpdateStudentProfileRequest
 
     [StringLength(500)]
     public string? CvUrl { get; init; }
+    [StringLength(500)]
+    public string? AvatarUrl { get; init; }
 }
 
 public sealed class UpdateStudentPrivacyRequest

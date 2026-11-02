@@ -20,7 +20,8 @@ public sealed class StudentProfileTests
             githubUrl: "   ",
             linkedinUrl: "",
             portfolioUrl: null,
-            cvUrl: ""
+            cvUrl: "",
+            avatarUrl: "   "
         );
 
         Assert.Null(profile.StudentCode);
@@ -33,10 +34,11 @@ public sealed class StudentProfileTests
         Assert.Null(profile.LinkedinUrl);
         Assert.Null(profile.PortfolioUrl);
         Assert.Null(profile.CvUrl);
+        Assert.Null(profile.AvatarUrl);
     }
 
     [Fact]
-    public void Update_normalizes_urls_without_protocol()
+    public void Update_normalizes_urls_without_protocol_and_saves_avatar_url()
     {
         var profile = new StudentProfile(Guid.NewGuid());
 
@@ -50,7 +52,8 @@ public sealed class StudentProfileTests
             githubUrl: "github.com/student123",
             linkedinUrl: "linkedin.com/in/student123",
             portfolioUrl: "https://myportfolio.dev",
-            cvUrl: "drive.google.com/cv.pdf"
+            cvUrl: "drive.google.com/cv.pdf",
+            avatarUrl: "http://localhost:5017/uploads/avatars/me.jpg"
         );
 
         Assert.Equal("2280601234", profile.StudentCode);
@@ -58,5 +61,6 @@ public sealed class StudentProfileTests
         Assert.Equal("https://linkedin.com/in/student123", profile.LinkedinUrl);
         Assert.Equal("https://myportfolio.dev", profile.PortfolioUrl);
         Assert.Equal("https://drive.google.com/cv.pdf", profile.CvUrl);
+        Assert.Equal("http://localhost:5017/uploads/avatars/me.jpg", profile.AvatarUrl);
     }
 }

@@ -54,7 +54,8 @@ public sealed class StudentService(IStudentRepository studentRepository, IUnitOf
             request.GithubUrl,
             request.LinkedinUrl,
             request.PortfolioUrl,
-            request.CvUrl);
+            request.CvUrl,
+            request.AvatarUrl);
 
         if (!string.IsNullOrWhiteSpace(request.FullName))
         {
