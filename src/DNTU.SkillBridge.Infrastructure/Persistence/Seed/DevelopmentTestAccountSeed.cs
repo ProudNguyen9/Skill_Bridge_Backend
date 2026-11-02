@@ -1,6 +1,7 @@
 using DNTU.SkillBridge.Domain.Companies;
 using DNTU.SkillBridge.Domain.Identity;
 using DNTU.SkillBridge.Domain.Lecturers;
+using DNTU.SkillBridge.Domain.Projects;
 using DNTU.SkillBridge.Domain.Students;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -23,19 +24,30 @@ public static class DevelopmentTestAccountSeed
         new("student2.test@skillbridge.local", "Trần Thị Bích", "TEST0002"),
         new("student3.test@skillbridge.local", "Lê Văn Cường", "TEST0003"),
         new("student4.test@skillbridge.local", "Phạm Thị Dung", "TEST0004"),
-        new("student5.test@skillbridge.local", "Hoàng Văn Em", "TEST0005")
+        new("student5.test@skillbridge.local", "Hoàng Văn Em", "TEST0005"),
+        new("student1@skillbridge.local", "Sinh viên 1 (DNTU)", "21DTH0001"),
+        new("student2@skillbridge.local", "Sinh viên 2 (DNTU)", "21DTH0002"),
+        new("student3@skillbridge.local", "Sinh viên 3 (DNTU)", "21DTH0003")
     ];
 
     private const string AdminEmail = "admin.test@skillbridge.local";
     private const string AdminDisplayName = "Quản trị viên DNTU";
     private const string SuperAdminEmail = "superadmin.test@skillbridge.local";
     private const string SuperAdminDisplayName = "Quản trị cấp cao DNTU";
-    private const string LecturerEmail = "lecturer.test@skillbridge.local";
-    private const string LecturerDisplayName = "Giảng viên Trần Minh Đức";
 
-    // 5 doanh nghiệp: mỗi tài khoản gắn 1 công ty VERIFIED (dùng đăng bài toán được ngay).
+    private sealed record LecturerAccount(string Email, string DisplayName, string LecturerCode);
+    private static readonly LecturerAccount[] Lecturers =
+    [
+        new("lecturer.test@skillbridge.local", "Giảng viên Trần Minh Đức", "GV001"),
+        new("lecturer1@skillbridge.local", "Giảng viên DNTU", "GV002")
+    ];
+
+    // Doanh nghiệp: mỗi tài khoản gắn 1 công ty VERIFIED (dùng đăng bài toán được ngay).
     private static readonly CompanyAccount[] Companies =
     [
+        new("company1@skillbridge.local", "Doanh nghiệp Đối tác", "Doanh nghiệp Đối tác",
+            "doanh-nghiep-doi-tac", "0311999999",
+            "Doanh nghiệp đối tác chiến lược DNTU, tài trợ học bổng và đồ án công nghệ.", "Biên Hòa, Đồng Nai", "+84901999999"),
         new("company1.test@skillbridge.local", "FPT Software Biên Hòa", "FPT Software Biên Hòa",
             "fpt-software-bien-hoa", "0311000001",
             "Đơn vị phát triển phần mềm outsourcing, mentor cho dự án AI và web.", "KCN Amata, Biên Hòa, Đồng Nai", "+84901000001"),
@@ -64,6 +76,14 @@ public static class DevelopmentTestAccountSeed
         var adminRole = await dbContext.Roles.SingleAsync(item => item.NormalizedName == RoleNames.Admin, cancellationToken);
         var superAdminRole = await dbContext.Roles.SingleAsync(item => item.NormalizedName == RoleNames.SuperAdmin, cancellationToken);
 
+        // Fetch master taxonomy references
+        var fitFaculty = await dbContext.Faculties.FirstOrDefaultAsync(item => item.Code == "FIT", cancellationToken);
+        var itMajor = await dbContext.Majors.FirstOrDefaultAsync(item => item.Code == "IT", cancellationToken);
+        var itIndustry = await dbContext.Industries.FirstOrDefaultAsync(
+            item => item.Slug == "cong-nghe-thong-tin" || item.NormalizedName.Contains("THÔNG TIN") || item.NormalizedName.Contains("THONG TIN"),
+            cancellationToken);
+
+        var index = 1;
         foreach (var student in Students)
         {
             var user = await EnsureUserAsync(dbContext, passwordHasher, student.Email, student.DisplayName, studentRole, cancellationToken);
@@ -85,12 +105,16 @@ public static class DevelopmentTestAccountSeed
                     codeOwner.GithubUrl, codeOwner.LinkedinUrl, codeOwner.PortfolioUrl, codeOwner.CvUrl);
             }
 
-            if (string.IsNullOrWhiteSpace(profile.StudentCode) || profile.StudentCode != student.StudentCode)
-            {
-                profile.Update(student.StudentCode, profile.MajorId, profile.FacultyId,
-                    profile.AcademicYear, profile.PhoneNumber, profile.Bio,
-                    profile.GithubUrl, profile.LinkedinUrl, profile.PortfolioUrl, profile.CvUrl);
-            }
+            profile.Update(
+                student.StudentCode,
+                itMajor?.Id,
+                fitFaculty?.Id,
+                "2022-2026",
+                $"+8490100000{index}",
+                "Sinh viên Khoa Công nghệ thông tin - DNTU (Chuyên ngành CNTT).",
+                null, null, null, null);
+
+            index++;
         }
 
         var admin = await EnsureUserAsync(dbContext, passwordHasher, AdminEmail, AdminDisplayName, adminRole, cancellationToken);
@@ -98,59 +122,87 @@ public static class DevelopmentTestAccountSeed
         _ = admin;
         _ = superAdmin;
 
-        var lecturer = await EnsureUserAsync(dbContext, passwordHasher, LecturerEmail, LecturerDisplayName, lecturerRole, cancellationToken);
-        var lecturerProfile = await dbContext.LecturerProfiles.SingleOrDefaultAsync(item => item.UserId == lecturer.Id, cancellationToken);
-        if (lecturerProfile is null)
+        foreach (var lec in Lecturers)
         {
-            lecturerProfile = new LecturerProfile(lecturer.Id);
+            var lecturer = await EnsureUserAsync(dbContext, passwordHasher, lec.Email, lec.DisplayName, lecturerRole, cancellationToken);
+            var lecturerProfile = await dbContext.LecturerProfiles.SingleOrDefaultAsync(item => item.UserId == lecturer.Id, cancellationToken);
+            if (lecturerProfile is null)
+            {
+                lecturerProfile = new LecturerProfile(lecturer.Id);
+                dbContext.LecturerProfiles.Add(lecturerProfile);
+            }
+
             lecturerProfile.Update(
-                "GV001",
-                "Khoa Công Nghệ Thông Tin",
-                "Thạc Sĩ",
+                lec.LecturerCode,
+                "Khoa Công nghệ thông tin",
+                "Thạc sĩ",
                 "Giảng viên hướng dẫn đồ án",
                 null,
                 "Phòng A1-201",
                 "+84907654321",
                 true,
                 true);
-            dbContext.LecturerProfiles.Add(lecturerProfile);
-        }
 
-        // Profile tạo trước khi có ApprovalStatus (migration default PENDING) — tài khoản dev luôn được duyệt.
-        if (lecturerProfile.ApprovalStatus != LecturerApprovalStatus.APPROVED)
-        {
-            lecturerProfile.Approve(DateTimeOffset.UtcNow);
+            // Profile tạo trước khi có ApprovalStatus (migration default PENDING) — tài khoản dev luôn được duyệt.
+            if (lecturerProfile.ApprovalStatus != LecturerApprovalStatus.APPROVED)
+            {
+                lecturerProfile.Approve(DateTimeOffset.UtcNow);
+            }
+
+            // Clear stale assignments
+            var staleAssignments = await dbContext.LecturerAssignments
+                .Where(la => la.LecturerId == lecturerProfile.Id)
+                .ToListAsync(cancellationToken);
+            if (staleAssignments.Count > 0)
+            {
+                dbContext.LecturerAssignments.RemoveRange(staleAssignments);
+            }
         }
 
         foreach (var companyAccount in Companies)
         {
             var user = await EnsureUserAsync(dbContext, passwordHasher, companyAccount.Email, companyAccount.DisplayName, companyRole, cancellationToken);
             var member = await dbContext.CompanyMembers.SingleOrDefaultAsync(item => item.UserId == user.Id, cancellationToken);
-            if (member is not null)
-            {
-                continue;
-            }
 
-            var company = await dbContext.Companies.SingleOrDefaultAsync(c => c.TaxCode == companyAccount.TaxCode, cancellationToken);
+            var company = await dbContext.Companies.SingleOrDefaultAsync(c => c.TaxCode == companyAccount.TaxCode || c.Slug == companyAccount.Slug, cancellationToken);
             if (company is null)
             {
                 company = new Company(companyAccount.CompanyName);
                 company.AssignSlug(companyAccount.Slug);
-                company.UpdateProfile(
-                    companyAccount.CompanyName,
-                    companyAccount.TaxCode,
-                    null,
-                    $"https://{companyAccount.Slug}.skillbridge.local",
-                    companyAccount.Description,
-                    null,
-                    companyAccount.Address,
-                    companyAccount.Email,
-                    companyAccount.Phone);
-                company.MarkVerified(DateTimeOffset.UtcNow, "Auto-verified seed account");
                 dbContext.Companies.Add(company);
             }
 
-            company.AddMember(user.Id, CompanyMemberRole.OWNER, "CEO & Project Director");
+            company.UpdateProfile(
+                companyAccount.CompanyName,
+                companyAccount.TaxCode,
+                itIndustry?.Id,
+                $"https://{companyAccount.Slug}.skillbridge.local",
+                companyAccount.Description,
+                null,
+                companyAccount.Address,
+                companyAccount.Email,
+                companyAccount.Phone);
+            company.MarkVerified(DateTimeOffset.UtcNow, "Auto-verified seed account");
+
+            if (member is null)
+            {
+                company.AddMember(user.Id, CompanyMemberRole.OWNER, "CEO & Project Director");
+            }
+        }
+
+        // Clean stale draft projects for company1
+        var company1 = await dbContext.Companies.SingleOrDefaultAsync(c => c.TaxCode == "0311000001", cancellationToken);
+        if (company1 is not null)
+        {
+            var staleProjects = await dbContext.Projects
+                .Include(p => p.Skills)
+                .Include(p => p.Deliverables)
+                .Where(p => p.CompanyId == company1.Id && p.Status == ProjectStatus.DRAFT)
+                .ToListAsync(cancellationToken);
+            if (staleProjects.Count > 0)
+            {
+                dbContext.Projects.RemoveRange(staleProjects);
+            }
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
