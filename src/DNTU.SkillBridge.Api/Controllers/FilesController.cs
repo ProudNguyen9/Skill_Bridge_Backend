@@ -55,6 +55,29 @@ public sealed class FilesController(
     }
 
     /// <summary>
+    /// Chuyển hướng trực tiếp đến signed download URL để browser load ảnh được ngay không bị 403.
+    /// </summary>
+    [HttpGet("/files/view")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ViewFile([FromQuery] string key, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return BadRequest(new { message = "Key không hợp lệ." });
+        }
+
+        try
+        {
+            var downloadUrl = await fileStorage.CreateDownloadUrlAsync(key, TimeSpan.FromHours(24), cancellationToken);
+            return Redirect(downloadUrl.ToString());
+        }
+        catch (Exception ex)
+        {
+            return NotFound(new { message = $"Không tìm thấy file: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
     /// Upload file trực tiếp lên Filebase S3 bucket.
     /// </summary>
     [HttpPost("/files")]
@@ -84,6 +107,7 @@ public sealed class FilesController(
             await using var stream = file.OpenReadStream();
             var uri = await fileStorage.DirectUploadAsync(storageKey, stream, file.ContentType, cancellationToken);
             var downloadUrl = await fileStorage.CreateDownloadUrlAsync(storageKey, TimeSpan.FromHours(24), cancellationToken);
+            var viewUrl = $"{Request.Scheme}://{Request.Host}/files/view?key={Uri.EscapeDataString(storageKey)}";
 
             return Ok(new
             {
@@ -93,7 +117,7 @@ public sealed class FilesController(
                 fileName = file.FileName,
                 size = file.Length,
                 contentType = file.ContentType,
-                directUrl = uri.ToString(),
+                directUrl = viewUrl,
                 downloadUrl = downloadUrl.ToString()
             });
         }
