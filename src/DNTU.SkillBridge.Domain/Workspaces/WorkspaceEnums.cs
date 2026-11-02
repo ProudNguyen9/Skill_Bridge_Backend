@@ -2,6 +2,7 @@ namespace DNTU.SkillBridge.Domain.Workspaces;
 
 public enum ProjectMemberRole
 {
+    MEMBER = 0,
     STUDENT = 1,
     COMPANY = 2,
     LECTURER = 3,

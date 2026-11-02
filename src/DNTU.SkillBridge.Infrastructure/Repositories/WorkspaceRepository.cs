@@ -54,7 +54,7 @@ public sealed class WorkspaceRepository(AppDbContext dbContext) : IWorkspaceRepo
             m.JoinedAt,
             m.StudentCode,
             m.Email,
-            m.StudentId == leaderStudentId ? "LEADER" : m.Role.ToString(),
+            m.StudentId == leaderStudentId ? "LEADER" : (m.Role == ProjectMemberRole.MEMBER ? "MEMBER" : m.Role.ToString()),
             m.StudentId == leaderStudentId
         )).ToList();
     }
@@ -132,35 +132,45 @@ public sealed class WorkspaceRepository(AppDbContext dbContext) : IWorkspaceRepo
                 project.Status,
                 MemberCount = dbContext.ProjectMembers.Count(member => member.ProjectId == project.Id && member.IsActive),
                 OpenTaskCount = dbContext.ProjectTasks.Count(task => task.ProjectId == project.Id && !task.IsDeleted && task.Status != ProjectTaskStatus.DONE),
-                OverdueTaskCount = dbContext.ProjectTasks.Count(task => task.ProjectId == project.Id && !task.IsDeleted && task.Status != ProjectTaskStatus.DONE && task.DueAt < now),
-                Supervisor = (from assignment in dbContext.LecturerAssignments
-                              where assignment.ProjectId == project.Id && assignment.Status == LecturerAssignmentStatus.ACTIVE
-                              join lecturer in dbContext.LecturerProfiles on assignment.LecturerId equals lecturer.Id
-                              join user in dbContext.Users on lecturer.UserId equals user.Id into userGroup
-                              from u in userGroup.DefaultIfEmpty()
-                              select new
-                              {
-                                  Name = u != null && !string.IsNullOrWhiteSpace(u.DisplayName) ? u.DisplayName : lecturer.LecturerCode,
-                                  Email = u != null ? u.Email : null,
-                                  Department = lecturer.Department,
-                                  Title = lecturer.AcademicTitle
-                              }).FirstOrDefault()
+                OverdueTaskCount = dbContext.ProjectTasks.Count(task => task.ProjectId == project.Id && !task.IsDeleted && task.Status != ProjectTaskStatus.DONE && task.DueAt < now)
             })
             .ToListAsync(cancellationToken);
 
-        return projects.Select(p => new WorkspaceProjectSummaryRow(
-            p.Id,
-            p.Title,
-            p.Slug,
-            p.Status,
-            p.MemberCount,
-            p.OpenTaskCount,
-            p.OverdueTaskCount,
-            p.Supervisor?.Name,
-            p.Supervisor?.Email,
-            p.Supervisor?.Department,
-            p.Supervisor?.Title
-        )).ToList();
+        if (projects.Count == 0) return [];
+
+        var projectIds = projects.Select(p => p.Id).ToList();
+        var supervisors = await (from assignment in dbContext.LecturerAssignments.AsNoTracking()
+                                 where projectIds.Contains(assignment.ProjectId) && assignment.Status == LecturerAssignmentStatus.ACTIVE
+                                 join lecturer in dbContext.LecturerProfiles.AsNoTracking() on assignment.LecturerId equals lecturer.Id
+                                 join user in dbContext.Users.AsNoTracking() on lecturer.UserId equals user.Id into userGroup
+                                 from u in userGroup.DefaultIfEmpty()
+                                 select new
+                                 {
+                                     assignment.ProjectId,
+                                     Name = u != null && !string.IsNullOrWhiteSpace(u.DisplayName) ? u.DisplayName : lecturer.LecturerCode,
+                                     Email = u != null ? u.Email : null,
+                                     Department = lecturer.Department,
+                                     Title = lecturer.AcademicTitle
+                                 })
+                                 .ToDictionaryAsync(s => s.ProjectId, cancellationToken);
+
+        return projects.Select(p =>
+        {
+            supervisors.TryGetValue(p.Id, out var sup);
+            return new WorkspaceProjectSummaryRow(
+                p.Id,
+                p.Title,
+                p.Slug,
+                p.Status,
+                p.MemberCount,
+                p.OpenTaskCount,
+                p.OverdueTaskCount,
+                sup?.Name,
+                sup?.Email,
+                sup?.Department,
+                sup?.Title
+            );
+        }).ToList();
     }
 
     public Task<WorkspaceSettings?> FindSettingsAsync(Guid projectId, CancellationToken cancellationToken) =>
