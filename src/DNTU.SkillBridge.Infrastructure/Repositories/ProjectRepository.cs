@@ -4,6 +4,7 @@ using DNTU.SkillBridge.Application.Projects;
 using DNTU.SkillBridge.Domain.Catalog;
 using DNTU.SkillBridge.Domain.Common;
 using DNTU.SkillBridge.Domain.Companies;
+using DNTU.SkillBridge.Domain.Applications;
 using DNTU.SkillBridge.Domain.Projects;
 using DNTU.SkillBridge.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -704,7 +705,26 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
                 })
             .ToListAsync(cancellationToken);
 
-        var skillNamesByProject = await LoadSkillNamesAsync(rows.Select(row => row.Id), cancellationToken);
+        var projectIds = rows.Select(row => row.Id).ToList();
+        var skillNamesByProject = await LoadSkillNamesAsync(projectIds, cancellationToken);
+
+        var memberStudentIds = await dbContext.ProjectMembers
+            .AsNoTracking()
+            .Where(m => projectIds.Contains(m.ProjectId) && m.IsActive)
+            .Select(m => new { m.ProjectId, m.StudentId })
+            .ToListAsync(cancellationToken);
+
+        var acceptedAppStudentIds = await dbContext.Applications
+            .AsNoTracking()
+            .Where(a => projectIds.Contains(a.ProjectId) && a.Status == ApplicationStatus.ACCEPTED)
+            .Select(a => new { a.ProjectId, a.StudentId })
+            .ToListAsync(cancellationToken);
+
+        var currentCountsByProject = memberStudentIds
+            .Concat(acceptedAppStudentIds)
+            .Distinct()
+            .GroupBy(x => x.ProjectId)
+            .ToDictionary(g => g.Key, g => g.Count());
 
         var items = rows
             .Select(row => new PublicProjectListItemResponse(
@@ -723,7 +743,8 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
                 row.AllowanceCurrency,
                 row.CompanyName,
                 row.CompanySlug,
-                skillNamesByProject.GetValueOrDefault(row.Id, [])))
+                skillNamesByProject.GetValueOrDefault(row.Id, []),
+                currentCountsByProject.GetValueOrDefault(row.Id, 0)))
             .ToList();
 
         return new PagedResponse<PublicProjectListItemResponse>(
@@ -771,6 +792,20 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             .Select(deliverable => new PublicProjectDeliverableResponse(deliverable.Name, deliverable.Description, deliverable.SortOrder))
             .ToList();
 
+        var memberStudentIds = await dbContext.ProjectMembers
+            .AsNoTracking()
+            .Where(m => m.ProjectId == project.Id && m.IsActive)
+            .Select(m => m.StudentId)
+            .ToListAsync(cancellationToken);
+
+        var acceptedAppStudentIds = await dbContext.Applications
+            .AsNoTracking()
+            .Where(a => a.ProjectId == project.Id && a.Status == ApplicationStatus.ACCEPTED)
+            .Select(a => a.StudentId)
+            .ToListAsync(cancellationToken);
+
+        var currentStudentCount = memberStudentIds.Concat(acceptedAppStudentIds).Distinct().Count();
+
         return new PublicProjectDetailResponse(
             project.Id,
             project.Code,
@@ -797,7 +832,8 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             project.IndustryId,
             industryName,
             skills.GetValueOrDefault(project.Id, []),
-            deliverables);
+            deliverables,
+            currentStudentCount);
     }
 
     /// <summary>Skill requirements of one publicly visible project; null when the project is not publicly accessible.</summary>
@@ -898,7 +934,26 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             .OrderBy(row => orderIndex[row.Id])
             .ToList();
 
-        var skillNamesByProject = await LoadSkillNamesAsync(ordered.Select(row => row.Id), cancellationToken);
+        var relProjectIds = ordered.Select(row => row.Id).ToList();
+        var skillNamesByProject = await LoadSkillNamesAsync(relProjectIds, cancellationToken);
+
+        var memberStudentIds = await dbContext.ProjectMembers
+            .AsNoTracking()
+            .Where(m => relProjectIds.Contains(m.ProjectId) && m.IsActive)
+            .Select(m => new { m.ProjectId, m.StudentId })
+            .ToListAsync(cancellationToken);
+
+        var acceptedAppStudentIds = await dbContext.Applications
+            .AsNoTracking()
+            .Where(a => relProjectIds.Contains(a.ProjectId) && a.Status == ApplicationStatus.ACCEPTED)
+            .Select(a => new { a.ProjectId, a.StudentId })
+            .ToListAsync(cancellationToken);
+
+        var currentCountsByProject = memberStudentIds
+            .Concat(acceptedAppStudentIds)
+            .Distinct()
+            .GroupBy(x => x.ProjectId)
+            .ToDictionary(g => g.Key, g => g.Count());
 
         return ordered
             .Select(row => new PublicProjectListItemResponse(
@@ -917,7 +972,8 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
                 row.AllowanceCurrency,
                 row.CompanyName,
                 row.CompanySlug,
-                skillNamesByProject.GetValueOrDefault(row.Id, [])))
+                skillNamesByProject.GetValueOrDefault(row.Id, []),
+                currentCountsByProject.GetValueOrDefault(row.Id, 0)))
             .ToList();
     }
 

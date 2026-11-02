@@ -295,7 +295,8 @@ public sealed record PublicProjectListItemResponse(
     string? AllowanceCurrency,
     string CompanyName,
     string CompanySlug,
-    IReadOnlyCollection<string> SkillNames);
+    IReadOnlyCollection<string> SkillNames,
+    int CurrentStudentCount = 0);
 
 /// <summary>Public project detail; never exposes internal workflow or private company data.</summary>
 public sealed record PublicProjectDetailResponse(
@@ -324,7 +325,8 @@ public sealed record PublicProjectDetailResponse(
     Guid? IndustryId,
     string? IndustryName,
     IReadOnlyCollection<PublicProjectSkillResponse> Skills,
-    IReadOnlyCollection<PublicProjectDeliverableResponse> Deliverables);
+    IReadOnlyCollection<PublicProjectDeliverableResponse> Deliverables,
+    int CurrentStudentCount = 0);
 
 public sealed record PublicProjectSkillResponse(
     Guid SkillId,
