@@ -38,7 +38,8 @@ public sealed class WorkspaceRepository(AppDbContext dbContext) : IWorkspaceRepo
                              JoinedAt = member.CreatedAt,
                              StudentCode = student.StudentCode,
                              Email = u != null ? u.Email : null,
-                             Role = member.Role
+                             Role = member.Role,
+                             AvatarUrl = student.AvatarUrl
                          })
                          .OrderBy(m => m.JoinedAt)
                          .ToListAsync(cancellationToken);
@@ -55,7 +56,8 @@ public sealed class WorkspaceRepository(AppDbContext dbContext) : IWorkspaceRepo
             m.StudentCode,
             m.Email,
             m.StudentId == leaderStudentId ? "LEADER" : (m.Role == ProjectMemberRole.MEMBER ? "MEMBER" : m.Role.ToString()),
-            m.StudentId == leaderStudentId
+            m.StudentId == leaderStudentId,
+            m.AvatarUrl
         )).ToList();
     }
 

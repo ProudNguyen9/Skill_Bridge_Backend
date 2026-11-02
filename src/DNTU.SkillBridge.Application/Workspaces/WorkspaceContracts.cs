@@ -24,7 +24,8 @@ public sealed record WorkspaceMemberResponse(
     string? StudentCode = null,
     string? Email = null,
     string Role = "STUDENT",
-    bool IsLeader = false);
+    bool IsLeader = false,
+    string? AvatarUrl = null);
 
 public sealed class AssignProjectLeaderRequest
 {
