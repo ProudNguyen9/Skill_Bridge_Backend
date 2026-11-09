@@ -4,6 +4,7 @@ using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Api.Security;
 using DNTU.SkillBridge.Domain.Identity;
+using DNTU.SkillBridge.Domain.Companies;
 using DNTU.SkillBridge.Domain.Lecturers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,18 +22,20 @@ namespace DNTU.SkillBridge.Api.Controllers;
 public sealed class AdminVerificationsController(IAdminVerificationService verificationService, ICurrentUser currentUser) : ControllerBase
 {
     [HttpGet("lecturers")]
-    [ProducesResponseType(typeof(IReadOnlyCollection<AdminLecturerReviewItem>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<AdminLecturerReviewItem>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<IReadOnlyCollection<AdminLecturerReviewItem>>> ListLecturers(
+    public async Task<ActionResult<ApiResponse<IReadOnlyCollection<AdminLecturerReviewItem>>>> ListLecturers(
         [FromQuery] string? status, CancellationToken cancellationToken)
     {
         if (!currentUser.HasPermission(PermissionNames.LecturersApprove)) return Forbid();
+        if (!IsValidStatus(status, LecturerApprovalStatus.PENDING, LecturerApprovalStatus.APPROVED, LecturerApprovalStatus.REJECTED)) return BadRequest();
 
         return Ok(new ApiResponse<IReadOnlyCollection<AdminLecturerReviewItem>>(await verificationService.ListLecturersAsync(status, cancellationToken)));
     }
 
     [HttpPost("lecturers/{lecturerId:guid}/approve")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -52,7 +55,8 @@ public sealed class AdminVerificationsController(IAdminVerificationService verif
     }
 
     [HttpPost("lecturers/{lecturerId:guid}/reject")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -60,9 +64,10 @@ public sealed class AdminVerificationsController(IAdminVerificationService verif
         Guid lecturerId, [FromBody] AdminVerificationDecisionRequest? request, CancellationToken cancellationToken)
     {
         if (!currentUser.HasPermission(PermissionNames.LecturersApprove)) return Forbid();
+        if (string.IsNullOrWhiteSpace(request?.Note) || request.Note.Trim().Length > 1000) return BadRequest();
 
         var outcome = await verificationService.DecideLecturerAsync(
-            currentUser.UserId!.Value, lecturerId, approve: false, request?.Note, cancellationToken);
+            currentUser.UserId!.Value, lecturerId, approve: false, request.Note, cancellationToken);
         return outcome switch
         {
             LecturerReviewOutcome.NotFound => NotFound(),
@@ -72,18 +77,20 @@ public sealed class AdminVerificationsController(IAdminVerificationService verif
     }
 
     [HttpGet("companies")]
-    [ProducesResponseType(typeof(IReadOnlyCollection<AdminCompanyReviewItem>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<AdminCompanyReviewItem>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<IReadOnlyCollection<AdminCompanyReviewItem>>> ListCompanies(
+    public async Task<ActionResult<ApiResponse<IReadOnlyCollection<AdminCompanyReviewItem>>>> ListCompanies(
         [FromQuery] string? status, CancellationToken cancellationToken)
     {
         if (!currentUser.HasPermission(PermissionNames.CompaniesVerify)) return Forbid();
+        if (!IsValidStatus(status, CompanyVerificationStatus.PENDING, CompanyVerificationStatus.VERIFIED, CompanyVerificationStatus.REJECTED, CompanyVerificationStatus.SUSPENDED)) return BadRequest();
 
         return Ok(new ApiResponse<IReadOnlyCollection<AdminCompanyReviewItem>>(await verificationService.ListCompaniesAsync(status, cancellationToken)));
     }
 
     [HttpPost("companies/{companyId:guid}/verify")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -103,7 +110,8 @@ public sealed class AdminVerificationsController(IAdminVerificationService verif
     }
 
     [HttpPost("companies/{companyId:guid}/reject")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -111,14 +119,22 @@ public sealed class AdminVerificationsController(IAdminVerificationService verif
         Guid companyId, [FromBody] AdminVerificationDecisionRequest? request, CancellationToken cancellationToken)
     {
         if (!currentUser.HasPermission(PermissionNames.CompaniesVerify)) return Forbid();
+        if (string.IsNullOrWhiteSpace(request?.Note) || request.Note.Trim().Length > 1000) return BadRequest();
 
         var outcome = await verificationService.DecideCompanyAsync(
-            currentUser.UserId!.Value, companyId, approve: false, request?.Note, cancellationToken);
+            currentUser.UserId!.Value, companyId, approve: false, request.Note.Trim(), cancellationToken);
         return outcome switch
         {
             CompanyReviewOutcome.NotFound => NotFound(),
             CompanyReviewOutcome.AlreadyProcessed => Conflict(),
             _ => Ok(new ApiResponse<string>(outcome == CompanyReviewOutcome.Rejected ? "REJECTED" : outcome.ToString()))
         };
+    }
+
+    private static bool IsValidStatus<T>(string? status, params T[] allowedStatuses) where T : struct, Enum
+    {
+        if (string.IsNullOrEmpty(status)) return true;
+        var normalized = status.Trim();
+        return allowedStatuses.Any(allowed => string.Equals(allowed.ToString(), normalized, StringComparison.OrdinalIgnoreCase));
     }
 }

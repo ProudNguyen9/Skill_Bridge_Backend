@@ -52,7 +52,7 @@ public sealed class AdminVerificationService(IAdministrationRepository administr
         var now = DateTimeOffset.UtcNow;
         if (approve)
         {
-            if (lecturer.ApprovalStatus == LecturerApprovalStatus.APPROVED)
+            if (lecturer.ApprovalStatus != LecturerApprovalStatus.PENDING)
             {
                 return LecturerReviewOutcome.AlreadyProcessed;
             }
@@ -63,12 +63,12 @@ public sealed class AdminVerificationService(IAdministrationRepository administr
             return LecturerReviewOutcome.Approved;
         }
 
-        if (lecturer.ApprovalStatus == LecturerApprovalStatus.REJECTED)
+        if (lecturer.ApprovalStatus != LecturerApprovalStatus.PENDING)
         {
             return LecturerReviewOutcome.AlreadyProcessed;
         }
 
-        lecturer.Reject(now, note);
+        lecturer.Reject(now, note!);
         administrationRepository.AddAuditLog(new AuditLog(actorUserId, AuditActions.LecturerRejected, nameof(LecturerProfile), lecturer.Id.ToString(), null, null, null, null, null, $"{{\"note\":{System.Text.Json.JsonSerializer.Serialize(note ?? string.Empty)}}}", now));
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return LecturerReviewOutcome.Rejected;
@@ -101,8 +101,9 @@ public sealed class AdminVerificationService(IAdministrationRepository administr
             return CompanyReviewOutcome.AlreadyProcessed;
         }
 
-        company.MarkRejected(now, note);
-        administrationRepository.AddAuditLog(new AuditLog(actorUserId, AuditActions.CompanyRejected, nameof(Company), company.Id.ToString(), company.Id, null, null, null, null, $"{{\"note\":{System.Text.Json.JsonSerializer.Serialize(note ?? string.Empty)}}}", now));
+        var normalizedNote = note?.Trim();
+        company.MarkRejected(now, normalizedNote);
+        administrationRepository.AddAuditLog(new AuditLog(actorUserId, AuditActions.CompanyRejected, nameof(Company), company.Id.ToString(), company.Id, null, null, null, null, $"{{\"note\":{System.Text.Json.JsonSerializer.Serialize(normalizedNote ?? string.Empty)}}}", now));
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return CompanyReviewOutcome.Rejected;
     }

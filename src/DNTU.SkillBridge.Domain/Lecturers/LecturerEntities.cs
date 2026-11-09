@@ -82,11 +82,16 @@ public sealed class LecturerProfile : Common.AuditableEntity
     }
 
     /// <summary>Admin từ chối hồ sơ giảng viên tự đăng ký kèm lý do.</summary>
-    public void Reject(DateTimeOffset at, string? note)
+    public void Reject(DateTimeOffset at, string note)
     {
+        if (string.IsNullOrWhiteSpace(note) || note.Trim().Length > 1000)
+        {
+            throw new ArgumentException("A rejection note is required and must be at most 1000 characters.", nameof(note));
+        }
+
         ApprovalStatus = LecturerApprovalStatus.REJECTED;
         ReviewedAt = at;
-        ReviewNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        ReviewNote = note.Trim();
     }
 
     /// <summary>Creates an INVITED supervision assignment; the lecturer accepts it to make it ACTIVE.</summary>

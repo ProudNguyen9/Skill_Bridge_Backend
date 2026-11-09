@@ -1,10 +1,21 @@
 using DNTU.SkillBridge.Application.Abstractions;
+using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Domain.Administration;
 
 namespace DNTU.SkillBridge.Application.Administration;
 
 public sealed class AdminGovernanceService(IAdministrationRepository administrationRepository, IUnitOfWork unitOfWork) : IAdminGovernanceService
 {
+    public Task<PagedResponse<AdminUserListItemResponse>> ListUsersAsync(AdminUserListQuery query, CancellationToken cancellationToken) =>
+        administrationRepository.ListUsersAsync(new AdminUserListQuery
+        {
+            Page = query.Page,
+            PageSize = query.PageSize,
+            Search = query.Search?.Trim(),
+            Role = query.Role?.Trim().ToUpperInvariant(),
+            IsActive = query.IsActive
+        }, cancellationToken);
+
     public Task<AdminDashboardResponse> GetDashboardAsync(CancellationToken cancellationToken) =>
         administrationRepository.GetDashboardAsync(cancellationToken);
 

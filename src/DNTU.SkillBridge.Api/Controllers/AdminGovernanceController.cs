@@ -15,6 +15,29 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Produces("application/json")]
 public sealed class AdminGovernanceController(IAdminGovernanceService governanceService, ICurrentUser currentUser) : ControllerBase
 {
+    [HttpGet("users")]
+    [Authorize(Roles = RoleNames.Admin + "," + RoleNames.SuperAdmin)]
+    [ProducesResponseType(typeof(PagedResponse<AdminUserListItemResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<PagedResponse<AdminUserListItemResponse>>> ListUsers(
+        [FromQuery] AdminUserListQuery query, CancellationToken cancellationToken)
+    {
+        if (query.Page < 1)
+            ModelState.AddModelError(nameof(query.Page), "Page must be at least 1.");
+        if (query.PageSize is < 1 or > PageQuery.MaximumPageSize)
+            ModelState.AddModelError(nameof(query.PageSize), $"PageSize must be between 1 and {PageQuery.MaximumPageSize}.");
+        if (Request.Query[nameof(query.Search)].ToString().Length > AdminUserListQuery.MaximumSearchLength)
+            ModelState.AddModelError(nameof(query.Search), $"Search must not exceed {AdminUserListQuery.MaximumSearchLength} characters.");
+        if (Request.Query.ContainsKey(nameof(query.Role)) && query.Role?.Trim().ToUpperInvariant() is not
+            (RoleNames.Student or RoleNames.Company or RoleNames.Lecturer or RoleNames.Admin or RoleNames.SuperAdmin))
+            ModelState.AddModelError(nameof(query.Role), "Role must be an existing known role name.");
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+        return Ok(await governanceService.ListUsersAsync(query, cancellationToken));
+    }
+
     [HttpGet("dashboard")]
     public async Task<ActionResult<ApiResponse<AdminDashboardResponse>>> Dashboard(CancellationToken cancellationToken)
     {

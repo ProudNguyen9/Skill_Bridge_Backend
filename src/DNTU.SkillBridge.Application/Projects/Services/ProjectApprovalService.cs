@@ -5,7 +5,7 @@ namespace DNTU.SkillBridge.Application.Projects;
 
 public sealed class ProjectApprovalService(IProjectRepository projectRepository) : IProjectApprovalService
 {
-    public Task<PagedResponse<AdminApprovalListItemResponse>> ListApprovalsAsync(string? status, PageQuery query, CancellationToken cancellationToken) =>
+    public Task<PagedResponse<AdminApprovalListItemResponse>> ListApprovalsAsync(string? status, AdminApprovalQuery query, CancellationToken cancellationToken) =>
         projectRepository.ListApprovalsAsync(status, query, cancellationToken);
 
     public Task<AdminApprovalDetailResponse?> GetApprovalDetailAsync(Guid projectId, CancellationToken cancellationToken) =>

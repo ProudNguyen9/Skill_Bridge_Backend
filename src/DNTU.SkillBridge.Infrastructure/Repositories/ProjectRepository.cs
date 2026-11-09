@@ -408,33 +408,40 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
         return (ProjectReopenOutcome.Reopened, await ProjectDetailAsync(companyId, projectId, cancellationToken));
     }
 
-    /// <summary>Admin approval queue: every non-DRAFT active project, newest submission first, optional status filter.</summary>
+    /// <summary>Admin approval queue: every non-DRAFT active project, newest submission first, optional status and search filters.</summary>
     public async Task<PagedResponse<AdminApprovalListItemResponse>> ListApprovalsAsync(
-        string? status, PageQuery query, CancellationToken cancellationToken)
+        string? status, AdminApprovalQuery query, CancellationToken cancellationToken)
     {
         var effectiveStatus = ParseStatusFilter(status);
 
         var baseQuery = dbContext.Projects
             .AsNoTracking()
-            .Where(project => project.IsActive && project.Status != ProjectStatus.DRAFT);
+            .Where(project => project.IsActive && project.Status != ProjectStatus.DRAFT)
+            .Join(dbContext.Companies.AsNoTracking(),
+                project => project.CompanyId,
+                company => company.Id,
+                (project, company) => new { project, CompanyName = company.Name, CompanyLogoUrl = company.LogoUrl });
 
         if (effectiveStatus.HasValue)
         {
             var wanted = effectiveStatus.Value;
-            baseQuery = baseQuery.Where(project => project.Status == wanted);
+            baseQuery = baseQuery.Where(row => row.project.Status == wanted);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim().ToLowerInvariant();
+            baseQuery = baseQuery.Where(row =>
+                row.project.Title.ToLower().Contains(search) || row.CompanyName.ToLower().Contains(search));
         }
 
         var totalItems = await baseQuery.CountAsync(cancellationToken);
 
         var rows = await baseQuery
-            .OrderByDescending(project => project.SubmittedAt)
-            .ThenByDescending(project => project.Id)
+            .OrderByDescending(row => row.project.SubmittedAt)
+            .ThenByDescending(row => row.project.Id)
             .Skip((query.Page - 1) * query.PageSize)
             .Take(query.PageSize)
-            .Join(dbContext.Companies.AsNoTracking(),
-                project => project.CompanyId,
-                company => company.Id,
-                (project, company) => new { project, CompanyName = company.Name })
             .ToListAsync(cancellationToken);
 
         var items = new List<AdminApprovalListItemResponse>(rows.Count);
@@ -452,6 +459,7 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
                 row.project.Id,
                 row.project.Title,
                 row.CompanyName,
+                row.CompanyLogoUrl,
                 row.project.Status.ToString(),
                 row.project.SubmittedAt,
                 lastDecision?.Decision.ToString(),

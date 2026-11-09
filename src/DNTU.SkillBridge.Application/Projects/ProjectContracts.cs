@@ -206,10 +206,18 @@ public sealed record ApprovalHistoryItem(
     Guid DecidedByUserId,
     DateTimeOffset DecidedAt);
 
+/// <summary>Admin approval queue paging with optional title or company-name search.</summary>
+public sealed class AdminApprovalQuery : PageQuery
+{
+    /// <summary>Case-insensitive contains match; leading/trailing whitespace is ignored.</summary>
+    public string? Search { get; init; }
+}
+
 public sealed record AdminApprovalListItemResponse(
     Guid ProjectId,
     string Title,
     string CompanyName,
+    string? CompanyLogoUrl,
     string Status,
     DateTimeOffset? SubmittedAt,
     string? LastDecision,

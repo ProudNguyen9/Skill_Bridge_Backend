@@ -82,19 +82,23 @@ public sealed class FilesController(
         try
         {
             await using var stream = file.OpenReadStream();
-            var uri = await fileStorage.DirectUploadAsync(storageKey, stream, file.ContentType, cancellationToken);
-            var downloadUrl = await fileStorage.CreateDownloadUrlAsync(storageKey, TimeSpan.FromHours(24), cancellationToken);
+            var upload = await fileService.UploadDirectAsync(currentUser.UserId, Path.GetFileName(file.FileName), storageKey, file.ContentType, file.Length, stream, cancellationToken);
+            if (upload is null)
+            {
+                return Conflict(new { message = "File key already exists or file metadata is invalid." });
+            }
 
             return Ok(new
             {
                 success = true,
                 message = "File tải lên thành công!",
                 key = storageKey,
+                fileRecordId = upload.File.Id,
                 fileName = file.FileName,
                 size = file.Length,
                 contentType = file.ContentType,
-                directUrl = uri.ToString(),
-                downloadUrl = downloadUrl.ToString()
+                directUrl = upload.DirectUrl.ToString(),
+                downloadUrl = upload.DownloadUrl.ToString()
             });
         }
         catch (Exception ex)
@@ -125,7 +129,7 @@ public sealed class FilesController(
 
         try
         {
-            await fileStorage.DeleteAsync(key, cancellationToken);
+            await fileService.DeleteDirectAsync(key, cancellationToken);
             return Ok(new
             {
                 success = true,

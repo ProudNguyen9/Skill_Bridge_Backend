@@ -17,5 +17,6 @@ public sealed class CompleteFileUploadRequest
     [Required, RegularExpression("^[A-Fa-f0-9]{64}$", ErrorMessage = "ChecksumSha256 must be a 64-character hexadecimal SHA-256 digest.")] public string ChecksumSha256 { get; init; } = string.Empty;
 }
 
-public sealed record FileRecordResponse(Guid Id, Guid? ProjectId, string FileName, string ContentType, long ExpectedSizeBytes, FileUploadStatus Status, DateTimeOffset ExpiresAt, DateTimeOffset? CompletedAt);
+public sealed record FileRecordResponse(Guid Id, Guid? ProjectId, string FileName, string StorageKey, string ContentType, long ExpectedSizeBytes, FileUploadStatus Status, DateTimeOffset ExpiresAt, DateTimeOffset? CompletedAt);
 public sealed record FileUploadRequestResponse(FileRecordResponse File, Uri UploadUrl);
+public sealed record DirectFileUploadResult(FileRecordResponse File, Uri DirectUrl, Uri DownloadUrl);

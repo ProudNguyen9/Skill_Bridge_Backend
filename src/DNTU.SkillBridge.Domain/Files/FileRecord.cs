@@ -5,7 +5,7 @@ namespace DNTU.SkillBridge.Domain.Files;
 /// <summary>Metadata and lifecycle state for a server-authorized uploaded object.</summary>
 public sealed class FileRecord : AuditableEntity
 {
-    public Guid UploadedByUserId { get; private set; }
+    public Guid? UploadedByUserId { get; private set; }
     public Guid? ProjectId { get; private set; }
     public string OriginalFileName { get; private set; } = string.Empty;
     public string StorageKey { get; private set; } = string.Empty;
@@ -18,7 +18,7 @@ public sealed class FileRecord : AuditableEntity
 
     private FileRecord() { }
 
-    public FileRecord(Guid uploadedByUserId, Guid? projectId, string originalFileName, string storageKey, string contentType, long expectedSizeBytes, DateTimeOffset expiresAt)
+    public FileRecord(Guid? uploadedByUserId, Guid? projectId, string originalFileName, string storageKey, string contentType, long expectedSizeBytes, DateTimeOffset expiresAt)
     {
         UploadedByUserId = uploadedByUserId;
         ProjectId = projectId;

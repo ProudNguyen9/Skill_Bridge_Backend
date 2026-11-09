@@ -30,6 +30,28 @@ public sealed class FileService(IFileRepository fileRepository, IFileStorage fil
         return new FileUploadRequestResponse(Map(file), url);
     }
 
+    public async Task<DirectFileUploadResult?> UploadDirectAsync(Guid? userId, string fileName, string storageKey, string contentType, long sizeBytes, Stream content, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(fileName) || fileName.Length > 255 || string.IsNullOrWhiteSpace(storageKey) || storageKey.Length > 300 || string.IsNullOrWhiteSpace(contentType) || contentType.Length > 128 || sizeBytes <= 0 || sizeBytes > 50L * 1024 * 1024) return null;
+        if (await fileRepository.ExistsByStorageKeyAsync(storageKey, cancellationToken) || await fileStorage.GetMetadataAsync(storageKey, cancellationToken) is not null) return null;
+
+        var file = new FileRecord(userId, null, fileName, storageKey, contentType, sizeBytes, DateTimeOffset.UtcNow.AddHours(1));
+        fileRepository.Add(file);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        var directUrl = await fileStorage.DirectUploadAsync(storageKey, content, contentType, cancellationToken);
+        var metadata = await fileStorage.GetMetadataAsync(storageKey, cancellationToken);
+        if (metadata is null || metadata.Length != sizeBytes)
+        {
+            throw new InvalidOperationException("Uploaded file metadata could not be verified.");
+        }
+
+        file.Complete(metadata.ChecksumSha256, DateTimeOffset.UtcNow);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        var downloadUrl = await fileStorage.CreateDownloadUrlAsync(storageKey, TimeSpan.FromHours(24), cancellationToken);
+        return new DirectFileUploadResult(Map(file), directUrl, downloadUrl);
+    }
+
     public async Task<FileRecordResponse?> CompleteAsync(Guid userId, Guid fileId, CompleteFileUploadRequest request, CancellationToken cancellationToken)
     {
         var file = await fileRepository.FindOwnedAsync(userId, fileId, cancellationToken);
@@ -67,6 +89,16 @@ public sealed class FileService(IFileRepository fileRepository, IFileStorage fil
         return true;
     }
 
+    public async Task<bool> DeleteDirectAsync(string storageKey, CancellationToken cancellationToken)
+    {
+        var file = await fileRepository.FindByStorageKeyAsync(storageKey, cancellationToken);
+        await fileStorage.DeleteAsync(storageKey, cancellationToken);
+        if (file is null) return true;
+        file.Delete();
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     /// <summary>Removes expired pending objects and marks their metadata expired. Intended for scheduled-worker invocation.</summary>
     public async Task<int> ExpirePendingUploadsAsync(DateTimeOffset now, CancellationToken cancellationToken)
     {
@@ -85,7 +117,7 @@ public sealed class FileService(IFileRepository fileRepository, IFileStorage fil
         await fileRepository.HasProjectScopeAsync(userId, projectId, cancellationToken);
 
     private async Task<bool> CanAccessAsync(Guid userId, FileRecord file, CancellationToken cancellationToken) => file.UploadedByUserId == userId || file.ProjectId.HasValue && await HasProjectScopeAsync(userId, file.ProjectId.Value, cancellationToken);
-    private static FileRecordResponse Map(FileRecord file) => new(file.Id, file.ProjectId, file.OriginalFileName, file.ContentType, file.ExpectedSizeBytes, file.Status, file.ExpiresAt, file.CompletedAt);
+    private static FileRecordResponse Map(FileRecord file) => new(file.Id, file.ProjectId, file.OriginalFileName, file.StorageKey, file.ContentType, file.ExpectedSizeBytes, file.Status, file.ExpiresAt, file.CompletedAt);
     private static string GetContentType(string extension) => extension switch
     {
         ".pdf" => "application/pdf",

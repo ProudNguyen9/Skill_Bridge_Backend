@@ -1,10 +1,11 @@
-using DNTU.SkillBridge.Application.Abstractions;
-using DNTU.SkillBridge.Domain.Administration;
+using DNTU.SkillBridge.Application.Common;
 
 namespace DNTU.SkillBridge.Application.Administration;
 
 public interface IAdminGovernanceService
 {
+    Task<PagedResponse<AdminUserListItemResponse>> ListUsersAsync(AdminUserListQuery query, CancellationToken cancellationToken);
+
     Task<AdminDashboardResponse> GetDashboardAsync(CancellationToken cancellationToken);
 
     Task<AdminPolicyResponse?> GetPolicyAsync(string category, CancellationToken cancellationToken);

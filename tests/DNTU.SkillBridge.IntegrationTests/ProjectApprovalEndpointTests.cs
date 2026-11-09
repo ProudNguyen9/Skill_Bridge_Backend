@@ -174,6 +174,180 @@ public sealed class ProjectApprovalEndpointTests(CatalogApiFactory factory)
         Assert.Equal("APPROVED", (await resumed.Content.ReadFromJsonAsync<Envelope<ApprovalDetailDto>>(Json))!.Data.Status);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Admin_Search_MatchesTitleOrCompany_CaseInsensitively(bool searchCompany)
+    {
+        string companyName = string.Empty;
+        var company = await CreateVerifiedCompanyAsync(name => companyName = name);
+        var admin = await CreateAdminClientAsync();
+        var marker = $"QueueSearch-{Guid.NewGuid():N}-MiXeD";
+        var projectId = await SubmitProjectAsync(company, $"Before {marker} after");
+        var otherCompany = await CreateVerifiedCompanyAsync();
+        await SubmitProjectAsync(otherCompany, "Unrelated approval project");
+        var draftId = await CreateProjectAsync(company, marker);
+        var search = searchCompany ? companyName[4..^4] : marker;
+
+        foreach (var term in new[] { search.ToLowerInvariant(), search.ToUpperInvariant(), $"  {search}  " })
+        {
+            var result = (await admin.GetFromJsonAsync<ApprovalListDto>(
+                $"/api/v1/admin/project-approvals?search={Uri.EscapeDataString(term)}", Json))!;
+
+            Assert.Equal(projectId, Assert.Single(result.Data).ProjectId);
+            Assert.DoesNotContain(result.Data, item => item.ProjectId == draftId);
+            Assert.Equal(new MetaDto(1, 20, 1, 1), result.Meta);
+        }
+    }
+
+    [Fact]
+    public async Task Admin_Search_FiltersBeforePaging_PreservesStatusAndStableMetadata()
+    {
+        var company = await CreateVerifiedCompanyAsync();
+        var admin = await CreateAdminClientAsync();
+        var marker = $"QueuePaging-{Guid.NewGuid():N}";
+        var projectIds = new List<Guid>();
+        for (var index = 0; index < 3; index++)
+        {
+            projectIds.Add(await SubmitProjectAsync(company, $"{marker} {index}"));
+        }
+
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync(
+            $"/api/v1/admin/projects/{projectIds[0]}/approve", new { }, Json)).StatusCode);
+        var draftId = await CreateProjectAsync(company, $"{marker} draft");
+        await SubmitProjectAsync(company, "Newest nonmatching project must not consume a search page");
+
+        // Equal submission times exercise the existing deterministic project-Id tiebreak.
+        await factory.RunWithDbContextAsync(async dbContext =>
+        {
+            var projects = await dbContext.Projects.Where(project => projectIds.Contains(project.Id)).ToListAsync();
+            var submittedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            foreach (var project in projects)
+            {
+                dbContext.Entry(project).Property(item => item.SubmittedAt).CurrentValue = submittedAt;
+            }
+            await dbContext.SaveChangesAsync();
+        });
+
+        var url = $"/api/v1/admin/project-approvals?search={Uri.EscapeDataString(marker)}";
+        var all = (await admin.GetFromJsonAsync<ApprovalListDto>($"{url}&pageSize=100", Json))!;
+        Assert.Equal(new MetaDto(1, 100, 3, 1), all.Meta);
+        Assert.Equal(projectIds.Order(), all.Data.Select(item => item.ProjectId).Order());
+        Assert.DoesNotContain(all.Data, item => item.ProjectId == draftId);
+
+        for (var page = 1; page <= 4; page++)
+        {
+            var result = (await admin.GetFromJsonAsync<ApprovalListDto>($"{url}&page={page}&pageSize=1", Json))!;
+            Assert.Equal(new MetaDto(page, 1, 3, 3), result.Meta);
+            Assert.Equal(all.Data.Skip(page - 1).Take(1), result.Data);
+            var repeated = (await admin.GetFromJsonAsync<ApprovalListDto>($"{url}&page={page}&pageSize=1", Json))!;
+            Assert.Equal(result.Data, repeated.Data);
+            Assert.Equal(result.Meta, repeated.Meta);
+        }
+
+        var approved = (await admin.GetFromJsonAsync<ApprovalListDto>($"{url}&status=APPROVED", Json))!;
+        Assert.Equal(projectIds[0], Assert.Single(approved.Data).ProjectId);
+        Assert.Equal(new MetaDto(1, 20, 1, 1), approved.Meta);
+        var pending = (await admin.GetFromJsonAsync<ApprovalListDto>($"{url}&status=PENDING_APPROVAL&pageSize=1", Json))!;
+        Assert.Equal("PENDING_APPROVAL", Assert.Single(pending.Data).Status);
+        Assert.Equal(new MetaDto(1, 1, 2, 2), pending.Meta);
+        var drafts = (await admin.GetFromJsonAsync<ApprovalListDto>($"{url}&status=DRAFT", Json))!;
+        Assert.Empty(drafts.Data);
+        Assert.Equal(new MetaDto(1, 20, 0, 0), drafts.Meta);
+    }
+
+    [Fact]
+    public async Task Admin_Search_WhitespaceIsIgnored_AndNoMatchHasEmptyMetadata()
+    {
+        var company = await CreateVerifiedCompanyAsync();
+        var admin = await CreateAdminClientAsync();
+        await SubmitProjectAsync(company, $"Whitespace baseline {Guid.NewGuid():N}");
+        var baseline = (await admin.GetFromJsonAsync<ApprovalListDto>(
+            "/api/v1/admin/project-approvals?status=PENDING_APPROVAL&pageSize=100", Json))!;
+        var whitespace = (await admin.GetFromJsonAsync<ApprovalListDto>(
+            "/api/v1/admin/project-approvals?status=PENDING_APPROVAL&pageSize=100&search=%20%20%09%20", Json))!;
+
+        Assert.Equal(baseline.Data, whitespace.Data);
+        Assert.Equal(baseline.Meta, whitespace.Meta);
+
+        var noMatch = (await admin.GetFromJsonAsync<ApprovalListDto>(
+            $"/api/v1/admin/project-approvals?search=NoMatch-{Guid.NewGuid():N}&page=2&pageSize=5", Json))!;
+        Assert.Empty(noMatch.Data);
+        Assert.Equal(new MetaDto(2, 5, 0, 0), noMatch.Meta);
+    }
+
+    [Theory]
+    [InlineData(0, 20)]
+    [InlineData(-1, 20)]
+    [InlineData(1, 0)]
+    [InlineData(1, -1)]
+    [InlineData(1, 101)]
+    public async Task Admin_List_InvalidPaging_Returns400(int page, int pageSize)
+    {
+        var admin = await CreateAdminClientAsync();
+        var response = await admin.GetAsync(
+            $"/api/v1/admin/project-approvals?search=test&page={page}&pageSize={pageSize}");
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Admin_MissingApprovalDetail_Returns404()
+    {
+        var admin = await CreateAdminClientAsync();
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await admin.GetAsync($"/api/v1/admin/project-approvals/{Guid.NewGuid()}")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("GET", "/api/v1/admin/project-approvals?search=test")]
+    [InlineData("GET", "/api/v1/admin/project-approvals/00000000-0000-0000-0000-000000000001")]
+    [InlineData("POST", "/api/v1/admin/projects/00000000-0000-0000-0000-000000000001/approve")]
+    [InlineData("POST", "/api/v1/admin/projects/00000000-0000-0000-0000-000000000001/request-changes")]
+    [InlineData("POST", "/api/v1/admin/projects/00000000-0000-0000-0000-000000000001/reject")]
+    [InlineData("POST", "/api/v1/admin/projects/00000000-0000-0000-0000-000000000001/suspend")]
+    [InlineData("POST", "/api/v1/admin/projects/00000000-0000-0000-0000-000000000001/resume")]
+    public async Task Admin_Endpoints_WithoutAuthentication_Return401(string method, string path)
+    {
+        var client = factory.CreateClient();
+        using var request = new HttpRequestMessage(new HttpMethod(method), path);
+        if (method == "POST")
+        {
+            request.Content = JsonContent.Create(new { }, options: Json);
+        }
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.SendAsync(request)).StatusCode);
+    }
+
+    [Fact]
+    public async Task RequestChanges_ThenResubmit_PersistsStatusNoteAndAppendOnlyHistory()
+    {
+        var company = await CreateVerifiedCompanyAsync();
+        var admin = await CreateAdminClientAsync();
+        var projectId = await SubmitProjectAsync(company, "Request changes and resubmit");
+        const string note = "Please clarify the business requirements.";
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync(
+            $"/api/v1/admin/projects/{projectId}/request-changes", new { note }, Json)).StatusCode);
+
+        // A separate GET reloads persisted state rather than trusting the action response.
+        var changed = (await admin.GetFromJsonAsync<Envelope<ApprovalDetailDto>>(
+            $"/api/v1/admin/project-approvals/{projectId}", Json))!.Data;
+        Assert.Equal("CHANGES_REQUESTED", changed.Status);
+        Assert.Equal(["SUBMITTED", "CHANGES_REQUESTED"], changed.History.Select(item => item.Decision).ToArray());
+        Assert.Equal(note, changed.History.Last().Note);
+        Assert.Null(changed.ApprovedAt);
+        Assert.Null(changed.PublishedAt);
+
+        Assert.Equal(HttpStatusCode.OK,
+            (await company.PostAsync($"/api/v1/company/projects/{projectId}/submit", null)).StatusCode);
+        var resubmitted = (await admin.GetFromJsonAsync<Envelope<ApprovalDetailDto>>(
+            $"/api/v1/admin/project-approvals/{projectId}", Json))!.Data;
+        Assert.Equal("PENDING_APPROVAL", resubmitted.Status);
+        Assert.Equal(["SUBMITTED", "CHANGES_REQUESTED", "SUBMITTED"],
+            resubmitted.History.Select(item => item.Decision).ToArray());
+        Assert.Equal(changed.History, resubmitted.History.Take(2));
+        Assert.NotNull(resubmitted.SubmittedAt);
+        Assert.True(resubmitted.SubmittedAt >= changed.SubmittedAt);
+    }
+
     private async Task<HttpClient> CreateCompanyAsync()
     {
         var client = await RegisterCompanyAsync();

@@ -5,6 +5,8 @@ namespace DNTU.SkillBridge.Application.Files;
 public interface IFileRepository
 {
     void Add(FileRecord file);
+    Task<bool> ExistsByStorageKeyAsync(string storageKey, CancellationToken cancellationToken);
+    Task<FileRecord?> FindByStorageKeyAsync(string storageKey, CancellationToken cancellationToken);
     Task<FileRecord?> FindOwnedAsync(Guid userId, Guid fileId, CancellationToken cancellationToken);
     Task<FileRecord?> FindAsync(Guid fileId, CancellationToken cancellationToken);
     Task<FileRecord?> FindCompletedAsync(Guid fileId, CancellationToken cancellationToken);

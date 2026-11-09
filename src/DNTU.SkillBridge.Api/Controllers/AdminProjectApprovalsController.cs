@@ -27,7 +27,7 @@ public sealed class AdminProjectApprovalsController(IProjectApprovalService proj
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<PagedResponse<AdminApprovalListItemResponse>>> List(
-        [FromQuery] PageQuery query, string? status, CancellationToken cancellationToken)
+        [FromQuery] AdminApprovalQuery query, string? status, CancellationToken cancellationToken)
     {
         if (!CanApprove())
         {

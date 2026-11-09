@@ -9,6 +9,12 @@ public sealed class FileRepository(AppDbContext dbContext) : IFileRepository
 {
     public void Add(FileRecord file) => dbContext.FileRecords.Add(file);
 
+    public Task<bool> ExistsByStorageKeyAsync(string storageKey, CancellationToken cancellationToken) =>
+        dbContext.FileRecords.AnyAsync(item => item.StorageKey == storageKey, cancellationToken);
+
+    public Task<FileRecord?> FindByStorageKeyAsync(string storageKey, CancellationToken cancellationToken) =>
+        dbContext.FileRecords.SingleOrDefaultAsync(item => item.StorageKey == storageKey && item.Status != FileUploadStatus.DELETED, cancellationToken);
+
     public Task<FileRecord?> FindOwnedAsync(Guid userId, Guid fileId, CancellationToken cancellationToken) =>
         dbContext.FileRecords.SingleOrDefaultAsync(item => item.Id == fileId && item.UploadedByUserId == userId, cancellationToken);
 

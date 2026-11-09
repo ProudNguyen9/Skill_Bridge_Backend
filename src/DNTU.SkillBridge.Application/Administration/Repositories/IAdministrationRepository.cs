@@ -1,4 +1,4 @@
-using DNTU.SkillBridge.Application.Administration;
+using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Domain.Administration;
 using DNTU.SkillBridge.Domain.Companies;
 using DNTU.SkillBridge.Domain.Lecturers;
@@ -8,6 +8,8 @@ namespace DNTU.SkillBridge.Application.Administration;
 /// <summary>Data operations for the admin governance dashboard and policy settings.</summary>
 public interface IAdministrationRepository
 {
+    Task<PagedResponse<AdminUserListItemResponse>> ListUsersAsync(AdminUserListQuery query, CancellationToken cancellationToken);
+
     Task<AdminDashboardResponse> GetDashboardAsync(CancellationToken cancellationToken);
 
     /// <summary>Reads a policy setting without tracking it.</summary>
