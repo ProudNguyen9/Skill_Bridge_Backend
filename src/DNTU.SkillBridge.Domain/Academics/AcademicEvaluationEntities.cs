@@ -44,6 +44,16 @@ public sealed class AcademicEvaluation : AuditableEntity
         FinalizedAt = at;
         Version = Guid.CreateVersion7();
     }
+
+    public string? ProofHash => Status == AcademicEvaluationStatus.FINALIZED && FinalizedAt.HasValue
+        ? ComputeProofHash(StudentId, ProjectId, TotalScore, FinalizedAt.Value)
+        : null;
+
+    public static string ComputeProofHash(Guid studentId, Guid projectId, decimal finalScore, DateTimeOffset finalizedAtUtc)
+    {
+        var raw = $"{studentId:D}:{projectId:D}:{finalScore:F2}:{finalizedAtUtc:O}";
+        return BitConverter.ToString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(raw))).Replace("-", "").ToLowerInvariant();
+    }
 }
 
 public sealed class AcademicCriterionScore : AuditableEntity

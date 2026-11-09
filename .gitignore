@@ -49,3 +49,7 @@ redis-data/
 artifacts/database/*.sql
 .tools/
 artifacts/sqlserver2022/
+
+# Uploaded files
+src/DNTU.SkillBridge.Api/wwwroot/uploads/*
+!src/DNTU.SkillBridge.Api/wwwroot/uploads/.gitkeep

@@ -28,7 +28,8 @@ public sealed record VerifiedSkillResponse(
     DateTimeOffset VerifiedAt,
     DateTimeOffset? RevokedAt,
     Guid? EvidenceSubmissionId,
-    Guid? EvidenceEvaluationId);
+    Guid? EvidenceEvaluationId,
+    string? ProofHash = null);
 
 public sealed record PortfolioEntryResponse(
     Guid Id,
@@ -38,8 +39,20 @@ public sealed record PortfolioEntryResponse(
     string Summary,
     bool IsPublished);
 
+public sealed record SkillPassportCertificateResponse(
+    Guid ProjectId,
+    string ProjectTitle,
+    string? ProjectCode,
+    string? CompanyName,
+    decimal FinalScore,
+    string Grade,
+    string ProofHash,
+    DateTimeOffset FinalizedAt);
+
 public sealed record SkillPassportResponse(
     Guid StudentId,
     IReadOnlyCollection<VerifiedSkillResponse> VerifiedSkills,
-    IReadOnlyCollection<PortfolioEntryResponse> Portfolio);
+    IReadOnlyCollection<PortfolioEntryResponse> Portfolio,
+    IReadOnlyCollection<SkillPassportCertificateResponse>? Certificates = null,
+    string? PrimaryProofHash = null);
 

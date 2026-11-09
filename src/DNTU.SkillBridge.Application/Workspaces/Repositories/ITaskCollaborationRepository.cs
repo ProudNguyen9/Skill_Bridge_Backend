@@ -15,6 +15,8 @@ public interface ITaskCollaborationRepository
 
     Task<TaskChecklistItem?> FindChecklistItemAsync(Guid itemId, CancellationToken cancellationToken);
 
+    Task<IReadOnlyCollection<TaskChecklistItemResponse>> ListChecklistItemsAsync(Guid taskId, CancellationToken cancellationToken);
+
     Task<int?> GetMaxChecklistSortOrderAsync(Guid taskId, CancellationToken cancellationToken);
 
     void AddChecklistItem(TaskChecklistItem item);

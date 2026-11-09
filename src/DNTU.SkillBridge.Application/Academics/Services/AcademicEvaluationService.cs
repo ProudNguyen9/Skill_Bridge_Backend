@@ -102,6 +102,9 @@ public sealed class AcademicEvaluationService(IAcademicEvaluationRepository eval
         return Map(evaluation);
     }
 
+    public Task<RubricResponse?> GetProjectRubricAsync(Guid projectId, CancellationToken cancellationToken) =>
+        evaluationRepository.GetProjectRubricAsync(projectId, cancellationToken);
+
     private async Task<bool> CanReadEvaluationAsync(Guid userId, Guid projectId, Guid studentId, CancellationToken cancellationToken) =>
         await evaluationRepository.HasActiveMemberForUserAsync(projectId, studentId, userId, cancellationToken) ||
         await evaluationRepository.CanLecturerReadProjectAsync(userId, projectId, cancellationToken);
@@ -115,5 +118,6 @@ public sealed class AcademicEvaluationService(IAcademicEvaluationRepository eval
         evaluation.IsPassed,
         evaluation.Status.ToString(),
         evaluation.Version,
-        evaluation.FinalizedAt);
+        evaluation.FinalizedAt,
+        evaluation.ProofHash);
 }

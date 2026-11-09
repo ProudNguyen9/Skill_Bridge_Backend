@@ -94,7 +94,27 @@ public sealed class SubmissionService(ISubmissionRepository submissionRepository
     public Task<IReadOnlyCollection<SubmissionResponse>> ListLecturerAsync(Guid userId, CancellationToken cancellationToken) =>
         submissionRepository.ListLecturerAsync(userId, cancellationToken);
 
+    public Task<IReadOnlyCollection<SubmissionResponse>> ListByProjectAsync(Guid projectId, CancellationToken cancellationToken) =>
+        submissionRepository.ListByProjectAsync(projectId, cancellationToken);
+
     private void AddEvent(Guid projectId, string eventType, Guid userId, Guid submissionId, int versionNumber) =>
         activityWriter.Append(projectId, eventType, userId, new { submissionId, versionNumber });
-    private static SubmissionResponse Map(ProjectSubmission submission) => new(submission.Id, submission.ProjectId, submission.MilestoneId, submission.Status.ToString(), submission.CurrentVersionNumber, submission.SubmittedByStudentId, submission.Version, submission.CreatedAt);
+    private static SubmissionResponse Map(ProjectSubmission submission)
+    {
+        var currentVersion = submission.Versions.FirstOrDefault(v => v.VersionNumber == submission.CurrentVersionNumber);
+        return new(
+            submission.Id,
+            submission.ProjectId,
+            submission.MilestoneId,
+            submission.Status.ToString(),
+            submission.CurrentVersionNumber,
+            submission.SubmittedByStudentId,
+            submission.Version,
+            submission.CreatedAt,
+            currentVersion?.Summary,
+            currentVersion?.GithubUrl,
+            currentVersion?.DemoUrl,
+            currentVersion?.VideoUrl,
+            currentVersion?.FileId);
+    }
 }

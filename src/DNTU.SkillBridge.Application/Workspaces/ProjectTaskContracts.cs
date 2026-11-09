@@ -30,5 +30,18 @@ public sealed class AssignProjectTaskRequest
     public Guid? StudentId { get; init; }
 }
 
-public sealed record ProjectTaskResponse(Guid Id, Guid ProjectId, string Title, string? Description, ProjectTaskStatus Status, ProjectTaskPriority Priority, Guid? AssigneeStudentId, DateTimeOffset? DueAt, int SortOrder, Guid Version, DateTimeOffset CreatedAt);
+public sealed record ProjectTaskResponse(
+    Guid Id,
+    Guid ProjectId,
+    string Title,
+    string? Description,
+    ProjectTaskStatus Status,
+    ProjectTaskPriority Priority,
+    Guid? AssigneeStudentId,
+    DateTimeOffset? DueAt,
+    int SortOrder,
+    Guid Version,
+    DateTimeOffset CreatedAt,
+    string? AssigneeName = null,
+    string? AssigneeAvatarUrl = null);
 public sealed record KanbanBoardResponse(Guid ProjectId, IReadOnlyDictionary<ProjectTaskStatus, IReadOnlyCollection<ProjectTaskResponse>> Columns);

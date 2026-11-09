@@ -18,4 +18,6 @@ public interface IAcademicEvaluationService
         CancellationToken cancellationToken);
 
     Task<AcademicEvaluationResponse?> FinalizeAsync(Guid lecturerUserId, Guid projectId, Guid studentId, CancellationToken cancellationToken);
+
+    Task<RubricResponse?> GetProjectRubricAsync(Guid projectId, CancellationToken cancellationToken);
 }

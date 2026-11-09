@@ -19,13 +19,40 @@ public sealed class WorkspaceService(IWorkspaceRepository workspaceRepository, I
         var openTaskCount = await workspaceRepository.CountOpenTasksAsync(projectId, cancellationToken);
         var now = DateTimeOffset.UtcNow;
         var overdueTaskCount = await workspaceRepository.CountOverdueTasksAsync(projectId, now, cancellationToken);
-        return new WorkspaceOverviewResponse(project.Id, project.Title, project.Slug, project.Status.ToString(), memberCount, openTaskCount, overdueTaskCount, access.Capabilities);
+        var supervisor = await workspaceRepository.FindProjectSupervisorAsync(projectId, cancellationToken);
+
+        return new WorkspaceOverviewResponse(
+            project.Id,
+            project.Title,
+            project.Slug,
+            project.Status.ToString(),
+            memberCount,
+            openTaskCount,
+            overdueTaskCount,
+            access.Capabilities,
+            supervisor?.Name,
+            supervisor?.Email,
+            supervisor?.Department,
+            supervisor?.Title);
     }
 
     public async Task<IReadOnlyCollection<WorkspaceMemberResponse>?> GetTeamAsync(ICurrentUser currentUser, Guid projectId, CancellationToken cancellationToken)
     {
         if (!(await projectAccessService.GetAsync(currentUser, projectId, cancellationToken)).CanRead) return null;
         return await workspaceRepository.ListTeamAsync(projectId, cancellationToken);
+    }
+
+    public async Task<bool> AssignLeaderAsync(ICurrentUser currentUser, Guid projectId, Guid newLeaderStudentId, CancellationToken cancellationToken)
+    {
+        var access = await projectAccessService.GetAsync(currentUser, projectId, cancellationToken);
+        if (!access.CanManage) return false;
+
+        var success = await workspaceRepository.AssignProjectLeaderAsync(projectId, newLeaderStudentId, cancellationToken);
+        if (success)
+        {
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        return success;
     }
 
     public async Task<PagedResponse<WorkspaceActivityResponse>?> GetActivityAsync(ICurrentUser currentUser, Guid projectId, WorkspaceActivityQuery query, CancellationToken cancellationToken)
@@ -54,7 +81,11 @@ public sealed class WorkspaceService(IWorkspaceRepository workspaceRepository, I
             project.MemberCount,
             project.OpenTaskCount,
             project.OverdueTaskCount,
-            new HashSet<string>(["workspace.read"])))
+            new HashSet<string>(["workspace.read"]),
+            project.SupervisorName,
+            project.SupervisorEmail,
+            project.SupervisorDepartment,
+            project.SupervisorTitle))
             .ToList();
     }
 

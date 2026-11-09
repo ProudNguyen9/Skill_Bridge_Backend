@@ -27,6 +27,14 @@ public sealed class User : AuditableEntity
 
     public void SetPasswordHash(string passwordHash) => PasswordHash = passwordHash;
 
+    public void SetDisplayName(string displayName)
+    {
+        if (!string.IsNullOrWhiteSpace(displayName))
+        {
+            DisplayName = displayName.Trim();
+        }
+    }
+
     public bool LinkGoogleIdentity(string googleSubjectId)
     {
         if (string.IsNullOrWhiteSpace(googleSubjectId)) return false;

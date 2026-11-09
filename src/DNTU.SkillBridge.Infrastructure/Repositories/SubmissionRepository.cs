@@ -57,7 +57,9 @@ public sealed class SubmissionRepository(AppDbContext dbContext) : ISubmissionRe
         await IsStudentMemberAsync(userId, projectId, cancellationToken) ||
         await dbContext.Projects.AnyAsync(project => project.Id == projectId && project.Company.Members.Any(member => member.UserId == userId), cancellationToken) ||
         await dbContext.LecturerAssignments.Join(dbContext.LecturerProfiles, assignment => assignment.LecturerId, lecturer => lecturer.Id, (assignment, lecturer) => new { assignment, lecturer })
-            .AnyAsync(row => row.assignment.ProjectId == projectId && row.assignment.Status == LecturerAssignmentStatus.ACTIVE && row.lecturer.IsActive && row.lecturer.UserId == userId, cancellationToken);
+            .AnyAsync(row => row.assignment.ProjectId == projectId && row.assignment.Status == LecturerAssignmentStatus.ACTIVE && row.lecturer.IsActive && row.lecturer.UserId == userId, cancellationToken) ||
+        await dbContext.UserRoles.Join(dbContext.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur, r })
+            .AnyAsync(ur => ur.ur.UserId == userId && (ur.r.Name == "ADMIN" || ur.r.Name == "SUPER_ADMIN"), cancellationToken);
 
     public async Task<IReadOnlyCollection<SubmissionVersionResponse>> ListVersionsAsync(Guid submissionId, CancellationToken cancellationToken) =>
         await dbContext.SubmissionVersions.AsNoTracking().Where(item => item.SubmissionId == submissionId).OrderBy(item => item.VersionNumber)
@@ -71,14 +73,26 @@ public sealed class SubmissionRepository(AppDbContext dbContext) : ISubmissionRe
         await dbContext.ProjectSubmissions.AsNoTracking()
             .Where(item => dbContext.ProjectMembers.Any(member => member.ProjectId == item.ProjectId && member.IsActive && member.Student.UserId == userId))
             .OrderByDescending(item => item.CreatedAt).ThenByDescending(item => item.Id)
-            .Select(item => new SubmissionResponse(item.Id, item.ProjectId, item.MilestoneId, item.Status.ToString(), item.CurrentVersionNumber, item.SubmittedByStudentId, item.Version, item.CreatedAt))
+            .Select(item => new SubmissionResponse(
+                item.Id, item.ProjectId, item.MilestoneId, item.Status.ToString(), item.CurrentVersionNumber, item.SubmittedByStudentId, item.Version, item.CreatedAt,
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.Summary).FirstOrDefault(),
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.GithubUrl).FirstOrDefault(),
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.DemoUrl).FirstOrDefault(),
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.VideoUrl).FirstOrDefault(),
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.FileId).FirstOrDefault()))
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyCollection<SubmissionResponse>> ListCompanyAsync(Guid userId, CancellationToken cancellationToken) =>
         await dbContext.ProjectSubmissions.AsNoTracking()
             .Where(item => dbContext.Projects.Any(project => project.Id == item.ProjectId && project.Company.Members.Any(member => member.UserId == userId)))
             .OrderByDescending(item => item.CreatedAt).ThenByDescending(item => item.Id)
-            .Select(item => new SubmissionResponse(item.Id, item.ProjectId, item.MilestoneId, item.Status.ToString(), item.CurrentVersionNumber, item.SubmittedByStudentId, item.Version, item.CreatedAt))
+            .Select(item => new SubmissionResponse(
+                item.Id, item.ProjectId, item.MilestoneId, item.Status.ToString(), item.CurrentVersionNumber, item.SubmittedByStudentId, item.Version, item.CreatedAt,
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.Summary).FirstOrDefault(),
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.GithubUrl).FirstOrDefault(),
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.DemoUrl).FirstOrDefault(),
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.VideoUrl).FirstOrDefault(),
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.FileId).FirstOrDefault()))
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyCollection<SubmissionResponse>> ListLecturerAsync(Guid userId, CancellationToken cancellationToken) =>
@@ -89,6 +103,25 @@ public sealed class SubmissionRepository(AppDbContext dbContext) : ISubmissionRe
                 (assignment, lecturer) => new { assignment, lecturer })
                 .Any(row => row.assignment.ProjectId == item.ProjectId && row.assignment.Status == LecturerAssignmentStatus.ACTIVE && row.lecturer.IsActive && row.lecturer.UserId == userId))
             .OrderByDescending(item => item.CreatedAt).ThenByDescending(item => item.Id)
-            .Select(item => new SubmissionResponse(item.Id, item.ProjectId, item.MilestoneId, item.Status.ToString(), item.CurrentVersionNumber, item.SubmittedByStudentId, item.Version, item.CreatedAt))
+            .Select(item => new SubmissionResponse(
+                item.Id, item.ProjectId, item.MilestoneId, item.Status.ToString(), item.CurrentVersionNumber, item.SubmittedByStudentId, item.Version, item.CreatedAt,
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.Summary).FirstOrDefault(),
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.GithubUrl).FirstOrDefault(),
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.DemoUrl).FirstOrDefault(),
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.VideoUrl).FirstOrDefault(),
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.FileId).FirstOrDefault()))
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyCollection<SubmissionResponse>> ListByProjectAsync(Guid projectId, CancellationToken cancellationToken) =>
+        await dbContext.ProjectSubmissions.AsNoTracking()
+            .Where(item => item.ProjectId == projectId)
+            .OrderByDescending(item => item.CreatedAt).ThenByDescending(item => item.Id)
+            .Select(item => new SubmissionResponse(
+                item.Id, item.ProjectId, item.MilestoneId, item.Status.ToString(), item.CurrentVersionNumber, item.SubmittedByStudentId, item.Version, item.CreatedAt,
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.Summary).FirstOrDefault(),
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.GithubUrl).FirstOrDefault(),
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.DemoUrl).FirstOrDefault(),
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.VideoUrl).FirstOrDefault(),
+                item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.FileId).FirstOrDefault()))
             .ToListAsync(cancellationToken);
 }

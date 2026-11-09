@@ -21,4 +21,6 @@ public interface ISubmissionService
     Task<IReadOnlyCollection<SubmissionResponse>> ListCompanyAsync(Guid userId, CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<SubmissionResponse>> ListLecturerAsync(Guid userId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<SubmissionResponse>> ListByProjectAsync(Guid projectId, CancellationToken cancellationToken);
 }

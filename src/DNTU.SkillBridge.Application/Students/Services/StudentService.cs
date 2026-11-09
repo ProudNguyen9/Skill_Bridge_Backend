@@ -18,14 +18,29 @@ public sealed class StudentService(IStudentRepository studentRepository, IUnitOf
     {
         var profile = await EnsureProfileAsync(userId, cancellationToken);
 
-        Guid? majorId = request.MajorId;
-        Guid? facultyId = request.FacultyId;
+        Guid? majorId = request.MajorId.HasValue && request.MajorId.Value != Guid.Empty ? request.MajorId : null;
+        Guid? facultyId = request.FacultyId.HasValue && request.FacultyId.Value != Guid.Empty ? request.FacultyId : null;
+
+        if (majorId.HasValue && !facultyId.HasValue)
+        {
+            var major = await studentRepository.FindMajorAsync(majorId.Value, cancellationToken);
+            if (major != null)
+            {
+                facultyId = major.FacultyId;
+            }
+        }
+
         if (majorId.HasValue || facultyId.HasValue)
         {
             var valid = await studentRepository.ValidateMajorFacultyAsync(majorId, facultyId, cancellationToken);
             if (!valid)
             {
-                return null;
+                // If invalid or inactive, clear invalid major rather than rejecting whole save
+                if (majorId.HasValue)
+                {
+                    var major = await studentRepository.FindMajorAsync(majorId.Value, cancellationToken);
+                    if (major is null || !major.IsActive) majorId = null;
+                }
             }
         }
 
@@ -39,7 +54,13 @@ public sealed class StudentService(IStudentRepository studentRepository, IUnitOf
             request.GithubUrl,
             request.LinkedinUrl,
             request.PortfolioUrl,
-            request.CvUrl);
+            request.CvUrl,
+            request.AvatarUrl);
+
+        if (!string.IsNullOrWhiteSpace(request.FullName))
+        {
+            await studentRepository.UpdateUserDisplayNameAsync(userId, request.FullName, cancellationToken);
+        }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return await studentRepository.ProjectProfileAsync(profile, cancellationToken);
@@ -65,21 +86,18 @@ public sealed class StudentService(IStudentRepository studentRepository, IUnitOf
     {
         var profile = await EnsureProfileAsync(userId, cancellationToken);
 
-        var requestedIds = skills.Select(item => item.SkillId).Distinct().ToList();
+        var requestedIds = skills.Select(item => item.SkillId).Where(id => id != Guid.Empty).Distinct().ToList();
         var existingSkillIds = await studentRepository.ListActiveSkillIdsAsync(requestedIds, cancellationToken);
-        if (existingSkillIds.Count != requestedIds.Count)
-        {
-            return false;
-        }
 
+        var validSkills = skills.Where(item => existingSkillIds.Contains(item.SkillId)).ToList();
         var current = await studentRepository.ListSkillsForUpdateAsync(profile.Id, cancellationToken);
 
-        foreach (var currentSkill in current.Where(currentSkill => !requestedIds.Contains(currentSkill.SkillId)))
+        foreach (var currentSkill in current.Where(currentSkill => !existingSkillIds.Contains(currentSkill.SkillId)))
         {
             studentRepository.RemoveSkill(currentSkill);
         }
 
-        foreach (var item in skills.GroupBy(item => item.SkillId).Select(group => group.First()))
+        foreach (var item in validSkills.GroupBy(item => item.SkillId).Select(group => group.First()))
         {
             var existing = current.FirstOrDefault(currentSkill => currentSkill.SkillId == item.SkillId);
             if (existing is null)

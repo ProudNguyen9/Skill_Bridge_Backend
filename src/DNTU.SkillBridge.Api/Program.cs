@@ -30,6 +30,8 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
 var envFile = Path.Combine(builder.Environment.ContentRootPath, ".env");
 if (!File.Exists(envFile) && builder.Environment.IsDevelopment())
 {
@@ -105,6 +107,34 @@ builder.Services
     .BindConfiguration(CorsOptions.SectionName)
     .ValidateDataAnnotations()
     .ValidateOnStart();
+
+const string CorsPolicyName = "AllowFrontend";
+
+var defaultAllowedOrigins = new[]
+{
+    "http://localhost:5017",
+    "http://localhost:5173",
+    "http://localhost:3000"
+};
+
+var configuredOrigins = builder.Configuration
+    .GetSection(CorsOptions.SectionName)
+    .Get<CorsOptions>()?.AllowedOrigins ?? [];
+
+var effectiveOrigins = defaultAllowedOrigins
+    .Union(configuredOrigins, StringComparer.OrdinalIgnoreCase)
+    .ToArray();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(CorsPolicyName, policy =>
+    {
+        policy.WithOrigins(effectiveOrigins)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
 
 builder.Services
     .AddOptions<StorageOptions>()
@@ -205,15 +235,16 @@ builder.Services.AddScoped<IOutboxEnqueuer>(provider => provider.GetRequiredServ
 builder.Services.AddHostedService<OutboxProcessor>();
 builder.Services.AddHostedService<DNTU.SkillBridge.Infrastructure.Files.FileCleanupService>();
 builder.Services.AddSignalR();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Workspaces.IProjectRealtimeNotifier, DNTU.SkillBridge.Api.Realtime.ProjectRealtimeNotifier>();
 builder.Services.AddHttpClient(nameof(DNTU.SkillBridge.Api.Files.S3CompatibleFileStorage));
 var storageOptions = builder.Configuration.GetSection(StorageOptions.SectionName).Get<StorageOptions>() ?? new StorageOptions();
-if (storageOptions.Enabled && (string.Equals(storageOptions.Provider, "MinIO", StringComparison.OrdinalIgnoreCase) || string.Equals(storageOptions.Provider, "S3", StringComparison.OrdinalIgnoreCase) || string.Equals(storageOptions.Provider, "Filebase", StringComparison.OrdinalIgnoreCase)))
+if (storageOptions.Enabled && (string.Equals(storageOptions.Provider, "MinIO", StringComparison.OrdinalIgnoreCase) || string.Equals(storageOptions.Provider, "S3", StringComparison.OrdinalIgnoreCase) || string.Equals(storageOptions.Provider, "Filebase", StringComparison.OrdinalIgnoreCase)) && !string.IsNullOrWhiteSpace(storageOptions.Endpoint))
 {
     builder.Services.AddSingleton<DNTU.SkillBridge.Application.Files.IFileStorage, DNTU.SkillBridge.Api.Files.S3CompatibleFileStorage>();
 }
 else
 {
-    builder.Services.AddSingleton<DNTU.SkillBridge.Application.Files.IFileStorage, DNTU.SkillBridge.Application.Files.DisabledFileStorage>();
+    builder.Services.AddSingleton<DNTU.SkillBridge.Application.Files.IFileStorage, DNTU.SkillBridge.Infrastructure.Files.LocalStorageFileStorage>();
 }
 builder.Services.AddHttpClient<IAccountEmailSender, ResendAccountEmailSender>();
 builder.Services.AddScoped<Microsoft.AspNetCore.Identity.IPasswordHasher<DNTU.SkillBridge.Domain.Identity.User>, Microsoft.AspNetCore.Identity.PasswordHasher<DNTU.SkillBridge.Domain.Identity.User>>();
@@ -366,6 +397,16 @@ app.Use(async (context, next) =>
 });
 app.UseStatusCodePages();
 app.UseHttpsRedirection();
+app.UseCors(CorsPolicyName);
+var uploadsPath = Path.Combine(app.Environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads");
+Directory.CreateDirectory(uploadsPath);
+app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads",
+    ServeUnknownFileTypes = true
+});
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
