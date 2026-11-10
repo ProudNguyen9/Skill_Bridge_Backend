@@ -1,0 +1,361 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>DNTU.SkillBridge.Infrastructure</name>
+    </assembly>
+    <members>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Files.FileCleanupService">
+            <summary>Configurable worker integration point for expiry cleanup until the Quartz scheduler is introduced.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Files.FileCleanupService.#ctor(Microsoft.Extensions.DependencyInjection.IServiceScopeFactory,Microsoft.Extensions.Options.IOptions{DNTU.SkillBridge.Application.Common.Options.QuartzOptions},Microsoft.Extensions.Logging.ILogger{DNTU.SkillBridge.Infrastructure.Files.FileCleanupService})">
+            <summary>Configurable worker integration point for expiry cleanup until the Quartz scheduler is introduced.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.SqlServerInitial">
+            <inheritdoc />
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.SqlServerInitial.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.SqlServerInitial.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.SqlServerInitial.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.AddGoogleIdentitySubject">
+            <inheritdoc />
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.AddGoogleIdentitySubject.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.AddGoogleIdentitySubject.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.AddGoogleIdentitySubject.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.AddAccountTokenFailedAttempts.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.AddLecturerApprovalStatus">
+            <inheritdoc />
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.AddLecturerApprovalStatus.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.AddLecturerApprovalStatus.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.AddLecturerApprovalStatus.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.IncreaseLecturerReviewNoteLength">
+            <inheritdoc />
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.IncreaseLecturerReviewNoteLength.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.IncreaseLecturerReviewNoteLength.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.IncreaseLecturerReviewNoteLength.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.CentralizeDirectFileUploads">
+            <inheritdoc />
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.CentralizeDirectFileUploads.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.CentralizeDirectFileUploads.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Persistence.Migrations.CentralizeDirectFileUploads.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Persistence.Seed.CatalogSeed">
+            <summary>
+            Seeds reference taxonomy only (skills, industries, faculties, majors, banks).
+            Never seeds business records, so it is safe for every environment including Production.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Persistence.Seed.DevelopmentTestAccountSeed.EnsureUserAsync(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext,Microsoft.AspNetCore.Identity.IPasswordHasher{DNTU.SkillBridge.Domain.Identity.User},System.String,System.String,DNTU.SkillBridge.Domain.Identity.Role,System.Threading.CancellationToken)">
+            <summary>Tạo (nếu chưa có) user dev, reset mật khẩu về mức kiểm thử và đảm bảo role được gán.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Persistence.UnitOfWork">
+            <summary>EF Core implementation of the unit of work over the application DbContext.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Persistence.UnitOfWork.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the unit of work over the application DbContext.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.AcademicEvaluationRepository">
+            <summary>EF Core implementation of the academic evaluation data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.AcademicEvaluationRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the academic evaluation data operations.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.AcademicRepository">
+            <summary>EF Core implementation of the academic course, mapping, and rubric data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.AcademicRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the academic course, mapping, and rubric data operations.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.AdminGovernanceRepository">
+            <summary>EF Core implementation of the admin governance data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.AdminGovernanceRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the admin governance data operations.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.AnalyticsRepository">
+            <summary>EF Core implementation of the admin analytics aggregate queries.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.AnalyticsRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the admin analytics aggregate queries.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.BusinessReviewRepository">
+            <summary>EF Core implementation of the business review data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.BusinessReviewRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the business review data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.BusinessReviewRepository.FindSubmissionForUpdateAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a submission with its versions as a tracked entity so mutations are persisted.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.CatalogRepository">
+            <summary>EF Core implementation of the catalog read queries.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.CatalogRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the catalog read queries.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.CatalogRepository.GetSkillsAsync(System.Boolean,System.Threading.CancellationToken)">
+            <summary>Lists catalog skills ordered by name. Inactive entries only appear when explicitly requested by an administrator.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.CatalogRepository.GetIndustriesAsync(System.Boolean,System.Threading.CancellationToken)">
+            <summary>Lists catalog industries ordered by name.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.CatalogRepository.GetFacultiesAsync(System.Boolean,System.Threading.CancellationToken)">
+            <summary>Lists catalog faculties ordered by name.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.CatalogRepository.GetMajorsAsync(System.Nullable{System.Guid},System.Boolean,System.Threading.CancellationToken)">
+            <summary>Lists catalog majors ordered by faculty and name, optionally restricted to one faculty.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.CatalogRepository.GetBanksAsync(System.Boolean,System.Threading.CancellationToken)">
+            <summary>Lists supported banks with their BIN codes, ordered by name.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.CommitmentRepository">
+            <summary>EF Core implementation of the commitment data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.CommitmentRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the commitment data operations.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.DashboardRepository">
+            <summary>EF Core implementation of the dashboard data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.DashboardRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the dashboard data operations.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.LecturerRepository">
+            <summary>EF Core implementation of the lecturer profile and supervision assignment data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.LecturerRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the lecturer profile and supervision assignment data operations.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.MilestoneRepository">
+            <summary>EF Core implementation of the project milestone data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.MilestoneRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the project milestone data operations.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.NotificationRepository">
+            <summary>EF Core implementation of the notification data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.NotificationRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the notification data operations.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.PaymentRepository">
+            <summary>EF Core implementation of the payment data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.PaymentRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the payment data operations.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.PortfolioRepository">
+            <summary>EF Core implementation of the portfolio data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.PortfolioRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the portfolio data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.PortfolioRepository.FindVerifiedSkillForUpdateAsync(System.Guid,System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a verified skill as a tracked entity so mutations are persisted.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.PortfolioRepository.FindPortfolioEntryForUpdateAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a portfolio entry as a tracked entity so mutations are persisted.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.ProjectAccessRepository">
+            <summary>EF Core implementation of the project access predicates.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectAccessRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the project access predicates.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.ProjectActivityWriter">
+            <summary>EF Core-backed append-only activity writer for workspace feature services.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectActivityWriter.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core-backed append-only activity writer for workspace feature services.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.ProjectCompletionRepository">
+            <summary>Coordinates the irreversible project completion transaction and its downstream records.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectCompletionRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext,DNTU.SkillBridge.Application.Workspaces.IProjectActivityWriter)">
+            <summary>Coordinates the irreversible project completion transaction and its downstream records.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository">
+            <summary>
+            Company-scoped project draft CRUD. The company/project identity is always resolved
+            server-side from the authenticated user; request bodies never carry a companyId.
+            Submit/approve/publication transitions belong to Task 13 — this service only ever
+            touches DRAFT projects.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>
+            Company-scoped project draft CRUD. The company/project identity is always resolved
+            server-side from the authenticated user; request bodies never carry a companyId.
+            Submit/approve/publication transitions belong to Task 13 — this service only ever
+            touches DRAFT projects.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.GetCompanyProjectAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Answers null when the project does not exist or belongs to another company (tenant isolation).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.SubmitForApprovalAsync(System.Guid,System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Company submits a draft for admin review. Readiness checks (13.04): verified + active
+            company, complete project content, at least one skill and deliverable, valid team
+            capacity, consistent allowance fields, and a strictly future application deadline.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.CancelAsync(System.Guid,System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Company-side cancellation; only drafts and pending-approval projects can be cancelled by the company.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.ReopenAsync(System.Guid,System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Company reopens a rejected/changes-requested/cancelled project back into an editable DRAFT.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.ListApprovalsAsync(System.String,DNTU.SkillBridge.Application.Projects.AdminApprovalQuery,System.Threading.CancellationToken)">
+            <summary>Admin approval queue: every non-DRAFT active project, newest submission first, optional status and search filters.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.GetApprovalDetailAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Admin detail view with the full append-only decision history (oldest first).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.DecideAsync(System.Guid,System.Guid,DNTU.SkillBridge.Domain.Projects.ProjectDecision,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Applies an admin decision atomically: the state transition and the append-only
+            history row are saved in a single transaction (read-modify-write, 13.05).
+            </summary>
+        </member>
+        <member name="F:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.PubliclyVisibleStatuses">
+            <summary>Statuses that make a project publicly browsable (Project.IsPubliclyVisible).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.IsPublicSortAllowed(System.String)">
+            <summary>True when the given sort key is on the public allow-list (14.03).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.SearchPublicProjectsAsync(DNTU.SkillBridge.Application.Projects.PublicProjectFilterQuery,System.Threading.CancellationToken)">
+            <summary>
+            Public browse/search endpoint. Only active projects in publicly visible statuses
+            (APPROVED/RECRUITING/IN_PROGRESS/COMPLETED) are returned; filters combine with AND
+            and every sort is deterministic through an Id tiebreak.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.GetPublicProjectBySlugAsync(System.String,System.Threading.CancellationToken)">
+            <summary>Public detail by slug; null when the project is missing, inactive, or not publicly visible.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.ListPublicProjectSkillsAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Skill requirements of one publicly visible project; null when the project is not publicly accessible.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.ListRelatedProjectsAsync(System.Guid,System.Int32,System.Threading.CancellationToken)">
+            <summary>
+            Projects sharing at least one skill with the given project, ranked by shared-skill
+            count then newest; the source project itself and inaccessible projects are excluded.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.ListPublicProjectMilestonesAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Lists public milestones and deliverables for an active published project.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.IsPubliclyAccessibleAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Is the project active and publicly visible? Guards sub-resource endpoints.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.LoadSkillNamesAsync(System.Collections.Generic.IEnumerable{System.Guid},System.Threading.CancellationToken)">
+            <summary>
+            One batched query resolves skill names for every project on the page (no N+1).
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.LoadPublicSkillsAsync(System.Collections.Generic.IReadOnlyCollection{System.Guid},System.Threading.CancellationToken)">
+            <summary>Batched skill-requirement projection keyed by project id (no N+1).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.GetProjectTeamAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Returns the active team members for a company-owned project.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectRepository.ValidateCatalogAsync(System.Nullable{System.Guid},System.Collections.Generic.IEnumerable{DNTU.SkillBridge.Application.Projects.ProjectSkillItem},System.Threading.CancellationToken)">
+            <summary>Returns an error token when an industry or skill id is missing/inactive; null when all valid.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.ProjectTaskRepository">
+            <summary>EF Core implementation of the project task data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.ProjectTaskRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the project task data operations.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.SavedProjectRepository">
+            <summary>EF Core implementation of the saved-project data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.SavedProjectRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the saved-project data operations.</summary>
+        </member>
+        <member name="F:DNTU.SkillBridge.Infrastructure.Repositories.SavedProjectRepository.PubliclyVisibleStatuses">
+            <summary>Statuses that make a project publicly visible (Project.IsPubliclyVisible).</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.SePayRepository">
+            <summary>EF Core implementation of the SePay data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.SePayRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the SePay data operations.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.SubmissionRepository">
+            <summary>EF Core implementation of the submission data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.SubmissionRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the submission data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.SubmissionRepository.FindSubmissionWithVersionsAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a submission with its versions with the context's default tracking behavior.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.SubmissionRepository.FindSubmissionAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a submission without tracking for read paths.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.TaskCollaborationRepository">
+            <summary>EF Core implementation of the task collaboration data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.TaskCollaborationRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the task collaboration data operations.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.TeamRepository">
+            <summary>EF Core implementation of the team data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.TeamRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the team data operations.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.TechnicalReviewRepository">
+            <summary>EF Core implementation of the technical review data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.TechnicalReviewRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the technical review data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.TechnicalReviewRepository.FindSubmissionWithVersionsAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a submission with its versions with the context's default tracking behavior.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Infrastructure.Repositories.WorkspaceRepository">
+            <summary>EF Core implementation of the workspace data operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Infrastructure.Repositories.WorkspaceRepository.#ctor(DNTU.SkillBridge.Infrastructure.Persistence.AppDbContext)">
+            <summary>EF Core implementation of the workspace data operations.</summary>
+        </member>
+    </members>
+</doc>

@@ -1,0 +1,507 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>DNTU.SkillBridge.Api</name>
+    </assembly>
+    <members>
+        <member name="T:DNTU.SkillBridge.Api.Authentication.ResendAccountEmailSender">
+            <summary>Sends account emails through the Resend Email API.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Authentication.ResendAccountEmailSender.#ctor(System.Net.Http.HttpClient,Microsoft.Extensions.Options.IOptions{DNTU.SkillBridge.Application.Common.Options.EmailOptions},Microsoft.Extensions.Options.IOptions{DNTU.SkillBridge.Application.Common.Options.AppOptions})">
+            <summary>Sends account emails through the Resend Email API.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Api.Controllers.AdminProjectApprovalsController">
+            <summary>
+            Admin approval workflow for company projects (Task 13). Actions require the
+            projects.approve permission or an ADMIN/SUPER_ADMIN role; the dual check keeps
+            both permission-based and role-based principals working.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.AdminProjectApprovalsController.#ctor(DNTU.SkillBridge.Application.Projects.IProjectApprovalService,DNTU.SkillBridge.Application.Common.Security.ICurrentUser)">
+            <summary>
+            Admin approval workflow for company projects (Task 13). Actions require the
+            projects.approve permission or an ADMIN/SUPER_ADMIN role; the dual check keeps
+            both permission-based and role-based principals working.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.AdminProjectApprovalsController.List(DNTU.SkillBridge.Application.Projects.AdminApprovalQuery,System.String,System.Threading.CancellationToken)">
+            <summary>Lists the admin approval queue (all non-draft projects), newest submissions first.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.AdminProjectApprovalsController.Get(System.Guid,System.Threading.CancellationToken)">
+            <summary>Returns one project with its full append-only decision history.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.AdminProjectApprovalsController.Approve(System.Guid,DNTU.SkillBridge.Application.Projects.ApprovalDecisionRequest,System.Threading.CancellationToken)">
+            <summary>Approves a pending-approval project; approval publishes it (status-driven visibility).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.AdminProjectApprovalsController.RequestChanges(System.Guid,DNTU.SkillBridge.Application.Projects.ApprovalDecisionRequest,System.Threading.CancellationToken)">
+            <summary>Requests changes on a pending-approval project, sending it back to the company.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.AdminProjectApprovalsController.Reject(System.Guid,DNTU.SkillBridge.Application.Projects.ApprovalDecisionRequest,System.Threading.CancellationToken)">
+            <summary>Rejects a pending-approval project with an optional reason.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.AdminProjectApprovalsController.Suspend(System.Guid,DNTU.SkillBridge.Application.Projects.ApprovalDecisionRequest,System.Threading.CancellationToken)">
+            <summary>Suspends an approved project, withdrawing it from public visibility.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.AdminProjectApprovalsController.Resume(System.Guid,DNTU.SkillBridge.Application.Projects.ApprovalDecisionRequest,System.Threading.CancellationToken)">
+            <summary>Resumes a suspended project back to APPROVED (publicly visible again).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.AdminProjectApprovalsController.CanApprove">
+            <summary>Permission-based or role-based authorization so crafted role JWTs (tests) and real permission grants both work.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Api.Controllers.AdminVerificationsController">
+            <summary>
+            Duyệt hồ sơ giảng viên tự đăng ký (lecturers.approve) và xác minh công ty đối tác (companies.verify).
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.AdminVerificationsController.#ctor(DNTU.SkillBridge.Application.Administration.IAdminVerificationService,DNTU.SkillBridge.Application.Common.Security.ICurrentUser)">
+            <summary>
+            Duyệt hồ sơ giảng viên tự đăng ký (lecturers.approve) và xác minh công ty đối tác (companies.verify).
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Api.Controllers.ApplicationsController">
+            <summary>
+            Student-side application endpoints: apply to a project, list/detail the caller's own
+            applications, and withdraw a pending one. Company review belongs to Task 18.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.ApplicationsController.#ctor(DNTU.SkillBridge.Application.Applications.IApplicationService,DNTU.SkillBridge.Application.Common.Security.ICurrentUser)">
+            <summary>
+            Student-side application endpoints: apply to a project, list/detail the caller's own
+            applications, and withdraw a pending one. Company review belongs to Task 18.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.ApplicationsController.ApplyToProject(System.Guid,DNTU.SkillBridge.Application.Applications.CreateApplicationRequest,System.Threading.CancellationToken)">
+            <summary>Applies the authenticated student to a publicly visible project; duplicate applications answer 409.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.ApplicationsController.ListMine(DNTU.SkillBridge.Application.Applications.ApplicationListQuery,System.Threading.CancellationToken)">
+            <summary>Lists the caller's own applications, newest first, with an optional status filter.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.ApplicationsController.GetMine(System.Guid,System.Threading.CancellationToken)">
+            <summary>Returns one of the caller's own applications; other students' applications answer 404.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.ApplicationsController.Withdraw(System.Guid,DNTU.SkillBridge.Application.Applications.WithdrawApplicationRequest,System.Threading.CancellationToken)">
+            <summary>Withdraws one of the caller's own PENDING applications; non-pending states answer 409.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Api.Controllers.BusinessReviewsController">
+            <summary>Company-scoped business review endpoints; DTOs intentionally exclude academic evaluation fields.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.BusinessReviewsController.#ctor(DNTU.SkillBridge.Application.Submissions.IBusinessReviewService,DNTU.SkillBridge.Application.Common.Security.ICurrentUser)">
+            <summary>Company-scoped business review endpoints; DTOs intentionally exclude academic evaluation fields.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.BusinessReviewsController.Create(System.Guid,DNTU.SkillBridge.Application.Submissions.CreateBusinessReviewRequest,System.Threading.CancellationToken)">
+            <summary>Creates an immutable business decision for the current technically-approved submission version.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.BusinessReviewsController.Put(System.Guid,DNTU.SkillBridge.Application.Submissions.CreateBusinessReviewRequest,System.Threading.CancellationToken)">
+            <summary>Idempotent-compatible alias of POST for clients using the documented POST/PUT review contract.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.BusinessReviewsController.List(System.Guid,System.Threading.CancellationToken)">
+            <summary>Lists business-review history for a submission only within its project scope.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.BusinessReviewsController.ListMine(System.Threading.CancellationToken)">
+            <summary>Lists the signed-in company reviewer's immutable business-review history.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Api.Controllers.CatalogController">
+            <summary>Read-only catalog endpoints powering every frontend dropdown and metadata panel.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CatalogController.#ctor(DNTU.SkillBridge.Application.Catalog.ICatalogService,DNTU.SkillBridge.Application.Common.Security.ICurrentUser)">
+            <summary>Read-only catalog endpoints powering every frontend dropdown and metadata panel.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CatalogController.GetSkills(DNTU.SkillBridge.Application.Catalog.CatalogListQuery,System.Threading.CancellationToken)">
+            <summary>Lists active skills (all skills when an administrator requests inactive entries).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CatalogController.GetIndustries(DNTU.SkillBridge.Application.Catalog.CatalogListQuery,System.Threading.CancellationToken)">
+            <summary>Lists active industries used to classify companies and projects.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CatalogController.GetFaculties(DNTU.SkillBridge.Application.Catalog.CatalogListQuery,System.Threading.CancellationToken)">
+            <summary>Lists active faculties; majors are grouped beneath each faculty.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CatalogController.GetMajors(DNTU.SkillBridge.Application.Catalog.MajorListQuery,System.Threading.CancellationToken)">
+            <summary>Lists active majors, optionally filtered to a single faculty.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CatalogController.GetBanks(DNTU.SkillBridge.Application.Catalog.CatalogListQuery,System.Threading.CancellationToken)">
+            <summary>Lists supported banks with their BIN codes for allowance and payment forms.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CatalogController.GetProjectMetadata(System.Threading.CancellationToken)">
+            <summary>Returns the configured project metadata: difficulties, work types, duration, team size, and allowance bounds.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CatalogController.GetTaskMetadata(System.Threading.CancellationToken)">
+            <summary>Returns the configured task metadata: kanban statuses and priorities.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CommitmentsController.CreateWithdrawal(DNTU.SkillBridge.Application.Commitments.CreateWithdrawalRequest,System.Threading.CancellationToken)">
+            <summary>Creates a governed withdrawal request for the caller's current active project membership.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Api.Controllers.CompaniesController">
+            <summary>Company tenant endpoints (/me) plus the public, privacy-limited company directory.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompaniesController.#ctor(DNTU.SkillBridge.Application.Companies.ICompanyService,DNTU.SkillBridge.Application.Common.Security.ICurrentUser)">
+            <summary>Company tenant endpoints (/me) plus the public, privacy-limited company directory.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompaniesController.GetMe(System.Threading.CancellationToken)">
+            <summary>Returns the caller's own company profile, or 404 until the company is created.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompaniesController.UpdateMe(DNTU.SkillBridge.Application.Companies.UpdateCompanyProfileRequest,System.Threading.CancellationToken)">
+            <summary>Creates the caller's company on first save (creator becomes OWNER) or updates the existing profile.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompaniesController.GetMembers(System.Threading.CancellationToken)">
+            <summary>Lists the members of the caller's company.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompaniesController.Invite(DNTU.SkillBridge.Application.Companies.CreateCompanyInvitationRequest,System.Threading.CancellationToken)">
+            <summary>Invites a member by email. Only owners and managers may invite.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompaniesController.RemoveMember(System.Guid,System.Threading.CancellationToken)">
+            <summary>Removes a company member; the last owner cannot be removed.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompaniesController.GetDocuments(System.Threading.CancellationToken)">
+            <summary>Lists the caller's verification documents.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompaniesController.AddDocument(DNTU.SkillBridge.Application.Companies.UpsertCompanyDocumentRequest,System.Threading.CancellationToken)">
+            <summary>Registers verification document metadata (file content arrives with Task 23).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompaniesController.DeleteDocument(System.Guid,System.Threading.CancellationToken)">
+            <summary>Deletes a document owned by the caller's company.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompaniesController.ListPublic(System.Threading.CancellationToken)">
+            <summary>Public directory of verified, active companies.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompaniesController.GetPublic(System.String,System.Threading.CancellationToken)">
+            <summary>Public company profile by slug; unverified or inactive companies answer 404.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompaniesController.GetPublicProjects(System.String,System.Threading.CancellationToken)">
+            <summary>Public project list per company slug.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompanyApplicationsController.Shortlist(System.Guid,DNTU.SkillBridge.Application.Applications.ApplicationDecisionRequest,System.Threading.CancellationToken)">
+            <summary>Places a pending application on the company shortlist.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompanyApplicationsController.Reject(System.Guid,DNTU.SkillBridge.Application.Applications.ApplicationDecisionRequest,System.Threading.CancellationToken)">
+            <summary>Rejects an active application and retains the optional decision reason.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompanyApplicationsController.Accept(System.Guid,DNTU.SkillBridge.Application.Applications.ApplicationDecisionRequest,System.Threading.CancellationToken)">
+            <summary>Atomically accepts an application and creates its pending student commitment.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Api.Controllers.CompanyProjectsController">
+            <summary>Company-scoped project draft endpoints (create, read, update, delete, team, progress).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompanyProjectsController.#ctor(DNTU.SkillBridge.Application.Projects.IProjectService,DNTU.SkillBridge.Application.Projects.IProjectWorkflowService,DNTU.SkillBridge.Application.Projects.IProjectTeamService,DNTU.SkillBridge.Application.Applications.IApplicationService,DNTU.SkillBridge.Application.Companies.ICompanyService,DNTU.SkillBridge.Application.Common.Security.ICurrentUser)">
+            <summary>Company-scoped project draft endpoints (create, read, update, delete, team, progress).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompanyProjectsController.List(DNTU.SkillBridge.Application.Common.PageQuery,System.String,System.Threading.CancellationToken)">
+            <summary>Lists the caller's company projects with pagination and a validated sort allow-list.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompanyProjectsController.Create(DNTU.SkillBridge.Application.Projects.CreateProjectRequest,System.Threading.CancellationToken)">
+            <summary>Creates a new project draft for the caller's company.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompanyProjectsController.Get(System.Guid,System.Threading.CancellationToken)">
+            <summary>Returns one of the caller's company projects; other companies' projects answer 404.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompanyProjectsController.Update(System.Guid,DNTU.SkillBridge.Application.Projects.UpdateProjectRequest,System.Threading.CancellationToken)">
+            <summary>Updates a project draft; only DRAFT projects can be modified.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompanyProjectsController.Delete(System.Guid,System.Threading.CancellationToken)">
+            <summary>Soft-deletes a project draft; only DRAFT projects can be deleted.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompanyProjectsController.GetTeam(System.Guid,System.Threading.CancellationToken)">
+            <summary>Team composition preview; empty until the team module (Task 17) arrives.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompanyProjectsController.ListApplications(System.Guid,DNTU.SkillBridge.Application.Applications.CompanyApplicationListQuery,System.Threading.CancellationToken)">
+            <summary>Lists applications for one project owned by the caller's company.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompanyProjectsController.GetProgress(System.Guid,System.Threading.CancellationToken)">
+            <summary>Safe draft-compatible progress projection for the project.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompanyProjectsController.Submit(System.Guid,System.Threading.CancellationToken)">
+            <summary>Submits a draft (or changes-requested project) for admin review after readiness checks.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompanyProjectsController.Cancel(System.Guid,System.Threading.CancellationToken)">
+            <summary>Cancels a draft or pending-approval project; already-published projects cannot be cancelled here.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.CompanyProjectsController.Reopen(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reopens a rejected, changes-requested, or cancelled project back into an editable draft.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.FilesController.GetFiles(System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Lấy danh sách files từ S3/Filebase bucket hoặc thông tin chi tiết một file nếu truyền key.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.FilesController.ViewFile(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Chuyển hướng trực tiếp đến signed download URL để browser load ảnh được ngay không bị 403.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.FilesController.UploadFile(Microsoft.AspNetCore.Http.IFormFile,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Upload file trực tiếp lên Filebase S3 bucket.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.FilesController.DeleteFile(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Xóa file khỏi S3/Filebase bucket theo key.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.FilesController.GetRawUploadedFile(System.String,System.String)">
+            <summary>
+            Tải / xem file trực tiếp từ local storage.
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Api.Controllers.LecturersController">
+            <summary>Lecturer self-service endpoints plus the minimal admin supervision operations (full lecturer administration lands in Task 38).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.LecturersController.#ctor(DNTU.SkillBridge.Application.Lecturers.ILecturerService,DNTU.SkillBridge.Application.Common.Security.ICurrentUser)">
+            <summary>Lecturer self-service endpoints plus the minimal admin supervision operations (full lecturer administration lands in Task 38).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.LecturersController.GetMe(System.Threading.CancellationToken)">
+            <summary>Returns the caller's own lecturer profile, creating it with defaults (active, private) on first access.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.LecturersController.UpdateMe(DNTU.SkillBridge.Application.Lecturers.UpdateLecturerProfileRequest,System.Threading.CancellationToken)">
+            <summary>Updates the caller's own profile; the lecturer id is always taken from the session, never from the payload.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.LecturersController.GetMyAssignments(System.Threading.CancellationToken)">
+            <summary>Lists the caller's project supervision assignments.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.LecturersController.AcceptAssignment(System.Guid,System.Threading.CancellationToken)">
+            <summary>Accepts an invited supervision assignment as the caller's own.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.LecturersController.GetLecturerAssignments(System.Guid,System.Threading.CancellationToken)">
+            <summary>Admin: lists a lecturer's project supervision assignments.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.LecturersController.CreateAssignment(System.Guid,DNTU.SkillBridge.Application.Lecturers.CreateLecturerAssignmentRequest,System.Threading.CancellationToken)">
+            <summary>Admin: invites a lecturer to supervise a project; only active lecturers qualify and the project must not be assigned yet.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.LecturersController.DeleteAssignment(System.Guid,System.Threading.CancellationToken)">
+            <summary>Admin: removes a supervision assignment.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.MeetingsController.Create(System.Guid,DNTU.SkillBridge.Application.Meetings.CreateMeetingRequest,System.Threading.CancellationToken)">
+            <summary>Schedules a UTC project meeting. Project members may schedule only when workspace settings allow it; owners, active lecturers, and admins may always schedule.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.MeetingsController.List(System.Guid,System.Threading.CancellationToken)">
+            <summary>Lists meetings visible to a scoped project participant, company owner, assigned lecturer, or administrator.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.MeetingsController.Attendance(System.Guid,DNTU.SkillBridge.Application.Meetings.UpdateAttendanceRequest,System.Threading.CancellationToken)">
+            <summary>Records attendance. Only company owners, active assigned lecturers, and administrators may update attendance.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.MeetingsController.GetMinutes(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads minutes only for a scoped workspace participant, company owner, assigned lecturer, or administrator.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.MeetingsController.PutMinutes(System.Guid,DNTU.SkillBridge.Application.Meetings.UpsertMeetingMinutesRequest,System.Threading.CancellationToken)">
+            <summary>Creates or replaces minutes. Only company owners, active assigned lecturers, and administrators can edit; replacements preserve an immutable revision.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.MeetingsController.ConvertActionItem(System.Guid,DNTU.SkillBridge.Application.Meetings.ConvertMeetingActionItemRequest,System.Threading.CancellationToken)">
+            <summary>Atomically converts one action item to its sole linked Kanban task. Repeated requests return that existing task.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.MilestonesController.Create(System.Guid,DNTU.SkillBridge.Application.Milestones.CreateMilestoneRequest,System.Threading.CancellationToken)">
+            <summary>Creates a planned milestone. Company owners/managers and active assigned lecturers manage the milestone plan.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.MilestonesController.List(System.Guid,System.Threading.CancellationToken)">
+            <summary>Lists milestone plans and their deliverables/history for a project participant.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.MilestonesController.Update(System.Guid,DNTU.SkillBridge.Application.Milestones.UpdateMilestoneRequest,System.Threading.CancellationToken)">
+            <summary>Updates a non-approved milestone with an optimistic-concurrency version.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.MilestonesController.Start(System.Guid,DNTU.SkillBridge.Application.Milestones.TransitionMilestoneRequest,System.Threading.CancellationToken)">
+            <summary>Moves the milestone through start, submit, request-revision, or approve. Approval/revision require company management or active lecturer supervision.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Api.Controllers.ProjectsController">
+            <summary>
+            Anonymous public project browsing: search, filter, sort, detail by slug,
+            related projects, skill requirements, and public milestones.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.ProjectsController.#ctor(DNTU.SkillBridge.Application.Projects.IProjectSearchService)">
+            <summary>
+            Anonymous public project browsing: search, filter, sort, detail by slug,
+            related projects, skill requirements, and public milestones.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.ProjectsController.List(DNTU.SkillBridge.Application.Projects.PublicProjectFilterQuery,System.Threading.CancellationToken)">
+            <summary>
+            Browses publicly visible projects with optional search (title/summary), skill,
+            industry, difficulty, workType, duration and allowance range filters, and a
+            named sort allow-list (newest, oldest, deadline, title, allowance).
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.ProjectsController.GetBySlug(System.String,System.Threading.CancellationToken)">
+            <summary>Returns one publicly visible project by slug; drafts and hidden projects answer 404.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.ProjectsController.Related(System.Guid,System.Int32,System.Threading.CancellationToken)">
+            <summary>Lists publicly visible projects sharing at least one skill with the given project, most-shared first.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.ProjectsController.Skills(System.Guid,System.Threading.CancellationToken)">
+            <summary>Lists the skill requirements of a publicly visible project.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.ProjectsController.PublicMilestones(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Public milestones; empty until the milestone module (Task 24) delivers milestone data.
+            Inaccessible projects answer 404.
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Api.Controllers.SavedProjectsController">
+            <summary>
+            Authenticated student saved-project endpoints: idempotent save/remove of publicly
+            visible projects, the paged saved list, and the informational skill match.
+            The student identity is always taken from the session, never from the payload.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.SavedProjectsController.#ctor(DNTU.SkillBridge.Application.Students.ISavedProjectService,DNTU.SkillBridge.Application.Common.Security.ICurrentUser)">
+            <summary>
+            Authenticated student saved-project endpoints: idempotent save/remove of publicly
+            visible projects, the paged saved list, and the informational skill match.
+            The student identity is always taken from the session, never from the payload.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.SavedProjectsController.Save(System.Guid,System.Threading.CancellationToken)">
+            <summary>Saves a publicly visible project. Idempotent; answers with the current saved list. Drafts and hidden projects answer 404.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.SavedProjectsController.Unsave(System.Guid,System.Threading.CancellationToken)">
+            <summary>Removes the caller's own bookmark; other students' saved rows are not visible. Unknown bookmarks answer 404.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.SavedProjectsController.List(DNTU.SkillBridge.Application.Common.PageQuery,System.Threading.CancellationToken)">
+            <summary>Lists the caller's saved projects, newest first. Projects that are no longer publicly visible are hidden from the list.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.SavedProjectsController.SkillMatch(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Compares the caller's active declared skills with a publicly visible project's skill
+            requirements. Informational only; never an application eligibility decision.
+            Invisible projects answer 404.
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Api.Controllers.SkillsController">
+            <summary>Standalone skill listing alias of the catalog skills endpoint.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.SkillsController.#ctor(DNTU.SkillBridge.Application.Catalog.ICatalogService,DNTU.SkillBridge.Application.Common.Security.ICurrentUser)">
+            <summary>Standalone skill listing alias of the catalog skills endpoint.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.SkillsController.GetSkills(DNTU.SkillBridge.Application.Catalog.CatalogListQuery,System.Threading.CancellationToken)">
+            <summary>Lists active skills (all skills when an administrator requests inactive entries).</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Api.Controllers.StudentsController">
+            <summary>Authenticated student profile endpoints plus the privacy-limited public profile read.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.StudentsController.#ctor(DNTU.SkillBridge.Application.Students.IStudentService,DNTU.SkillBridge.Application.Common.Security.ICurrentUser)">
+            <summary>Authenticated student profile endpoints plus the privacy-limited public profile read.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.StudentsController.GetMe(System.Threading.CancellationToken)">
+            <summary>Returns the caller's own student profile, creating it with default privacy settings on first access.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.StudentsController.UpdateMe(DNTU.SkillBridge.Application.Students.UpdateStudentProfileRequest,System.Threading.CancellationToken)">
+            <summary>Updates the caller's own profile; the student id is always taken from the session, never from the payload.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.StudentsController.UpdatePrivacy(DNTU.SkillBridge.Application.Students.UpdateStudentPrivacyRequest,System.Threading.CancellationToken)">
+            <summary>Updates the caller's own privacy settings, controlling what the public profile exposes.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.StudentsController.GetSkills(System.Threading.CancellationToken)">
+            <summary>Lists the caller's self-declared skills. Verified skills live elsewhere and are never reported here.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.StudentsController.ReplaceSkills(DNTU.SkillBridge.Application.Students.ReplaceDeclaredSkillsRequest,System.Threading.CancellationToken)">
+            <summary>Replaces the caller's self-declared skill set; every skill must be an active catalog skill.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.StudentsController.GetCertificates(System.Threading.CancellationToken)">
+            <summary>Lists the caller's own certificates, newest first.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.StudentsController.AddCertificate(DNTU.SkillBridge.Application.Students.UpsertCertificateRequest,System.Threading.CancellationToken)">
+            <summary>Creates a certificate owned by the caller.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.StudentsController.UpdateCertificate(System.Guid,DNTU.SkillBridge.Application.Students.UpsertCertificateRequest,System.Threading.CancellationToken)">
+            <summary>Updates a certificate owned by the caller; other students' certificates are not visible.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.StudentsController.DeleteCertificate(System.Guid,System.Threading.CancellationToken)">
+            <summary>Deletes a certificate owned by the caller; other students' certificates are not visible.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.StudentsController.GetPublic(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Public profile read. Answers 404 when the profile does not exist or the student keeps it private;
+            otherwise returns the privacy-filtered projection without contact info, CV, or hidden collections.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.SubmissionsController.Create(System.Guid,DNTU.SkillBridge.Application.Submissions.CreateSubmissionRequest,System.Threading.CancellationToken)">
+            <summary>Creates the first immutable evidence version for an active project member.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.SubmissionsController.Get(System.Guid,System.Threading.CancellationToken)">
+            <summary>Returns a submission only if the caller is a project student, owning company, or assigned lecturer.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.SubmissionsController.NewVersion(System.Guid,DNTU.SkillBridge.Application.Submissions.CreateSubmissionVersionRequest,System.Threading.CancellationToken)">
+            <summary>Appends an immutable evidence version using the current optimistic-concurrency token.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Api.Controllers.TechnicalReviewsController">
+            <summary>Immutable lecturer technical-review history for submission evidence versions.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.TechnicalReviewsController.#ctor(DNTU.SkillBridge.Application.Submissions.ITechnicalReviewService,DNTU.SkillBridge.Application.Common.Security.ICurrentUser)">
+            <summary>Immutable lecturer technical-review history for submission evidence versions.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.TechnicalReviewsController.Create(System.Guid,DNTU.SkillBridge.Application.Submissions.CreateTechnicalReviewRequest,System.Threading.CancellationToken)">
+            <summary>Records one assigned lecturer's technical decision and atomically moves the submission workflow.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.TechnicalReviewsController.ListMine(System.Threading.CancellationToken)">
+            <summary>Lists review history recorded by the signed-in lecturer.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.TechnicalReviewsController.Get(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets an immutable technical review when the caller can access its supervised project.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Controllers.TechnicalReviewsController.List(System.Guid,System.Threading.CancellationToken)">
+            <summary>Lists technical-review history for a submission. Company users have no access to academic review records.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Api.Files.S3CompatibleFileStorage">
+            <summary>Private S3-compatible storage adapter for MinIO, AWS S3, and Filebase.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Files.S3CompatibleFileStorage.#ctor(System.Net.Http.IHttpClientFactory,Microsoft.Extensions.Options.IOptions{DNTU.SkillBridge.Application.Common.Options.StorageOptions})">
+            <summary>Private S3-compatible storage adapter for MinIO, AWS S3, and Filebase.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Api.Security.PermissionRequirement">
+            <summary>
+            Yêu cầu user hiện tại phải có permission cụ thể (claim "permission" nhúng trong JWT).
+            SUPER_ADMIN được phép qua mọi gate có permission.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Api.Security.PermissionRequirement.#ctor(System.String)">
+            <summary>
+            Yêu cầu user hiện tại phải có permission cụ thể (claim "permission" nhúng trong JWT).
+            SUPER_ADMIN được phép qua mọi gate có permission.
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Api.Security.AuthorizationPolicies">
+            <summary>Tên policy sinh từ permission: "permission:projects.approve".</summary>
+        </member>
+        <member name="M:Microsoft.AspNetCore.OpenApi.Generated.DocumentationCommentIdHelper.CreateDocumentationId(System.Type)">
+            <summary>
+            Generates a documentation comment ID for a type.
+            Example: T:Namespace.Outer+Inner`1 becomes T:Namespace.Outer.Inner`1
+            </summary>
+        </member>
+        <member name="M:Microsoft.AspNetCore.OpenApi.Generated.DocumentationCommentIdHelper.CreateDocumentationId(System.Reflection.PropertyInfo)">
+            <summary>
+            Generates a documentation comment ID for a property.
+            Example: P:Namespace.ContainingType.PropertyName or for an indexer P:Namespace.ContainingType.Item(System.Int32)
+            </summary>
+        </member>
+        <member name="M:Microsoft.AspNetCore.OpenApi.Generated.DocumentationCommentIdHelper.CreateDocumentationId(System.Type,System.String)">
+            <summary>
+            Generates a documentation comment ID for a property given its container type and property name.
+            Example: P:Namespace.ContainingType.PropertyName
+            </summary>
+        </member>
+        <member name="M:Microsoft.AspNetCore.OpenApi.Generated.DocumentationCommentIdHelper.CreateDocumentationId(System.Reflection.MethodInfo)">
+            <summary>
+            Generates a documentation comment ID for a method (or constructor).
+            For example:
+              M:Namespace.ContainingType.MethodName(ParamType1,ParamType2)~ReturnType
+              M:Namespace.ContainingType.#ctor(ParamType)
+            </summary>
+        </member>
+        <member name="M:Microsoft.AspNetCore.OpenApi.Generated.DocumentationCommentIdHelper.GetTypeDocId(System.Type,System.Boolean,System.Boolean)">
+            <summary>
+            Generates a documentation ID string for a type.
+            This method handles nested types (replacing '+' with '.'),
+            generic types, arrays, pointers, by-ref types, and generic parameters.
+            The <paramref name="includeGenericArguments"/> flag controls whether
+            constructed generic type arguments are emitted, while <paramref name="omitGenericArity"/>
+            controls whether the generic arity marker (e.g. "`1") is appended.
+            </summary>
+        </member>
+        <member name="M:Microsoft.AspNetCore.OpenApi.Generated.DocumentationCommentIdHelper.NormalizeDocId(System.String)">
+            <summary>
+            Normalizes a documentation comment ID to match the compiler-style format.
+            Strips the return type suffix for ordinary methods but retains it for conversion operators.
+            </summary>
+            <param name="docId">The documentation comment ID to normalize.</param>
+            <returns>The normalized documentation comment ID.</returns>
+        </member>
+    </members>
+</doc>

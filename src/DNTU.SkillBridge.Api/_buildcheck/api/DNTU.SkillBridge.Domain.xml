@@ -1,0 +1,269 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>DNTU.SkillBridge.Domain</name>
+    </assembly>
+    <members>
+        <member name="T:DNTU.SkillBridge.Domain.Applications.Application">
+            <summary>
+            One student's application to a project. Uniqueness (ProjectId, StudentId) is enforced
+            by a database index — a student may hold at most one application per project.
+            </summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Domain.Applications.Application.StudentId">
+            <summary>References StudentProfile.Id (not the user id).</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Domain.Applications.Application.TeamId">
+            <summary>
+            Optional student team nominated for this application. Individual applications
+            remain supported; a nominated team is frozen when the application is accepted.
+            </summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Domain.Applications.Application.WithdrawnAt">
+            <summary>Set when the student withdraws the application.</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Domain.Applications.Application.DecidedAt">
+            <summary>Company decision audit fields. They are intentionally retained after later workflow changes.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Applications.Application.Withdraw(System.DateTimeOffset,System.String)">
+            <summary>
+            Student-side withdrawal. Only a PENDING application can be withdrawn;
+            later states are controlled by the company review workflow (Task 18).
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Applications.ApplicationStatus">
+            <summary>
+            Lifecycle state of a student application. Member names intentionally match the
+            uppercase wire values. This task (16) only ever writes PENDING and WITHDRAWN;
+            SHORTLISTED/ACCEPTED/REJECTED are reserved for company review (Task 18).
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Catalog.SkillCategory">
+            <summary>
+            Enum member names intentionally match the uppercase wire values exposed by the
+            catalog metadata endpoints and persisted in SQL Server (e.g. IN_PROGRESS).
+            </summary>
+        </member>
+        <member name="F:DNTU.SkillBridge.Domain.Commitments.CommitmentStatus.EXPIRED">
+            <summary>
+            Retained for commitments expired before the abandonment policy was introduced.
+            New overdue commitments transition to <see cref="F:DNTU.SkillBridge.Domain.Commitments.CommitmentStatus.ABANDONED"/>.
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Commitments.WithdrawalRequest">
+            <summary>Append-only governed departure request for an active project member.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Common.SlugBuilder.Create(System.String)">
+            <summary>
+            Builds a stable, URL-safe slug from any display name, including Vietnamese
+            names with diacritics (e.g. "Kỹ thuật phần mềm" -> "ky-thuat-phan-mem").
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Companies.Company.AssignSlug(System.String)">
+            <summary>Called once at creation to guarantee slug uniqueness.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Companies.Company.MarkVerified(System.DateTimeOffset,System.String)">
+            <summary>Admin verification transitions (Task 38 exposes the endpoints; the state lives here).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Companies.Company.CanPublishProjects">
+            <summary>Later project/payment features must refuse companies that are not verified and active.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Companies.CompanyDocument">
+            <summary>Metadata only; file content upload/download arrives with Task 23.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Files.FileRecord">
+            <summary>Metadata and lifecycle state for a server-authorized uploaded object.</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Domain.Identity.PermissionNames.All">
+            <summary>Danh sách toàn bộ permission (reflection vì các field là const string).</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Lecturers.LecturerApprovalStatus">
+            <summary>
+            Trạng thái duyệt hồ sơ giảng viên: tự đăng ký cần admin duyệt trước khi dùng portal.
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Lecturers.LecturerProfile">
+            <summary>
+            Academic profile of a DNTU lecturer. Self-registered lecturers stay PENDING until an admin
+            approves them; admin-provisioned/Google staff profiles are APPROVED at creation.
+            Supervision is only valid while the profile is active and approved.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Lecturers.LecturerProfile.Update(System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.Boolean,System.Boolean)">
+            <summary>Applies the editable profile fields, including the public name/contact policy.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Lecturers.LecturerProfile.Approve(System.DateTimeOffset)">
+            <summary>Admin duyệt hồ sơ giảng viên tự đăng ký.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Lecturers.LecturerProfile.Reject(System.DateTimeOffset,System.String)">
+            <summary>Admin từ chối hồ sơ giảng viên tự đăng ký kèm lý do.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Lecturers.LecturerProfile.AssignProject(System.Guid,DNTU.SkillBridge.Domain.Lecturers.LecturerAssignmentRole,System.String)">
+            <summary>Creates an INVITED supervision assignment; the lecturer accepts it to make it ACTIVE.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Lecturers.LecturerProfile.CanTakeAssignments">
+            <summary>Only active, approved lecturers may take (or keep) supervision assignments.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Lecturers.LecturerAssignment">
+            <summary>
+            Project supervision assignment (the spec's project-lecturer assignment). Projects arrive with Task 12,
+            so ProjectId is a plain reference guarded by a unique index: one supervising lecturer per project for now.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Lecturers.LecturerAssignment.Accept(System.DateTimeOffset)">
+            <summary>The assigned lecturer accepts the invitation; already handled transitions stay untouched.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Lecturers.LecturerAssignment.End(System.DateTimeOffset,System.String)">
+            <summary>Ends the supervision period; the note is appended for later auditability (Task 38).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Lecturers.LecturerAssignment.IsCurrentlyActive">
+            <summary>True while the assignment counts as the project's active supervision.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Lecturers.LecturerAssignmentStatus">
+            <summary>Enum names intentionally match the uppercase wire values (INVITED, ACTIVE, ENDED).</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Lecturers.LecturerAssignmentRole">
+            <summary>The supervision role the lecturer holds on a project (primary supervisor vs. co-supervisor).</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Meetings.MeetingMinuteRevision">
+            <summary>Immutable audit snapshot created whenever meeting minutes are replaced.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Milestones.MilestoneApprovalHistory">
+            <summary>Append-only audit entry for every successful milestone state change.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Payments.FundingOrder">
+            <summary>Company funding order; payment gateway callbacks alone may transition it to PAID.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Payments.Disbursement">
+            <summary>Student payment record whose paid transition is protected by an idempotency key.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Projects.ProjectCompletion">
+            <summary>Immutable completion marker; only one completion exists for a project.</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Domain.Projects.Project.Code">
+            <summary>Human-friendly reference code (e.g. PRJ-1A2B3C4D); generated by the service.</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Domain.Projects.Project.SubmittedAt">
+            <summary>Set when the company first submits the draft for admin review (Task 13 workflow).</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Domain.Projects.Project.PublishedAt">
+            <summary>Publication is driven purely by status (IsPubliclyVisible); this records when approval happened.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Projects.Project.AssignSlug(System.String)">
+            <summary>Called once at creation to guarantee slug uniqueness.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Projects.Project.AssignCode(System.String)">
+            <summary>Called once at creation to guarantee code uniqueness.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Projects.Project.UpdateDraft(System.String,System.String,System.String,System.String,System.String,System.Nullable{System.Guid},DNTU.SkillBridge.Domain.Catalog.ProjectDifficulty,DNTU.SkillBridge.Domain.Catalog.ProjectWorkType,System.Int32,System.Nullable{System.DateTimeOffset},System.Int32,System.Int32,System.Int32,System.Nullable{System.Int64},System.String)">
+            <summary>Mutates the draft content; anything other than a draft is immutable from the company side.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Projects.Project.ReplaceSkills(System.Collections.Generic.IEnumerable{System.ValueTuple{System.Guid,DNTU.SkillBridge.Domain.Projects.RequirementLevel,System.Boolean}})">
+            <summary>Replaces the whole skill-requirement set; only drafts can be edited.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Projects.Project.SetDeliverables(System.Collections.Generic.IEnumerable{System.ValueTuple{System.String,System.String,System.Int32}})">
+            <summary>Replaces the whole deliverable set; only drafts can be edited.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Projects.Project.Deactivate">
+            <summary>Soft delete; historical project data is preserved after submission (Task 13+).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Projects.Project.SubmitForApproval(System.Guid,System.DateTimeOffset)">
+            <summary>Company submits the draft for admin review; allowed from DRAFT or CHANGES_REQUESTED only.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Projects.Project.Approve(System.Guid,System.DateTimeOffset)">
+            <summary>Admin approval; publication is driven purely by status (13.07).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Projects.Project.RequestChanges">
+            <summary>Admin requests changes; reviewer identity/note are recorded on the approval history row.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Projects.Project.Suspend">
+            <summary>Suspends a published project; visibility is withdrawn with the status.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Projects.Project.Resume">
+            <summary>Returns a suspended project to APPROVED; visibility resumes with the status.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Projects.Project.Cancel">
+            <summary>Company-side cancellation while the project has not been published yet.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Projects.Project.Reopen">
+            <summary>Company pulls a rejected/changes-requested/cancelled project back into a DRAFT for editing.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Projects.Project.IsPubliclyVisible">
+            <summary>Public visibility is enabled only for approved/published projects (13.07).</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Projects.ProjectStatus">
+            <summary>
+            Lifecycle state of a project. Member names intentionally match the uppercase
+            wire values (e.g. PENDING_APPROVAL). Draft-only editing is Task 12; the
+            submit/approve transitions arrive with Task 13.
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Projects.ProjectDecision">
+            <summary>
+            Append-only workflow decisions recorded against a project. The current state lives on
+            the Project entity itself; this table never gets rows updated or deleted so the full
+            decision history (who, when, what, why) is preserved.
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Students.SavedProject">
+            <summary>
+            A student's bookmark of a project. The composite key (StudentId, ProjectId) makes
+            saving idempotent; visibility rules are enforced by the service, not here.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Students.StudentProfile.Update(System.String,System.Nullable{System.Guid},System.Nullable{System.Guid},System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String)">
+            <summary>Applies the editable contact and education fields; server-owned audit fields stay untouched.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Students.StudentProfile.IsCoreComplete">
+            <summary>The minimum fields required to consider the academic profile usable for applications.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Students.StudentSkill">
+            <summary>A self-declared skill. Lecturer-verified skills are separate entities (Task 33) and never share this table.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Students.SkillLevel">
+            <summary>Enum names intentionally match the uppercase wire values (BEGINNER, INTERMEDIATE, ...).</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Submissions.BusinessSubmissionReview">
+            <summary>Immutable company-only business assessment with no academic fields or scores.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Submissions.SubmissionStatusHistory">
+            <summary>Append-only audit entry for a submission workflow transition.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Submissions.ProjectSubmission.AddVersion(DNTU.SkillBridge.Domain.Submissions.SubmissionVersion,System.Guid)">
+            <summary>Adds an immutable resubmission after optimistic-concurrency validation.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Submissions.SubmissionVersion">
+            <summary>Immutable evidence snapshot. Versions may only be created, never edited or removed.</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Domain.Submissions.TechnicalSubmissionReview.CriteriaNotes">
+            <summary>Optional rubric-ready JSON/object notes captured as an immutable snapshot.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Teams.Team">
+            <summary>A student-owned team that can later be nominated for a project application.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Workspaces.ProjectActivity">
+            <summary>Append-only, safe metadata audit feed for project workspace events.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Workspaces.ProjectMember">
+            <summary>Authoritative active-project membership created after commitment confirmation.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Workspaces.ProjectRiskSnapshot">
+            <summary>Server-derived current risk state. Client input never supplies scores, levels, or reasons.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Workspaces.ProjectRiskHistory">
+            <summary>Append-only audit history for each server-side risk recalculation.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Workspaces.ProjectRiskCalculator">
+            <summary>Pure deterministic server policy; callers supply only server-derived counts.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Workspaces.ProjectTask">
+            <summary>Workspace Kanban task with an optimistic-concurrency version.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Domain.Workspaces.ProjectTask.UpdateChecklistVersion(System.Guid)">
+            <summary>Advances the task version when a checklist completion mutation is applied.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Domain.Workspaces.WorkspaceSettings">
+            <summary>Non-sensitive collaboration preferences for a project workspace.</summary>
+        </member>
+    </members>
+</doc>

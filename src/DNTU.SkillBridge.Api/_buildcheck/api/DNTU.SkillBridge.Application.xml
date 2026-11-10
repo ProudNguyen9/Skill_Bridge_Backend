@@ -1,0 +1,808 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>DNTU.SkillBridge.Application</name>
+    </assembly>
+    <members>
+        <member name="T:DNTU.SkillBridge.Application.Abstractions.IUnitOfWork">
+            <summary>
+            Commits pending changes made through repositories. Implemented by the
+            infrastructure layer on top of the EF Core change tracker.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Abstractions.IUnitOfWork.BeginTransactionAsync(System.Threading.CancellationToken)">
+            <summary>Begins an explicit database transaction spanning the pending changes of all repositories.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Abstractions.IUnitOfWorkTransaction">
+            <summary>
+            An explicit database transaction begun through <see cref="T:DNTU.SkillBridge.Application.Abstractions.IUnitOfWork"/>.
+            Disposing the transaction without committing rolls it back, matching EF Core semantics.
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Abstractions.PersistenceException">
+            <summary>
+            Thrown when committing pending changes to the database fails, for example because of a
+            unique constraint race. The infrastructure unit of work translates the EF Core
+            <c>DbUpdateException</c> into this Application-layer exception, keeping the inner exception.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Abstractions.PersistenceException.#ctor(System.String,System.Exception)">
+            <summary>
+            Thrown when committing pending changes to the database fails, for example because of a
+            unique constraint race. The infrastructure unit of work translates the EF Core
+            <c>DbUpdateException</c> into this Application-layer exception, keeping the inner exception.
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Academics.IAcademicEvaluationRepository">
+            <summary>Data operations for academic evaluations and their criterion scores.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Academics.IAcademicEvaluationRepository.FindEvaluationWithScoresAsync(System.Guid,System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads an evaluation with its scores with the context's default tracking behavior.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Academics.IAcademicEvaluationRepository.FindEvaluationForUpdateAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads an evaluation with the context's default tracking behavior.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Academics.IAcademicEvaluationRepository.TrySaveChangesAsync(System.Threading.CancellationToken)">
+            <summary>Saves pending changes; returns false when a concurrency conflict was detected.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Academics.IAcademicRepository">
+            <summary>Data operations for courses, course-project mappings, and grading rubrics.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Academics.IAcademicRepository.FindCourseAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a course with the context's default tracking behavior.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Academics.IAcademicRepository.FindCourseProjectForUpdateAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a course-project mapping as a tracked entity so mutations are persisted.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Academics.IAcademicRepository.FindRubricWithCriteriaAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a rubric with its criteria with the context's default tracking behavior.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Administration.AdminAuditLogListItemResponse">
+            <summary>One audit-log row. The domain entity carries no success/failure status, so none is reported.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Administration.AdminAuditLogListItemResponse.#ctor(System.Guid,System.Nullable{System.Guid},System.String,System.String,System.String,System.String,System.String,System.DateTimeOffset)">
+            <summary>One audit-log row. The domain entity carries no success/failure status, so none is reported.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Administration.IAdministrationRepository">
+            <summary>Data operations for the admin governance dashboard and policy settings.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Administration.IAdministrationRepository.FindPolicyAsync(System.String,System.Threading.CancellationToken)">
+            <summary>Reads a policy setting without tracking it.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Administration.IAdministrationRepository.FindPolicyForUpdateAsync(System.String,System.Threading.CancellationToken)">
+            <summary>Reads a policy setting as a tracked entity so mutations are persisted.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Administration.IAdministrationRepository.ListLecturersForReviewAsync(System.String,System.Threading.CancellationToken)">
+            <summary>Danh sách hồ sơ giảng viên theo trạng thái duyệt (null = tất cả).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Administration.IAdministrationRepository.FindLecturerForUpdateAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Đọc hồ sơ giảng viên dạng tracked để duyệt/từ chối.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Administration.IAdministrationRepository.ListCompaniesForReviewAsync(System.String,System.Threading.CancellationToken)">
+            <summary>Danh sách công ty theo trạng thái xác minh (null = tất cả).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Administration.IAdministrationRepository.FindCompanyForUpdateAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Đọc công ty dạng tracked để verify/reject.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Administration.AdminVerificationService">
+            <summary>
+            Duyệt hồ sơ giảng viên tự đăng ký và xác minh công ty đối tác.
+            Ghi AuditLog cho mỗi quyết định để phục vụ truy vết.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Administration.AdminVerificationService.#ctor(DNTU.SkillBridge.Application.Administration.IAdministrationRepository,DNTU.SkillBridge.Application.Abstractions.IUnitOfWork)">
+            <summary>
+            Duyệt hồ sơ giảng viên tự đăng ký và xác minh công ty đối tác.
+            Ghi AuditLog cho mỗi quyết định để phục vụ truy vết.
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Analytics.IAnalyticsRepository">
+            <summary>Read-side aggregate queries backing the admin analytics endpoints.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Analytics.AnalyticsService">
+            <summary>Read-only, privacy-safe aggregate skill supply and demand analytics.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Analytics.AnalyticsService.#ctor(DNTU.SkillBridge.Application.Analytics.IAnalyticsRepository)">
+            <summary>Read-only, privacy-safe aggregate skill supply and demand analytics.</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Application.Applications.CreateApplicationRequest.TeamId">
+            <summary>Optional team owned by the applicant; accepted teams are locked server-side.</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Application.Applications.ApplicationListQuery.Status">
+            <summary>Optional status filter (e.g. PENDING, WITHDRAWN); invalid values are ignored.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Applications.CompanyApplicationResponse">
+            <summary>
+            Company-only application projection. Profile links are intentionally never exposed
+            from student/public endpoints and are scoped by the owning project's company.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Applications.CompanyApplicationResponse.#ctor(System.Guid,System.Guid,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.DateTimeOffset,System.Nullable{System.DateTimeOffset},System.String)">
+            <summary>
+            Company-only application projection. Profile links are intentionally never exposed
+            from student/public endpoints and are scoped by the owning project's company.
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Catalog.SkillResponse">
+            <summary>A skill entry returned by the catalog endpoints.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Catalog.SkillResponse.#ctor(System.Guid,System.String,System.String,System.String,System.String,System.Boolean)">
+            <summary>A skill entry returned by the catalog endpoints.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Catalog.IndustryResponse">
+            <summary>An industry entry returned by the catalog endpoints.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Catalog.IndustryResponse.#ctor(System.Guid,System.String,System.String,System.Boolean)">
+            <summary>An industry entry returned by the catalog endpoints.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Catalog.FacultyResponse">
+            <summary>A faculty entry returned by the catalog endpoints.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Catalog.FacultyResponse.#ctor(System.Guid,System.String,System.String,System.Boolean)">
+            <summary>A faculty entry returned by the catalog endpoints.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Catalog.MajorResponse">
+            <summary>A major entry, always tied to its faculty, returned by the catalog endpoints.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Catalog.MajorResponse.#ctor(System.Guid,System.String,System.String,System.Guid,System.String,System.Boolean)">
+            <summary>A major entry, always tied to its faculty, returned by the catalog endpoints.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Catalog.BankResponse">
+            <summary>A bank entry with its Vietnamese BIN code, returned by the catalog endpoints.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Catalog.BankResponse.#ctor(System.Guid,System.String,System.String,System.String,System.Boolean)">
+            <summary>A bank entry with its Vietnamese BIN code, returned by the catalog endpoints.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Catalog.CatalogRangeMetadata">
+            <summary>Inclusive numeric bounds exposed through the project metadata endpoint.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Catalog.CatalogRangeMetadata.#ctor(System.Int32,System.Int32)">
+            <summary>Inclusive numeric bounds exposed through the project metadata endpoint.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Catalog.CatalogAllowanceMetadata">
+            <summary>Allowance configuration exposed through the project metadata endpoint.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Catalog.CatalogAllowanceMetadata.#ctor(System.String,DNTU.SkillBridge.Application.Catalog.CatalogRangeMetadata)">
+            <summary>Allowance configuration exposed through the project metadata endpoint.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Catalog.ProjectMetadataResponse">
+            <summary>Configuration-backed metadata for project definitions (difficulty, work type, duration, team size, allowance).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Catalog.ProjectMetadataResponse.#ctor(System.Collections.Generic.IReadOnlyCollection{System.String},System.Collections.Generic.IReadOnlyCollection{System.String},DNTU.SkillBridge.Application.Catalog.CatalogRangeMetadata,DNTU.SkillBridge.Application.Catalog.CatalogRangeMetadata,DNTU.SkillBridge.Application.Catalog.CatalogAllowanceMetadata)">
+            <summary>Configuration-backed metadata for project definitions (difficulty, work type, duration, team size, allowance).</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Catalog.TaskMetadataResponse">
+            <summary>Configuration-backed metadata for kanban tasks (statuses and priorities).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Catalog.TaskMetadataResponse.#ctor(System.Collections.Generic.IReadOnlyCollection{System.String},System.Collections.Generic.IReadOnlyCollection{System.String})">
+            <summary>Configuration-backed metadata for kanban tasks (statuses and priorities).</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Application.Catalog.CatalogListQuery.IncludeInactive">
+            <summary>When true, inactive entries are included. Requires the ADMIN or SUPER_ADMIN role.</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Application.Catalog.MajorListQuery.FacultyId">
+            <summary>Optionally restricts majors to a single faculty.</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Application.Catalog.MajorListQuery.IncludeInactive">
+            <summary>When true, inactive entries are included. Requires the ADMIN or SUPER_ADMIN role.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Catalog.ICatalogRepository">
+            <summary>
+            Read-side catalog queries. Catalog entries are read-only through the API,
+            so the repository only exposes projected list queries.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Catalog.CatalogService.GetSkillsAsync(System.Boolean,System.Threading.CancellationToken)">
+            <summary>Lists catalog skills ordered by name. Inactive entries only appear when explicitly requested by an administrator.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Catalog.CatalogService.GetIndustriesAsync(System.Boolean,System.Threading.CancellationToken)">
+            <summary>Lists catalog industries ordered by name.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Catalog.CatalogService.GetFacultiesAsync(System.Boolean,System.Threading.CancellationToken)">
+            <summary>Lists catalog faculties ordered by name.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Catalog.CatalogService.GetMajorsAsync(System.Nullable{System.Guid},System.Boolean,System.Threading.CancellationToken)">
+            <summary>Lists catalog majors ordered by faculty and name, optionally restricted to one faculty.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Catalog.CatalogService.GetBanksAsync(System.Boolean,System.Threading.CancellationToken)">
+            <summary>Lists supported banks with their BIN codes, ordered by name.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Catalog.CatalogService.GetProjectMetadataAsync(System.Threading.CancellationToken)">
+            <summary>Returns configuration-backed project metadata used to build project forms and filters.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Catalog.CatalogService.GetTaskMetadataAsync(System.Threading.CancellationToken)">
+            <summary>Returns configuration-backed task metadata (kanban statuses and priorities).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Catalog.CatalogService.CanIncludeInactive(DNTU.SkillBridge.Application.Common.Security.ICurrentUser)">
+            <summary>Determines whether the current user may request inactive catalog entries.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Commitments.AdminWithdrawalListItemResponse">
+            <summary>Admin-scoped withdrawal queue row enriched with student/project display fields.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Commitments.AdminWithdrawalListItemResponse.#ctor(System.Guid,System.Guid,System.String,System.Guid,System.String,System.String,System.String,DNTU.SkillBridge.Domain.Commitments.WithdrawalStatus,System.String,System.Nullable{System.DateTimeOffset},System.Nullable{System.DateTimeOffset},System.String,System.DateTimeOffset)">
+            <summary>Admin-scoped withdrawal queue row enriched with student/project display fields.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Commitments.ICommitmentRepository">
+            <summary>Data operations for project commitments, withdrawals, and project activities.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Commitments.ICommitmentRepository.FindCommitmentForUpdateAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a project commitment as a tracked entity so mutations are persisted.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Commitments.ICommitmentRepository.FindProjectForUpdateAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a project as a tracked entity so state changes are persisted.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Commitments.ICommitmentRepository.FindWithdrawalForUpdateAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a withdrawal request as a tracked entity so mutations are persisted.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Commitments.ICommitmentRepository.FindPendingCommitmentsAsync(System.DateTimeOffset,System.Threading.CancellationToken)">
+            <summary>Reads pending past-deadline commitments as tracked entities so mutations are persisted.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Commitments.CommitmentService.ExpirePendingCommitmentsAsync(System.DateTimeOffset,System.Threading.CancellationToken)">
+            <summary>
+            Job integration point for commitment-expiry processing. It is safe to invoke repeatedly;
+            only pending commitments past their UTC deadline transition to ABANDONED.
+            </summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Application.Common.Options.StorageOptions.UploadUrlMinutes">
+            <summary>Maximum lifetime of a client upload authorization.</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Application.Common.Options.StorageOptions.DownloadUrlMinutes">
+            <summary>Maximum lifetime of a signed download URL.</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Application.Common.Options.StorageOptions.Region">
+            <summary>AWS region used by the Signature V4 S3-compatible adapter.</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Application.Common.Options.StorageOptions.UsePathStyle">
+            <summary>Use /bucket/object addressing, which is required by the default MinIO endpoint.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Common.Security.CurrentUserAuthorizationExtensions">
+            <summary>
+            Extension kiểm tra permission cho các chỗ cần check imperative (trong service/controller).
+            SUPER_ADMIN luôn có mọi permission.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Common.Security.CurrentUserAuthorizationExtensions.HasAnyPermission(DNTU.SkillBridge.Application.Common.Security.ICurrentUser,System.String[])">
+            <summary>Có ít nhất một permission trong danh sách.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Companies.PublicCompanyResponse">
+            <summary>Public company projection: no tax code, private contacts, documents, or member data.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Companies.PublicCompanyResponse.#ctor(System.Guid,System.String,System.String,System.Nullable{System.Guid},System.String,System.String,System.String,System.String,System.String)">
+            <summary>Public company projection: no tax code, private contacts, documents, or member data.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Companies.CompanyService.GetMyCompanyAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Returns the caller's own company, or null when the account is not linked to one yet.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Companies.CompanyService.CreateOrUpdateMyCompanyAsync(System.Guid,DNTU.SkillBridge.Application.Companies.UpdateCompanyProfileRequest,System.Threading.CancellationToken)">
+            <summary>
+            Creates the company on first save (creator becomes the single OWNER) or updates the existing profile.
+            Company identity always derives from the authenticated user; request bodies never carry a companyId.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Companies.CompanyService.InviteMemberAsync(System.Guid,DNTU.SkillBridge.Application.Companies.CreateCompanyInvitationRequest,System.Threading.CancellationToken)">
+            <summary>Creates a membership invitation. Only owners and managers may invite.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Companies.CompanyService.RemoveMemberAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Removes a member with the minimum-one-owner policy enforced.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Companies.CompanyService.DeleteMyDocumentAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Deletes a document owned by the caller's company; other companies' documents answer as not found.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Companies.CompanyService.ListPublicCompaniesAsync(System.Threading.CancellationToken)">
+            <summary>Public list of verified, active companies ordered by name.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Companies.CompanyService.GetPublicCompanyAsync(System.String,System.Threading.CancellationToken)">
+            <summary>Public company by slug; unverified or inactive companies answer 404.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Companies.CompanyService.ListPublicCompanyProjectsAsync(System.String,System.Threading.CancellationToken)">
+            <summary>Lists public projects for a verified company by slug.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Files.IFileStorage">
+            <summary>Storage-provider boundary; production adapters may issue provider-specific signed URLs.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Files.DisabledFileStorage">
+            <summary>Safe development placeholder. It deliberately does not expose credentials or make a bucket public.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Files.FileService.ExpirePendingUploadsAsync(System.DateTimeOffset,System.Threading.CancellationToken)">
+            <summary>Removes expired pending objects and marks their metadata expired. Intended for scheduled-worker invocation.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Files.IFileExpirationService">
+            <summary>
+            Scheduled-worker boundary for expiring pending uploads. Implemented by the file
+            service so the cleanup background worker does not depend on the HTTP host layer.
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Lecturers.LecturerProfileResponse">
+            <summary>Private profile projection for the authenticated lecturer.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Lecturers.LecturerProfileResponse.#ctor(System.Guid,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.Boolean,System.Boolean,System.Boolean)">
+            <summary>Private profile projection for the authenticated lecturer.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Lecturers.LecturerAssignmentResponse">
+            <summary>Supervision assignment projection; Role and Status use the uppercase wire values (PRIMARY/SUPERVISOR, INVITED/ACTIVE/ENDED).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Lecturers.LecturerAssignmentResponse.#ctor(System.Guid,System.Guid,System.Guid,System.String,System.String,System.DateTimeOffset,System.Nullable{System.DateTimeOffset},System.Nullable{System.DateTimeOffset},System.String)">
+            <summary>Supervision assignment projection; Role and Status use the uppercase wire values (PRIMARY/SUPERVISOR, INVITED/ACTIVE/ENDED).</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Lecturers.ILecturerRepository">
+            <summary>Data operations for lecturer profiles and project supervision assignments.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Lecturers.ILecturerRepository.FindProfileByUserIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads the lecturer profile owned by a user as a tracked entity so /me writes mutate it.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Lecturers.ILecturerRepository.FindProfileForUpdateAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a lecturer profile by id as a tracked entity so assignment writes mutate it.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Lecturers.ILecturerRepository.FindAssignmentForUpdateAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a supervision assignment owned by a lecturer as a tracked entity so mutations are persisted.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Lecturers.ILecturerRepository.FindAssignmentAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a supervision assignment by id with the context's default tracking behavior.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Lecturers.ILecturerRepository.ListAssignmentsAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Lists a lecturer's supervision assignments detached, oldest first.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Lecturers.LecturerService.GetMyProfileAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Returns the caller's own profile, lazily creating it (active, private) on first access.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Lecturers.LecturerService.UpdateMyProfileAsync(System.Guid,DNTU.SkillBridge.Application.Lecturers.UpdateLecturerProfileRequest,System.Threading.CancellationToken)">
+            <summary>Updates the caller's own profile. The lecturer identity always comes from the session.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Lecturers.LecturerService.GetMyAssignmentsAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Lists the caller's project supervision assignments, oldest first.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Lecturers.LecturerService.AcceptMyAssignmentAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>The caller accepts an invited supervision assignment as their own.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Lecturers.LecturerService.GetLecturerAssignmentsAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Admin projection of one lecturer's supervision assignments.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Lecturers.LecturerService.CreateAssignmentAsync(System.Guid,DNTU.SkillBridge.Application.Lecturers.CreateLecturerAssignmentRequest,System.Threading.CancellationToken)">
+            <summary>
+            Invites a lecturer to supervise a project (status INVITED). Only existing active lecturers qualify and a
+            project can hold a single assignment row for now, so any existing assignment for the project conflicts.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Lecturers.LecturerService.DeleteAssignmentAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Removes a supervision assignment; returns false when it does not exist.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Meetings.ConvertMeetingActionItemRequest">
+            <summary>Optional task details for the first conversion only; subsequent calls return the existing linked task.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Milestones.IMilestoneRepository">
+            <summary>Data operations for project milestones, deliverables, approval history, activities, and outbox events.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Milestones.IMilestoneRepository.FindMilestoneAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a milestone with the context's default tracking behavior.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Milestones.IMilestoneRepository.FindDeliverableWithMilestoneAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a deliverable joined with its milestone with the context's default tracking behavior.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Milestones.IMilestoneRepository.HasDeliverableWithMissingCompletedFileAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>True when any deliverable of the milestone has no file id or a file that is not COMPLETED in the project.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Milestones.IMilestoneRepository.UpdateStatusAndVersionAsync(System.Guid,System.Guid,DNTU.SkillBridge.Domain.Milestones.MilestoneStatus,System.Guid,System.Threading.CancellationToken)">
+            <summary>Updates a milestone's status and version in place, succeeding only when the row still carries the persisted version.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Milestones.IMilestoneRepository.Detach(DNTU.SkillBridge.Domain.Milestones.ProjectMilestone)">
+            <summary>Detaches a milestone instance from the change tracker.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Notifications.INotificationRepository">
+            <summary>Data operations for user notifications and notification preferences.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Notifications.INotificationRepository.FindAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a user notification as a tracked entity so mutations are persisted.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Notifications.INotificationRepository.FindUnreadAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads all unread notifications of a user as tracked entities so mutations are persisted.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Notifications.INotificationRepository.FindPreferenceForUpdateAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a notification preference as a tracked entity so mutations are persisted.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Payments.IPaymentRepository">
+            <summary>Data operations for funding orders and disbursements.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Payments.IPaymentRepository.FindDisbursementAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a disbursement as a tracked entity so mutations are persisted.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Projects.CompanyProjectProgressResponse">
+            <summary>Safe draft-compatible projection until the full progress module (Task 17/27) arrives.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Projects.CompanyProjectProgressResponse.#ctor(System.Guid,System.String,System.Int32,System.Int32,System.Boolean)">
+            <summary>Safe draft-compatible projection until the full progress module (Task 17/27) arrives.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Projects.ApprovalDecisionRequest">
+            <summary>Admin/company decision request; the note records rejection or change-request reasons.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Projects.AdminApprovalQuery">
+            <summary>Admin approval queue paging with optional title or company-name search.</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Application.Projects.AdminApprovalQuery.Search">
+            <summary>Case-insensitive contains match; leading/trailing whitespace is ignored.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Projects.PublicProjectFilterQuery">
+            <summary>
+            Public browse filters; every filter is optional and combined with AND.
+            Unrecognized difficulty/workType/applicationStatus values are ignored; an
+            unknown sort key is rejected with 400 by the controller.
+            </summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Application.Projects.PublicProjectFilterQuery.Search">
+            <summary>Case-insensitive contains match against project title or summary.</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Application.Projects.PublicProjectFilterQuery.Difficulty">
+            <summary>ProjectDifficulty name (e.g. BEGINNER); invalid values are ignored.</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Application.Projects.PublicProjectFilterQuery.WorkType">
+            <summary>ProjectWorkType name (e.g. HYBRID); invalid values are ignored.</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Application.Projects.PublicProjectFilterQuery.ApplicationStatus">
+            <summary>Optional public status filter (APPROVED/RECRUITING/IN_PROGRESS/COMPLETED); other values are ignored.</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Application.Projects.PublicProjectFilterQuery.Sort">
+            <summary>Named sort from the allow-list: newest (default), oldest, deadline, title, allowance.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Projects.PublicProjectMemberSummary">
+            <summary>
+            Public project list row. Deliberately excludes private company documents,
+            internal approval notes, team member data, and payment data (14.01).
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Projects.PublicProjectMemberSummary.#ctor(System.Guid,System.String,System.String)">
+            <summary>
+            Public project list row. Deliberately excludes private company documents,
+            internal approval notes, team member data, and payment data (14.01).
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Projects.PublicProjectDetailResponse">
+            <summary>Public project detail; never exposes internal workflow or private company data.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Projects.PublicProjectDetailResponse.#ctor(System.Guid,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.Int32,System.Nullable{System.DateTimeOffset},System.DateTimeOffset,System.Int32,System.Int32,System.Int32,System.Nullable{System.Int64},System.String,System.Guid,System.String,System.String,System.Nullable{System.Guid},System.String,System.Collections.Generic.IReadOnlyCollection{DNTU.SkillBridge.Application.Projects.PublicProjectSkillResponse},System.Collections.Generic.IReadOnlyCollection{DNTU.SkillBridge.Application.Projects.PublicProjectDeliverableResponse},System.Int32,System.Collections.Generic.IReadOnlyCollection{DNTU.SkillBridge.Application.Projects.PublicProjectMemberSummary})">
+            <summary>Public project detail; never exposes internal workflow or private company data.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.SePay.ISePayRepository">
+            <summary>Data operations for the SePay checkout and IPN flows.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.SePay.ISePayRepository.FindFundingOrderByInvoiceAsync(System.String,System.Threading.CancellationToken)">
+            <summary>Reads a funding order by invoice code as a tracked entity so mutations are persisted.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.SePay.ISePayRepository.FindProjectFundingAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a project funding as a tracked entity so mutations are persisted.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.SePay.SePayService">
+            <summary>Handles verified SePay callbacks; browser navigation is never payment proof.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.SePay.SePayService.#ctor(DNTU.SkillBridge.Application.SePay.ISePayRepository,DNTU.SkillBridge.Application.Notifications.IOutboxEnqueuer,DNTU.SkillBridge.Application.Abstractions.IUnitOfWork,Microsoft.Extensions.Options.IOptions{DNTU.SkillBridge.Application.Common.Options.SePayOptions})">
+            <summary>Handles verified SePay callbacks; browser navigation is never payment proof.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Students.IPortfolioRepository">
+            <summary>Data operations for verified skills, portfolio entries, and their projections.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.IPortfolioRepository.FindVerifiedSkillForUpdateAsync(System.Guid,System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a verified skill as a tracked entity so mutations are persisted.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.IPortfolioRepository.FindPortfolioEntryForUpdateAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a portfolio entry as a tracked entity so mutations are persisted.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Students.ISavedProjectRepository">
+            <summary>Data operations for student saved projects, project visibility, and skill requirements.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.ISavedProjectRepository.FindProjectVisibilityAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a project's active flag and status; null when the project does not exist.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.ISavedProjectRepository.FindSavedAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a saved-project bookmark with the context's default tracking behavior.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.ISavedProjectRepository.ListSavedProjectsAsync(System.Guid,DNTU.SkillBridge.Application.Common.PageQuery,System.Threading.CancellationToken)">
+            <summary>Lists one page of the student's saved publicly visible projects, newest save first, with the unfiltered total.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.ISavedProjectRepository.ListRequiredSkillsAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Lists a project's required skills as (skill id, code, name) rows.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.ISavedProjectRepository.ListDeclaredActiveSkillIdsAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Lists the skill ids the student has declared among active skills.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Students.SavedProjectListItemResponse">
+            <summary>One row of the caller's saved-project list (most recently saved first).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.SavedProjectListItemResponse.#ctor(System.Guid,System.String,System.String,System.String,System.String,System.String,System.Int32,System.Nullable{System.Int64},System.String,System.DateTimeOffset)">
+            <summary>One row of the caller's saved-project list (most recently saved first).</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Students.SkillMatchResponse">
+            <summary>
+            Informational match between the caller's active declared skills and a project's
+            skill requirements; never an application eligibility decision.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.SkillMatchResponse.#ctor(System.Guid,System.Int32,System.Int32,System.Int32,System.Collections.Generic.IReadOnlyCollection{DNTU.SkillBridge.Application.Students.SkillMatchItemResponse},System.Collections.Generic.IReadOnlyCollection{DNTU.SkillBridge.Application.Students.SkillMatchItemResponse})">
+            <summary>
+            Informational match between the caller's active declared skills and a project's
+            skill requirements; never an application eligibility decision.
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Students.SavedProjectService">
+            <summary>
+            Student-scoped saved projects and the informational skill match. The student profile
+            is always resolved server-side from the authenticated userId (lazily created like
+            StudentService), never from a payload; the list only ever reads the caller's own rows.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.SavedProjectService.#ctor(DNTU.SkillBridge.Application.Students.ISavedProjectRepository,DNTU.SkillBridge.Application.Abstractions.IUnitOfWork)">
+            <summary>
+            Student-scoped saved projects and the informational skill match. The student profile
+            is always resolved server-side from the authenticated userId (lazily created like
+            StudentService), never from a payload; the list only ever reads the caller's own rows.
+            </summary>
+        </member>
+        <member name="F:DNTU.SkillBridge.Application.Students.SavedProjectService.PubliclyVisibleStatuses">
+            <summary>Statuses that make a project publicly visible (Project.IsPubliclyVisible).</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.SavedProjectService.SaveProjectAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Saves a publicly visible project. Idempotent: a second save answers AlreadySaved
+            without writing. Drafts, hidden, and inactive projects answer NotFound/ProjectNotVisible.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.SavedProjectService.UnsaveProjectAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Removes the caller's own bookmark; rows of other students are never touched. True when removed.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.SavedProjectService.ListSavedProjectsAsync(System.Guid,DNTU.SkillBridge.Application.Common.PageQuery,System.Threading.CancellationToken)">
+            <summary>
+            The caller's saved projects, newest save first. Projects that have since become
+            inactive or hidden disappear from the list (documented UX policy) but the bookmark
+            stays in the database so re-publication restores the row.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.SavedProjectService.MatchSkillsWithProjectAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Deterministic match between the caller's active declared skills and the project's
+            skill requirements. Null when the project is not publicly visible. Match is
+            informational and never gates applications.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.SavedProjectService.ResolveProfileIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Resolves the student profile id from the authenticated userId, lazily creating the
+            profile with default privacy settings on first access (same semantics as StudentService).
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.StudentService.GetMyProfileAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Returns the caller's own profile, lazily creating it with default privacy settings on first access.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.StudentService.UpdateMyProfileAsync(System.Guid,DNTU.SkillBridge.Application.Students.UpdateStudentProfileRequest,System.Threading.CancellationToken)">
+            <summary>Updates the caller's own profile. Major and faculty must exist and stay consistent in the catalog.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.StudentService.GetMySkillsAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Lists the caller's self-declared skills with catalog projections.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.StudentService.ReplaceMySkillsAsync(System.Guid,System.Collections.Generic.IReadOnlyCollection{DNTU.SkillBridge.Application.Students.DeclaredSkillItem},System.Threading.CancellationToken)">
+            <summary>Replaces the caller's declared-skill set. Every skill must exist and be active.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.StudentService.UpdateMyCertificateAsync(System.Guid,System.Guid,DNTU.SkillBridge.Application.Students.UpsertCertificateRequest,System.Threading.CancellationToken)">
+            <summary>Updates a certificate owned by the caller; returns null when the caller does not own it.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.StudentService.DeleteMyCertificateAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Deletes a certificate owned by the caller; returns false when the caller does not own it.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.StudentService.GetPublicStudentAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Public profile projection. Returns null when the student does not exist or keeps the profile private
+            (public reads answer 404 instead of leaking existence). Private contact, CV, and non-shared
+            certificates/skills are excluded.
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Students.PublicStudentResponse">
+            <summary>Limited public projection; the CV is never included and contact/skills/certificates follow the privacy flags.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Students.PublicStudentResponse.#ctor(System.Guid,System.String,System.Nullable{System.Guid},System.String,System.Nullable{System.Guid},System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.Collections.Generic.IReadOnlyCollection{DNTU.SkillBridge.Application.Students.PublicStudentSkillResponse},System.Collections.Generic.IReadOnlyCollection{DNTU.SkillBridge.Application.Students.PublicStudentCertificateResponse})">
+            <summary>Limited public projection; the CV is never included and contact/skills/certificates follow the privacy flags.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Submissions.CreateBusinessReviewRequest">
+            <summary>Company-owned business assessment input. Academic scoring and verified-skill fields are deliberately absent.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Submissions.BusinessReviewResponse">
+            <summary>Immutable business-review record safe to expose only in the owning company/project scope.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Submissions.BusinessReviewResponse.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,DNTU.SkillBridge.Domain.Submissions.BusinessReviewDecision,System.String,System.String,System.DateTimeOffset)">
+            <summary>Immutable business-review record safe to expose only in the owning company/project scope.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Submissions.IBusinessReviewRepository">
+            <summary>Data operations for business submission reviews, their submissions, and outbox events.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Submissions.IBusinessReviewRepository.FindSubmissionForUpdateAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a submission with its versions as a tracked entity so mutations are persisted.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Submissions.IBusinessReviewRepository.TrySaveChangesAsync(System.Threading.CancellationToken)">
+            <summary>Persists pending changes; returns false when an optimistic-concurrency conflict is detected.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Submissions.ISubmissionRepository">
+            <summary>Data operations for project submissions, evidence versions, and status history.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Submissions.ISubmissionRepository.FindSubmissionWithVersionsAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a submission with its versions with the context's default tracking behavior.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Submissions.ISubmissionRepository.FindSubmissionAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a submission without tracking for read paths.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Submissions.ISubmissionRepository.TrySaveChangesAsync(System.Threading.CancellationToken)">
+            <summary>Persists pending changes; returns false when the update fails (conflict or persistence error).</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Submissions.ITechnicalReviewRepository">
+            <summary>Data operations for technical submission reviews, their submissions, and outbox events.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Submissions.ITechnicalReviewRepository.FindSubmissionWithVersionsAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a submission with its versions with the context's default tracking behavior.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Submissions.ITechnicalReviewRepository.TrySaveChangesAsync(System.Threading.CancellationToken)">
+            <summary>Persists pending changes; returns false when the update fails (conflict or persistence error).</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Submissions.TechnicalReviewLookupRow">
+            <summary>Projection row pairing a technical review response with its submission id.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Submissions.TechnicalReviewLookupRow.#ctor(DNTU.SkillBridge.Application.Submissions.TechnicalReviewResponse,System.Guid)">
+            <summary>Projection row pairing a technical review response with its submission id.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Submissions.BusinessReviewService">
+            <summary>Records immutable company business decisions after independent lecturer technical approval.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Submissions.BusinessReviewService.#ctor(DNTU.SkillBridge.Application.Submissions.IBusinessReviewRepository,DNTU.SkillBridge.Application.Workspaces.IProjectActivityWriter)">
+            <summary>Records immutable company business decisions after independent lecturer technical approval.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Submissions.SubmissionService">
+            <summary>Creates immutable evidence snapshots and provides role-scoped submission projections.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Submissions.SubmissionService.#ctor(DNTU.SkillBridge.Application.Submissions.ISubmissionRepository,DNTU.SkillBridge.Application.Workspaces.IProjectActivityWriter,DNTU.SkillBridge.Application.Abstractions.IUnitOfWork)">
+            <summary>Creates immutable evidence snapshots and provides role-scoped submission projections.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Submissions.TechnicalReviewService">
+            <summary>Creates immutable technical review history and atomically advances the submission workflow.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Submissions.TechnicalReviewService.#ctor(DNTU.SkillBridge.Application.Submissions.ITechnicalReviewRepository,DNTU.SkillBridge.Application.Workspaces.IProjectActivityWriter)">
+            <summary>Creates immutable technical review history and atomically advances the submission workflow.</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Application.Submissions.CreateTechnicalReviewRequest.Version">
+            <summary>Current submission concurrency token returned by the submission API.</summary>
+        </member>
+        <member name="P:DNTU.SkillBridge.Application.Submissions.CreateTechnicalReviewRequest.CriteriaNotes">
+            <summary>Optional immutable rubric-ready JSON or structured review notes.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Teams.ITeamRepository">
+            <summary>Data operations for student teams, team members, and team invitations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Teams.ITeamRepository.FindTeamWithMembersAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a team with its members loaded, matching the mutation flows' include shape.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Teams.ITeamRepository.FindInvitationForStudentAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads an invitation addressed to a student with its team and team members loaded.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Teams.TeamService">
+            <summary>Student-scoped team, membership, and invitation operations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Teams.TeamService.#ctor(DNTU.SkillBridge.Application.Teams.ITeamRepository,DNTU.SkillBridge.Application.Abstractions.IUnitOfWork)">
+            <summary>Student-scoped team, membership, and invitation operations.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Workspaces.IProjectActivityWriter">
+            <summary>
+            Appends sanitized workspace activity inside the caller's existing EF Core transaction.
+            It intentionally exposes no update or delete operation.
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Workspaces.IDashboardRepository">
+            <summary>Data operations for the student, company, and lecturer dashboards and project progress snapshots.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Workspaces.DashboardProjectRow">
+            <summary>Project row projected for dashboard overviews.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Workspaces.DashboardProjectRow.#ctor(System.Guid,System.String,DNTU.SkillBridge.Domain.Projects.ProjectStatus)">
+            <summary>Project row projected for dashboard overviews.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Workspaces.DashboardTaskGroupRow">
+            <summary>Grouped per-project task counts used by dashboard progress and risk calculations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Workspaces.DashboardTaskGroupRow.#ctor(System.Guid,System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>Grouped per-project task counts used by dashboard progress and risk calculations.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Workspaces.DashboardMilestoneGroupRow">
+            <summary>Grouped per-project milestone counts used by dashboard progress and risk calculations.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Workspaces.DashboardMilestoneGroupRow.#ctor(System.Guid,System.Int32,System.Int32,System.Int32)">
+            <summary>Grouped per-project milestone counts used by dashboard progress and risk calculations.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Workspaces.DashboardCountGroupRow">
+            <summary>Grouped per-project revision or missed-meeting counts.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Workspaces.DashboardCountGroupRow.#ctor(System.Guid,System.Int32)">
+            <summary>Grouped per-project revision or missed-meeting counts.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Workspaces.DashboardTaskTotalsRow">
+            <summary>Aggregated task counts for a single project.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Workspaces.DashboardTaskTotalsRow.#ctor(System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>Aggregated task counts for a single project.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Workspaces.DashboardMilestoneTotalsRow">
+            <summary>Aggregated milestone counts for a single project.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Workspaces.DashboardMilestoneTotalsRow.#ctor(System.Int32,System.Int32,System.Int32)">
+            <summary>Aggregated milestone counts for a single project.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Workspaces.IProjectAccessRepository">
+            <summary>
+            Persistence predicates used to resolve the caller's project access. Each method answers
+            a single membership, company-ownership, or lecturer-assignment question.
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Workspaces.IProjectTaskRepository">
+            <summary>Data operations for kanban project tasks and their project membership checks.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Workspaces.IProjectTaskRepository.FindTaskAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a non-deleted task without tracking for read paths.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Workspaces.IProjectTaskRepository.FindTaskForUpdateAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reads a non-deleted task for mutation paths; mutations are persisted by re-attaching through <see cref="M:DNTU.SkillBridge.Application.Workspaces.IProjectTaskRepository.MarkForUpdate(DNTU.SkillBridge.Domain.Workspaces.ProjectTask,System.Guid)"/>.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Workspaces.IProjectTaskRepository.MarkForUpdate(DNTU.SkillBridge.Domain.Workspaces.ProjectTask,System.Guid)">
+            <summary>Re-attaches a task as modified, restoring the client version as EF's original concurrency value.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Workspaces.IProjectTaskRepository.TrySaveChangesAsync(System.Threading.CancellationToken)">
+            <summary>Persists pending changes; returns false when an optimistic-concurrency conflict is detected.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Workspaces.ITaskCollaborationRepository">
+            <summary>Data operations for task comments, checklist items, and task-scoped paging queries.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Workspaces.ITaskCollaborationRepository.MarkTaskForChecklistUpdate(DNTU.SkillBridge.Domain.Workspaces.ProjectTask,System.Guid)">
+            <summary>Re-attaches a task as modified, restoring the client version as EF's original concurrency value.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Workspaces.ITaskCollaborationRepository.TrySaveChangesAsync(System.Threading.CancellationToken)">
+            <summary>Persists pending changes; returns false when an optimistic-concurrency conflict is detected.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Workspaces.WorkspaceProjectRow">
+            <summary>Projected project fields used to build the workspace overview payload.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Workspaces.WorkspaceProjectRow.#ctor(System.Guid,System.String,System.String,DNTU.SkillBridge.Domain.Projects.ProjectStatus)">
+            <summary>Projected project fields used to build the workspace overview payload.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Workspaces.WorkspaceProjectSummaryRow">
+            <summary>Correlated project summary with member and task counts used by the student's project list.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Workspaces.WorkspaceProjectSummaryRow.#ctor(System.Guid,System.String,System.String,DNTU.SkillBridge.Domain.Projects.ProjectStatus,System.Int32,System.Int32,System.Int32,System.String,System.String,System.String,System.String)">
+            <summary>Correlated project summary with member and task counts used by the student's project list.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Workspaces.IWorkspaceRepository">
+            <summary>Read and write data operations for the workspace feature.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Workspaces.DashboardService">
+            <summary>Server-side aggregate dashboard queries and deterministic risk snapshot refreshes.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Workspaces.DashboardService.#ctor(DNTU.SkillBridge.Application.Workspaces.IDashboardRepository,DNTU.SkillBridge.Application.Abstractions.IUnitOfWork)">
+            <summary>Server-side aggregate dashboard queries and deterministic risk snapshot refreshes.</summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Workspaces.IProjectAccessService">
+            <summary>
+            Resolves the current caller's effective access to a project workspace from persisted
+            membership, company ownership, lecturer assignment, and administrator roles.
+            This service is the authorization source of truth for workspace features.
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Workspaces.ProjectAccessService">
+            <summary>
+            Resolves the current caller's effective access to a project workspace from persisted
+            membership, company ownership, lecturer assignment, and administrator roles.
+            This service is the authorization source of truth for workspace features.
+            </summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Workspaces.ProjectAccessService.#ctor(DNTU.SkillBridge.Application.Workspaces.IProjectAccessRepository)">
+            <summary>
+            Resolves the current caller's effective access to a project workspace from persisted
+            membership, company ownership, lecturer assignment, and administrator roles.
+            This service is the authorization source of truth for workspace features.
+            </summary>
+        </member>
+        <member name="T:DNTU.SkillBridge.Application.Workspaces.ProjectAccess">
+            <summary>Capability projection consumed by workspace read and mutation features.</summary>
+        </member>
+        <member name="M:DNTU.SkillBridge.Application.Workspaces.ProjectAccess.#ctor(System.Boolean,System.Boolean,System.Collections.Generic.IReadOnlySet{System.String})">
+            <summary>Capability projection consumed by workspace read and mutation features.</summary>
+        </member>
+    </members>
+</doc>
