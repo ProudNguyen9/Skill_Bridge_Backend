@@ -1,4 +1,5 @@
 using DNTU.SkillBridge.Application.Abstractions;
+using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Application.Workspaces;
 using DNTU.SkillBridge.Domain.Commitments;
 using DNTU.SkillBridge.Domain.Projects;
@@ -77,6 +78,14 @@ public sealed class CommitmentService(
         if (studentId is null) return [];
         return await commitmentRepository.ListWithdrawalsAsync(studentId.Value, cancellationToken);
     }
+
+    public Task<PagedResponse<AdminWithdrawalListItemResponse>> ListWithdrawalsAdminAsync(AdminWithdrawalListQuery query, CancellationToken cancellationToken) =>
+        commitmentRepository.ListWithdrawalsAdminAsync(new AdminWithdrawalListQuery
+        {
+            Page = query.Page,
+            PageSize = query.PageSize,
+            Status = query.Status?.Trim().ToUpperInvariant()
+        }, cancellationToken);
 
     public async Task<WithdrawalResponse?> GetMyWithdrawalAsync(Guid userId, Guid withdrawalId, CancellationToken cancellationToken)
     {

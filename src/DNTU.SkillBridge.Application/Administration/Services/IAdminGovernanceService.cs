@@ -11,4 +11,6 @@ public interface IAdminGovernanceService
     Task<AdminPolicyResponse?> GetPolicyAsync(string category, CancellationToken cancellationToken);
 
     Task<AdminPolicyResponse> UpdatePolicyAsync(Guid actorUserId, string category, string settingsJson, CancellationToken cancellationToken);
+
+    Task<PagedResponse<AdminAuditLogListItemResponse>> ListAuditLogsAsync(AdminAuditLogListQuery query, CancellationToken cancellationToken);
 }

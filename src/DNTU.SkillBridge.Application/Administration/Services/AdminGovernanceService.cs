@@ -43,5 +43,13 @@ public sealed class AdminGovernanceService(IAdministrationRepository administrat
         return Map(policy);
     }
 
+    public Task<PagedResponse<AdminAuditLogListItemResponse>> ListAuditLogsAsync(AdminAuditLogListQuery query, CancellationToken cancellationToken) =>
+        administrationRepository.ListAuditLogsAsync(new AdminAuditLogListQuery
+        {
+            Page = query.Page,
+            PageSize = query.PageSize,
+            Search = query.Search?.Trim()
+        }, cancellationToken);
+
     private static AdminPolicyResponse Map(AdminPolicySetting policy) => new(policy.Category, policy.SettingsJson, policy.Version, policy.UpdatedAt);
 }

@@ -1,4 +1,5 @@
 using DNTU.SkillBridge.Application.Abstractions;
+using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Domain.Payments;
 
 namespace DNTU.SkillBridge.Application.Payments;
@@ -24,6 +25,22 @@ public sealed class PaymentService(IPaymentRepository paymentRepository, IUnitOf
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return order;
     }
+
+    public Task<PagedResponse<AdminFundingOrderListItemResponse>> ListFundingOrdersAdminAsync(AdminFundingOrderListQuery query, CancellationToken cancellationToken) =>
+        paymentRepository.ListFundingOrdersAdminAsync(new AdminFundingOrderListQuery
+        {
+            Page = query.Page,
+            PageSize = query.PageSize,
+            Status = query.Status?.Trim().ToUpperInvariant()
+        }, cancellationToken);
+
+    public Task<PagedResponse<AdminDisbursementListItemResponse>> ListDisbursementsAdminAsync(AdminDisbursementListQuery query, CancellationToken cancellationToken) =>
+        paymentRepository.ListDisbursementsAdminAsync(new AdminDisbursementListQuery
+        {
+            Page = query.Page,
+            PageSize = query.PageSize,
+            Status = query.Status?.Trim().ToUpperInvariant()
+        }, cancellationToken);
 
     public async Task<bool> StartDisbursementProcessingAsync(Guid disbursementId, CancellationToken cancellationToken)
     {

@@ -66,6 +66,45 @@ public sealed class AdminGovernanceRepository(AppDbContext dbContext) : IAdminis
 
     public void AddAuditLog(AuditLog auditLog) => dbContext.AuditLogs.Add(auditLog);
 
+    public async Task<PagedResponse<AdminAuditLogListItemResponse>> ListAuditLogsAsync(
+        AdminAuditLogListQuery query, CancellationToken cancellationToken)
+    {
+        var logs = from auditLog in dbContext.AuditLogs.AsNoTracking()
+                   join user in dbContext.Users.AsNoTracking() on auditLog.ActorUserId equals user.Id into actorJoin
+                   from actor in actorJoin.DefaultIfEmpty()
+                   select new { auditLog, actor };
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.ToLowerInvariant();
+            logs = logs.Where(item =>
+                item.auditLog.Action.ToLower().Contains(search) ||
+                item.auditLog.EntityType.ToLower().Contains(search) ||
+                item.auditLog.EntityId.ToLower().Contains(search) ||
+                (item.actor != null && item.actor.DisplayName.ToLower().Contains(search)));
+        }
+
+        var totalItems = await logs.CountAsync(cancellationToken);
+        var metadata = PageMetadata.Create(query.Page, query.PageSize, totalItems);
+        var offset = ((long)query.Page - 1) * query.PageSize;
+        if (offset >= totalItems)
+            return new PagedResponse<AdminAuditLogListItemResponse>([], metadata);
+
+        var items = await logs
+            .OrderByDescending(item => item.auditLog.CreatedAt)
+            .ThenBy(item => item.auditLog.Id)
+            .Skip((int)offset)
+            .Take(query.PageSize)
+            .Select(item => new AdminAuditLogListItemResponse(
+                item.auditLog.Id, item.auditLog.ActorUserId,
+                item.actor != null ? item.actor.DisplayName : null,
+                item.auditLog.Action, item.auditLog.EntityType, item.auditLog.EntityId,
+                item.auditLog.MetadataJson, item.auditLog.CreatedAt))
+            .ToListAsync(cancellationToken);
+
+        return new PagedResponse<AdminAuditLogListItemResponse>(items, metadata);
+    }
+
     public async Task<IReadOnlyCollection<AdminLecturerReviewItem>> ListLecturersForReviewAsync(string? status, CancellationToken cancellationToken)
     {
         var query = from profile in dbContext.LecturerProfiles.AsNoTracking()

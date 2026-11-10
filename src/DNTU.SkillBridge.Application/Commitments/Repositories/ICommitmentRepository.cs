@@ -1,3 +1,4 @@
+using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Domain.Commitments;
 using DNTU.SkillBridge.Domain.Projects;
 using DNTU.SkillBridge.Domain.Workspaces;
@@ -32,6 +33,8 @@ public interface ICommitmentRepository
     void AddWithdrawalRequest(WithdrawalRequest withdrawal);
 
     Task<IReadOnlyCollection<WithdrawalResponse>> ListWithdrawalsAsync(Guid studentId, CancellationToken cancellationToken);
+
+    Task<PagedResponse<AdminWithdrawalListItemResponse>> ListWithdrawalsAdminAsync(AdminWithdrawalListQuery query, CancellationToken cancellationToken);
 
     Task<WithdrawalResponse?> FindWithdrawalAsync(Guid studentId, Guid withdrawalId, CancellationToken cancellationToken);
 

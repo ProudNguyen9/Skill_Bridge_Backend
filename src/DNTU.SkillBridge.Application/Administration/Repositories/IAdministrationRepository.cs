@@ -22,6 +22,8 @@ public interface IAdministrationRepository
 
     void AddAuditLog(AuditLog auditLog);
 
+    Task<PagedResponse<AdminAuditLogListItemResponse>> ListAuditLogsAsync(AdminAuditLogListQuery query, CancellationToken cancellationToken);
+
     /// <summary>Danh sách hồ sơ giảng viên theo trạng thái duyệt (null = tất cả).</summary>
     Task<IReadOnlyCollection<AdminLecturerReviewItem>> ListLecturersForReviewAsync(string? status, CancellationToken cancellationToken);
 

@@ -1,3 +1,4 @@
+using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Domain.Payments;
 
 namespace DNTU.SkillBridge.Application.Payments;
@@ -13,4 +14,8 @@ public interface IPaymentRepository
 
     /// <summary>Reads a disbursement as a tracked entity so mutations are persisted.</summary>
     Task<Disbursement?> FindDisbursementAsync(Guid disbursementId, CancellationToken cancellationToken);
+
+    Task<PagedResponse<AdminFundingOrderListItemResponse>> ListFundingOrdersAdminAsync(AdminFundingOrderListQuery query, CancellationToken cancellationToken);
+
+    Task<PagedResponse<AdminDisbursementListItemResponse>> ListDisbursementsAdminAsync(AdminDisbursementListQuery query, CancellationToken cancellationToken);
 }

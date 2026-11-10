@@ -1,3 +1,4 @@
+using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Application.Commitments;
 using DNTU.SkillBridge.Domain.Commitments;
 using DNTU.SkillBridge.Domain.Projects;
@@ -44,6 +45,40 @@ public sealed class CommitmentRepository(AppDbContext dbContext) : ICommitmentRe
     public Task<WithdrawalResponse?> FindWithdrawalAsync(Guid studentId, Guid withdrawalId, CancellationToken cancellationToken) =>
         dbContext.WithdrawalRequests.AsNoTracking().Where(item => item.Id == withdrawalId && item.StudentId == studentId)
             .Select(item => new WithdrawalResponse(item.Id, item.ProjectId, item.StudentId, item.Reason, item.Status, item.RecommendedByLecturerId, item.RecommendedAt, item.LecturerNote, item.DecidedByUserId, item.DecidedAt, item.DecisionNote, item.CreatedAt)).SingleOrDefaultAsync(cancellationToken);
+
+    public async Task<PagedResponse<AdminWithdrawalListItemResponse>> ListWithdrawalsAdminAsync(
+        AdminWithdrawalListQuery query, CancellationToken cancellationToken)
+    {
+        var withdrawals = from request in dbContext.WithdrawalRequests.AsNoTracking()
+                          join project in dbContext.Projects.AsNoTracking() on request.ProjectId equals project.Id
+                          join student in dbContext.StudentProfiles.AsNoTracking() on request.StudentId equals student.Id
+                          join studentUser in dbContext.Users.AsNoTracking() on student.UserId equals studentUser.Id
+                          select new { request, project, studentUser };
+
+        if (query.Status is not null && Enum.TryParse<WithdrawalStatus>(query.Status, ignoreCase: true, out var status))
+            withdrawals = withdrawals.Where(item => item.request.Status == status);
+
+        var totalItems = await withdrawals.CountAsync(cancellationToken);
+        var metadata = PageMetadata.Create(query.Page, query.PageSize, totalItems);
+        var offset = ((long)query.Page - 1) * query.PageSize;
+        if (offset >= totalItems)
+            return new PagedResponse<AdminWithdrawalListItemResponse>([], metadata);
+
+        var items = await withdrawals
+            .OrderByDescending(item => item.request.CreatedAt)
+            .ThenBy(item => item.request.Id)
+            .Skip((int)offset)
+            .Take(query.PageSize)
+            .Select(item => new AdminWithdrawalListItemResponse(
+                item.request.Id, item.request.ProjectId, item.project.Title,
+                item.request.StudentId, item.studentUser.DisplayName, item.studentUser.Email,
+                item.request.Reason, item.request.Status, item.request.LecturerNote,
+                item.request.RecommendedAt, item.request.DecidedAt, item.request.DecisionNote,
+                item.request.CreatedAt))
+            .ToListAsync(cancellationToken);
+
+        return new PagedResponse<AdminWithdrawalListItemResponse>(items, metadata);
+    }
 
     public Task<Guid?> FindLecturerIdAsync(Guid lecturerUserId, CancellationToken cancellationToken) =>
         dbContext.LecturerProfiles.AsNoTracking().Where(item => item.UserId == lecturerUserId && item.IsActive).Select(item => (Guid?)item.Id).SingleOrDefaultAsync(cancellationToken);

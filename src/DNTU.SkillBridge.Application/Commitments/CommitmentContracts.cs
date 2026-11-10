@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Domain.Commitments;
 
 namespace DNTU.SkillBridge.Application.Commitments;
@@ -30,6 +31,27 @@ public sealed record WithdrawalResponse(
     DateTimeOffset? RecommendedAt,
     string? LecturerNote,
     Guid? DecidedByUserId,
+    DateTimeOffset? DecidedAt,
+    string? DecisionNote,
+    DateTimeOffset CreatedAt);
+
+public sealed class AdminWithdrawalListQuery : PageQuery
+{
+    public string? Status { get; init; }
+}
+
+/// <summary>Admin-scoped withdrawal queue row enriched with student/project display fields.</summary>
+public sealed record AdminWithdrawalListItemResponse(
+    Guid Id,
+    Guid ProjectId,
+    string ProjectTitle,
+    Guid StudentId,
+    string StudentName,
+    string StudentEmail,
+    string Reason,
+    WithdrawalStatus Status,
+    string? LecturerNote,
+    DateTimeOffset? RecommendedAt,
     DateTimeOffset? DecidedAt,
     string? DecisionNote,
     DateTimeOffset CreatedAt);

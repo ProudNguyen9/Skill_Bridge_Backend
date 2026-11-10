@@ -43,3 +43,21 @@ public sealed record AdminCompanyReviewItem(
     DateTimeOffset RegisteredAt);
 
 public sealed record AdminVerificationDecisionRequest(string? Note);
+
+public sealed class AdminAuditLogListQuery : PageQuery
+{
+    public const int MaximumSearchLength = 200;
+
+    public string? Search { get; init; }
+}
+
+/// <summary>One audit-log row. The domain entity carries no success/failure status, so none is reported.</summary>
+public sealed record AdminAuditLogListItemResponse(
+    Guid Id,
+    Guid? ActorUserId,
+    string? ActorName,
+    string Action,
+    string EntityType,
+    string EntityId,
+    string MetadataJson,
+    DateTimeOffset CreatedAt);

@@ -1,4 +1,5 @@
 using DNTU.SkillBridge.Application.Abstractions;
+using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Domain.Payments;
 
 namespace DNTU.SkillBridge.Application.Payments;
@@ -6,6 +7,10 @@ namespace DNTU.SkillBridge.Application.Payments;
 public interface IPaymentService
 {
     Task<FundingOrder?> CreateFundingOrderAsync(Guid companyUserId, Guid projectId, long amount, CancellationToken cancellationToken);
+
+    Task<PagedResponse<AdminFundingOrderListItemResponse>> ListFundingOrdersAdminAsync(AdminFundingOrderListQuery query, CancellationToken cancellationToken);
+
+    Task<PagedResponse<AdminDisbursementListItemResponse>> ListDisbursementsAdminAsync(AdminDisbursementListQuery query, CancellationToken cancellationToken);
 
     Task<bool> StartDisbursementProcessingAsync(Guid disbursementId, CancellationToken cancellationToken);
 
