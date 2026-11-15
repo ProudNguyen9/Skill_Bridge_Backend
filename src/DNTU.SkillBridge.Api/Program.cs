@@ -227,6 +227,7 @@ builder.Services.AddScoped<DNTU.SkillBridge.Application.Payments.IPaymentService
 builder.Services.AddScoped<DNTU.SkillBridge.Application.SePay.ISePayService, DNTU.SkillBridge.Application.SePay.SePayService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Administration.IAdminGovernanceService, DNTU.SkillBridge.Application.Administration.AdminGovernanceService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Administration.IAdminVerificationService, DNTU.SkillBridge.Application.Administration.AdminVerificationService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Catalog.IAdminCatalogService, DNTU.SkillBridge.Application.Catalog.AdminCatalogService>();
 builder.Services.AddScoped<DNTU.SkillBridge.Application.Analytics.IAnalyticsService, DNTU.SkillBridge.Application.Analytics.AnalyticsService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<NotificationWriter>();

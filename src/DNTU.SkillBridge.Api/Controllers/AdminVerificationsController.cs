@@ -34,6 +34,18 @@ public sealed class AdminVerificationsController(IAdminVerificationService verif
         return Ok(new ApiResponse<IReadOnlyCollection<AdminLecturerReviewItem>>(await verificationService.ListLecturersAsync(status, cancellationToken)));
     }
 
+    [HttpGet("lecturers/{lecturerId:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<AdminLecturerDetailResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ApiResponse<AdminLecturerDetailResponse>>> GetLecturerDetail(
+        Guid lecturerId, CancellationToken cancellationToken)
+    {
+        if (!currentUser.HasPermission(PermissionNames.LecturersApprove)) return Forbid();
+        var detail = await verificationService.GetLecturerDetailAsync(lecturerId, cancellationToken);
+        return detail is null ? NotFound() : Ok(new ApiResponse<AdminLecturerDetailResponse>(detail));
+    }
+
     [HttpPost("lecturers/{lecturerId:guid}/approve")]
     [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -128,6 +140,50 @@ public sealed class AdminVerificationsController(IAdminVerificationService verif
             CompanyReviewOutcome.NotFound => NotFound(),
             CompanyReviewOutcome.AlreadyProcessed => Conflict(),
             _ => Ok(new ApiResponse<string>(outcome == CompanyReviewOutcome.Rejected ? "REJECTED" : outcome.ToString()))
+        };
+    }
+
+    /// <summary>Tạm ngừng công ty đã verified (kèm lý do bắt buộc) — công ty không thể đăng dự án mới.</summary>
+    [HttpPost("companies/{companyId:guid}/suspend")]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> SuspendCompany(
+        Guid companyId, [FromBody] AdminVerificationDecisionRequest? request, CancellationToken cancellationToken)
+    {
+        if (!currentUser.HasPermission(PermissionNames.CompaniesVerify)) return Forbid();
+        if (string.IsNullOrWhiteSpace(request?.Note) || request.Note.Trim().Length > 1000) return BadRequest();
+
+        var outcome = await verificationService.SuspendCompanyAsync(
+            currentUser.UserId!.Value, companyId, request.Note.Trim(), cancellationToken);
+        return outcome switch
+        {
+            CompanyReviewOutcome.NotFound => NotFound(),
+            CompanyReviewOutcome.AlreadyProcessed => Conflict(),
+            _ => Ok(new ApiResponse<string>("SUSPENDED"))
+        };
+    }
+
+    /// <summary>Kích hoạt lại công ty bị tạm ngừng, đưa về VERIFIED.</summary>
+    [HttpPost("companies/{companyId:guid}/resume")]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ResumeCompany(
+        Guid companyId, [FromBody] AdminVerificationDecisionRequest? request, CancellationToken cancellationToken)
+    {
+        if (!currentUser.HasPermission(PermissionNames.CompaniesVerify)) return Forbid();
+
+        var outcome = await verificationService.ResumeCompanyAsync(
+            currentUser.UserId!.Value, companyId, request?.Note, cancellationToken);
+        return outcome switch
+        {
+            CompanyReviewOutcome.NotFound => NotFound(),
+            CompanyReviewOutcome.AlreadyProcessed => Conflict(),
+            _ => Ok(new ApiResponse<string>("VERIFIED"))
         };
     }
 

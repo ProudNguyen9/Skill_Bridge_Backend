@@ -18,7 +18,9 @@ public enum CompanyReviewOutcome
     NotFound,
     AlreadyProcessed,
     Verified,
-    Rejected
+    Rejected,
+    Suspended,
+    Resumed
 }
 
 public interface IAdminVerificationService
@@ -27,6 +29,13 @@ public interface IAdminVerificationService
     Task<LecturerReviewOutcome> DecideLecturerAsync(Guid actorUserId, Guid lecturerId, bool approve, string? note, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<AdminCompanyReviewItem>> ListCompaniesAsync(string? status, CancellationToken cancellationToken);
     Task<CompanyReviewOutcome> DecideCompanyAsync(Guid actorUserId, Guid companyId, bool approve, string? note, CancellationToken cancellationToken);
+
+    /// <summary>Chi tiết hồ sơ giảng viên (kèm note lần duyệt trước) cho màn admin.</summary>
+    Task<AdminLecturerDetailResponse?> GetLecturerDetailAsync(Guid lecturerId, CancellationToken cancellationToken);
+
+    /// <summary>Tạm ngừng công ty đã verified; resume đưa công ty trở lại VERIFIED.</summary>
+    Task<CompanyReviewOutcome> SuspendCompanyAsync(Guid actorUserId, Guid companyId, string note, CancellationToken cancellationToken);
+    Task<CompanyReviewOutcome> ResumeCompanyAsync(Guid actorUserId, Guid companyId, string? note, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -106,5 +115,48 @@ public sealed class AdminVerificationService(IAdministrationRepository administr
         administrationRepository.AddAuditLog(new AuditLog(actorUserId, AuditActions.CompanyRejected, nameof(Company), company.Id.ToString(), company.Id, null, null, null, null, $"{{\"note\":{System.Text.Json.JsonSerializer.Serialize(normalizedNote ?? string.Empty)}}}", now));
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return CompanyReviewOutcome.Rejected;
+    }
+
+    public Task<AdminLecturerDetailResponse?> GetLecturerDetailAsync(Guid lecturerId, CancellationToken cancellationToken) =>
+        administrationRepository.GetLecturerDetailAsync(lecturerId, cancellationToken);
+
+    public async Task<CompanyReviewOutcome> SuspendCompanyAsync(Guid actorUserId, Guid companyId, string note, CancellationToken cancellationToken)
+    {
+        var company = await administrationRepository.FindCompanyForUpdateAsync(companyId, cancellationToken);
+        if (company is null)
+        {
+            return CompanyReviewOutcome.NotFound;
+        }
+
+        if (company.VerificationStatus != CompanyVerificationStatus.VERIFIED)
+        {
+            return CompanyReviewOutcome.AlreadyProcessed;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        company.MarkSuspended(now, note);
+        administrationRepository.AddAuditLog(new AuditLog(actorUserId, AuditActions.CompanySuspended, nameof(Company), company.Id.ToString(), company.Id, null, null, null, null, $"{{\"note\":{System.Text.Json.JsonSerializer.Serialize(note)}}}", now));
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return CompanyReviewOutcome.Suspended;
+    }
+
+    public async Task<CompanyReviewOutcome> ResumeCompanyAsync(Guid actorUserId, Guid companyId, string? note, CancellationToken cancellationToken)
+    {
+        var company = await administrationRepository.FindCompanyForUpdateAsync(companyId, cancellationToken);
+        if (company is null)
+        {
+            return CompanyReviewOutcome.NotFound;
+        }
+
+        if (company.VerificationStatus != CompanyVerificationStatus.SUSPENDED)
+        {
+            return CompanyReviewOutcome.AlreadyProcessed;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        company.MarkVerified(now, note);
+        administrationRepository.AddAuditLog(new AuditLog(actorUserId, AuditActions.CompanyResumed, nameof(Company), company.Id.ToString(), company.Id, null, null, null, null, "{}", now));
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return CompanyReviewOutcome.Resumed;
     }
 }

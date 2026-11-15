@@ -500,6 +500,24 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
         var skillCount = await dbContext.ProjectSkills.CountAsync(skill => skill.ProjectId == projectId, cancellationToken);
         var deliverableCount = await dbContext.ProjectDeliverables.CountAsync(deliverable => deliverable.ProjectId == projectId, cancellationToken);
 
+        var skills = await (from projectSkill in dbContext.ProjectSkills.AsNoTracking()
+                            join skill in dbContext.Skills.AsNoTracking() on projectSkill.SkillId equals skill.Id
+                            where projectSkill.ProjectId == projectId
+                            orderby skill.Name
+                            select new ApprovalSkillItem(
+                                skill.Id, skill.Name,
+                                projectSkill.RequirementLevel.ToString(),
+                                projectSkill.IsRequired))
+            .ToListAsync(cancellationToken);
+
+        var deliverables = await dbContext.ProjectDeliverables.AsNoTracking()
+            .Where(deliverable => deliverable.ProjectId == projectId)
+            .OrderBy(deliverable => deliverable.SortOrder)
+            .ThenBy(deliverable => deliverable.Id)
+            .Select(deliverable => new ApprovalDeliverableItem(
+                deliverable.Id, deliverable.Name, deliverable.Description, deliverable.SortOrder))
+            .ToListAsync(cancellationToken);
+
         return new AdminApprovalDetailResponse(
             project.Id,
             project.Title,
@@ -520,6 +538,8 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             project.AllowanceCurrency,
             skillCount,
             deliverableCount,
+            skills,
+            deliverables,
             project.SubmittedAt,
             project.ApprovedAt,
             project.PublishedAt,
