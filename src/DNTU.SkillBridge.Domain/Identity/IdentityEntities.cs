@@ -46,6 +46,8 @@ public sealed class User : AuditableEntity
     public void SetEmailVerified() => EmailVerified = true;
 
     public void Deactivate() => IsActive = false;
+
+    public void Reactivate() => IsActive = true;
 }
 
 public sealed class Role : AuditableEntity

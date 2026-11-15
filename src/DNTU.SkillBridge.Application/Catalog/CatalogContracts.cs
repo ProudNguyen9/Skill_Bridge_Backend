@@ -52,3 +52,22 @@ public sealed class MajorListQuery
     /// <summary>When true, inactive entries are included. Requires the ADMIN or SUPER_ADMIN role.</summary>
     public bool IncludeInactive { get; init; }
 }
+
+public sealed record CreateSkillRequest(string Code, string Name, string Category, string? Description);
+public sealed record UpdateSkillRequest(string Name, string Category, string? Description);
+public sealed record CreateIndustryRequest(string Name);
+public sealed record CreateFacultyRequest(string Code, string Name);
+public sealed record CreateMajorRequest(string Code, string Name, Guid FacultyId);
+
+/// <summary>Result of an admin catalog mutation; Item is null for NotFound/Duplicate/FacultyMissing.</summary>
+public sealed record AdminCatalogWriteResult<T>(AdminCatalogWriteStatus Status, T? Item);
+
+public enum AdminCatalogWriteStatus
+{
+    Created,
+    Updated,
+    NotFound,
+    Duplicate,
+    FacultyMissing
+}
+

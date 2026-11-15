@@ -2,6 +2,7 @@ using DNTU.SkillBridge.Application.Administration;
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Domain.Administration;
 using DNTU.SkillBridge.Domain.Companies;
+using DNTU.SkillBridge.Domain.Identity;
 using DNTU.SkillBridge.Domain.Lecturers;
 using DNTU.SkillBridge.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -48,6 +49,16 @@ public sealed class AdminGovernanceRepository(AppDbContext dbContext) : IAdminis
         return new PagedResponse<AdminUserListItemResponse>(items, metadata);
     }
 
+    public Task<AdminUserListItemResponse?> GetUserAsync(Guid userId, CancellationToken cancellationToken) =>
+        dbContext.Users.AsNoTracking()
+            .Where(user => user.Id == userId)
+            .Select(user => new AdminUserListItemResponse(
+                user.Id, user.Email, user.DisplayName,
+                user.UserRoles.OrderBy(membership => membership.Role.NormalizedName)
+                    .Select(membership => membership.Role.Name).ToArray(),
+                user.IsActive, user.CreatedAt))
+            .SingleOrDefaultAsync(cancellationToken);
+
     public async Task<AdminDashboardResponse> GetDashboardAsync(CancellationToken cancellationToken) => new(
         await dbContext.Companies.CountAsync(cancellationToken),
         await dbContext.StudentProfiles.CountAsync(cancellationToken),
@@ -73,6 +84,14 @@ public sealed class AdminGovernanceRepository(AppDbContext dbContext) : IAdminis
                    join user in dbContext.Users.AsNoTracking() on auditLog.ActorUserId equals user.Id into actorJoin
                    from actor in actorJoin.DefaultIfEmpty()
                    select new { auditLog, actor };
+
+        if (!string.IsNullOrWhiteSpace(query.ActorRole))
+        {
+            var actorRole = query.ActorRole.Trim().ToUpperInvariant();
+            logs = logs.Where(item => dbContext.UserRoles.AsNoTracking()
+                .Any(userRole => userRole.UserId == item.auditLog.ActorUserId
+                    && userRole.Role.NormalizedName == actorRole));
+        }
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
@@ -149,4 +168,56 @@ public sealed class AdminGovernanceRepository(AppDbContext dbContext) : IAdminis
 
     public Task<Company?> FindCompanyForUpdateAsync(Guid companyId, CancellationToken cancellationToken) =>
         dbContext.Companies.AsTracking().SingleOrDefaultAsync(company => company.Id == companyId, cancellationToken);
+
+    public Task<User?> FindUserForUpdateAsync(Guid userId, CancellationToken cancellationToken) =>
+        dbContext.Users
+            .AsTracking()
+            .Include(user => user.UserRoles)
+            .ThenInclude(membership => membership.Role)
+            .SingleOrDefaultAsync(user => user.Id == userId, cancellationToken);
+
+    public async Task<IReadOnlyCollection<Role>> FindRolesByNamesAsync(IReadOnlyCollection<string> normalizedNames, CancellationToken cancellationToken)
+    {
+        var names = normalizedNames
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Select(name => name.Trim().ToUpperInvariant())
+            .Distinct()
+            .ToArray();
+        if (names.Length == 0)
+        {
+            return [];
+        }
+
+        return await dbContext.Roles
+            .AsNoTracking()
+            .Where(role => names.Contains(role.NormalizedName))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<Guid>> ListActiveUserIdsByRolesAsync(IReadOnlyCollection<string> normalizedRoleNames, CancellationToken cancellationToken)
+    {
+        var query = dbContext.Users.AsNoTracking().Where(user => user.IsActive);
+        var roleNames = normalizedRoleNames.ToArray();
+        if (roleNames.Length > 0)
+        {
+            query = query.Where(user => user.UserRoles.Any(membership => roleNames.Contains(membership.Role.NormalizedName)));
+        }
+
+        return await query.Select(user => user.Id).ToListAsync(cancellationToken);
+    }
+
+    public async Task<AdminLecturerDetailResponse?> GetLecturerDetailAsync(Guid lecturerId, CancellationToken cancellationToken)
+    {
+        var detail = await (from profile in dbContext.LecturerProfiles.AsNoTracking()
+                            join user in dbContext.Users.AsNoTracking() on profile.UserId equals user.Id
+                            where profile.Id == lecturerId
+                            select new AdminLecturerDetailResponse(
+                                profile.Id, user.Id, user.Email, user.DisplayName,
+                                profile.LecturerCode, profile.Department, profile.AcademicTitle, profile.Bio,
+                                profile.WebsiteUrl, profile.OfficeLocation, profile.PhoneNumber,
+                                profile.ApprovalStatus.ToString(), profile.ReviewNote, profile.ReviewedAt,
+                                profile.IsActive, profile.CreatedAt))
+            .SingleOrDefaultAsync(cancellationToken);
+        return detail;
+    }
 }

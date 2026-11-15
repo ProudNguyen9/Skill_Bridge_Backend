@@ -46,10 +46,10 @@ public sealed class StudentRepository(AppDbContext dbContext) : IStudentReposito
                 return false;
             }
 
-            // If facultyId is not specified or differs, allow major without failing
+            // A major always belongs to exactly one faculty; a differing faculty id is a catalog inconsistency.
             if (facultyId.HasValue && facultyId.Value != Guid.Empty && major.FacultyId != facultyId)
             {
-                // do not reject outright
+                return false;
             }
         }
 

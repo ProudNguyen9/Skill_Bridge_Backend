@@ -1,0 +1,19 @@
+,,,,,,
+,STT,Tên chức năng,Thời gian dự kiến,Người thực hiện,Trạng thái,Ghi chú
+,1,Đăng nhập và nhận diện vai trò Super Admin,Chưa chốt,Chưa phân công,Hoàn thành,Tài khoản SUPER_ADMIN và role đã có; tài khoản mẫu chỉ dùng cho môi trường kiểm thử.
+,2,Quyền quản trị toàn hệ thống theo vai trò SUPER_ADMIN,Chưa chốt,Chưa phân công,Hoàn thành,Backend/frontend vượt permission gate nghiệp vụ; xác thực và kiểm tra nghiệp vụ vẫn áp dụng.
+,3,"Phê duyệt dự án (hàng đợi, chi tiết, quyết định)",Chưa chốt,Chưa phân công,Hoàn thành,"Có hàng đợi và quyết định; chi tiết hiện chỉ trả số kỹ năng/sản phẩm bàn giao, chưa có từng mục."
+,4,Duyệt hồ sơ giảng viên,Chưa chốt,Chưa phân công,Hoàn thành,"Có danh sách, duyệt/từ chối và lý do; UI có modal, nhưng chưa có API GET chi tiết riêng."
+,5,Xác minh doanh nghiệp,Chưa chốt,Chưa phân công,Hoàn thành,Có xác minh/từ chối và lý do; chưa có KYB file/đình chỉ nếu trường yêu cầu.
+,6,Danh bạ người dùng toàn hệ thống (tra cứu),Chưa chốt,Chưa phân công,Hoàn thành,GET /admin/users hỗ trợ trang/tìm kiếm/lọc; giao diện hiện chỉ xem.
+,7,Quản lý tài khoản và vai trò quản trị,Chưa chốt,Chưa phân công,Hoàn thành,API khóa/mở và đổi vai trò có sẵn; UI chưa nối. Chưa có reset mật khẩu/ma trận quyền.
+,8,Quản lý tài chính và giải ngân,Chưa chốt,Chưa phân công,Hoàn thành,"Bốn API xử lý giải ngân hiện chỉ nhận ADMIN, chưa nhận SUPER_ADMIN; cần chốt phân quyền."
+,9,Giám sát dự án toàn hệ thống,Chưa chốt,Chưa phân công,Hoàn thành,Màn giám sát chỉ đọc; quyết định duyệt/tạm dừng nằm ở chức năng phê duyệt dự án.
+,10,Quản lý cam kết và yêu cầu rút khỏi dự án,Chưa chốt,Chưa phân công,Hoàn thành,API và UI duyệt/từ chối yêu cầu rút có; chưa xác minh hồi quy với SUPER_ADMIN.
+,11,"Quản lý danh mục hệ thống (kỹ năng, khoa, rubric, học kỳ)",Chưa chốt,Chưa phân công,Hoàn thành,"Kỹ năng hiện chỉ đọc; thêm/xóa chưa có API ghi, lưu học kỳ đang là demo."
+,12,Dashboard quản trị,Chưa chốt,Chưa phân công,Hoàn thành,Dashboard/analytics dùng API thật; cần xác nhận lại lỗi typecheck trước khi đóng.
+,13,Nhật ký kiểm toán,Chưa chốt,Chưa phân công,Hoàn thành,API/UI có tìm kiếm và phân trang; chưa lọc theo vai trò người thực hiện.
+,14,Báo cáo và phân tích,Chưa chốt,Chưa phân công,Hoàn thành,Analytics lấy API thật; nút xuất hồ sơ kiểm định hiện chỉ hiện thông báo.
+,15,Thông báo quản trị,Chưa chốt,Chưa phân công,Hoàn thành,API broadcast đã có; giao diện thông báo Admin chưa nối API quản trị/template.
+,16,Cài đặt và chính sách hệ thống,Chưa chốt,Chưa phân công,Hoàn thành,GET/PUT chính sách và audit đã có; giao diện Admin chưa nối các API này.
+,17,Kiểm thử hồi quy quyền Super Admin,Chưa chốt,Chưa phân công,Hoàn thành,"Chưa chạy lại trong lần rà soát; cần typecheck, migration check và test ma trận quyền."
