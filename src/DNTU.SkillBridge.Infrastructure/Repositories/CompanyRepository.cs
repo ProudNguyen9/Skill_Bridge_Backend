@@ -66,6 +66,10 @@ public sealed class CompanyRepository(AppDbContext dbContext) : ICompanyReposito
             company.Address,
             company.ContactEmail,
             company.ContactPhone,
+            company.Tagline,
+            company.CompanyType,
+            company.FoundedYear,
+            company.BannerUrl,
             company.VerificationStatus.ToString(),
             company.CanPublishProjects());
     }

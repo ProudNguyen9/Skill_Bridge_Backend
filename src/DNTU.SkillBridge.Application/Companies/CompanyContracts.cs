@@ -16,6 +16,10 @@ public sealed record CompanyProfileResponse(
     string? Address,
     string? ContactEmail,
     string? ContactPhone,
+    string? Tagline,
+    string? CompanyType,
+    int? FoundedYear,
+    string? BannerUrl,
     string VerificationStatus,
     bool CanPublishProjects);
 
@@ -46,6 +50,18 @@ public sealed class UpdateCompanyProfileRequest
 
     [Phone, StringLength(20)]
     public string? ContactPhone { get; init; }
+
+    [StringLength(200)]
+    public string? Tagline { get; init; }
+
+    [StringLength(100)]
+    public string? CompanyType { get; init; }
+
+    [Range(1900, 2100)]
+    public int? FoundedYear { get; init; }
+
+    [StringLength(500)]
+    public string? BannerUrl { get; init; }
 }
 
 public sealed record CompanyMemberResponse(Guid UserId, string DisplayName, string Email, string Role, string? Title);

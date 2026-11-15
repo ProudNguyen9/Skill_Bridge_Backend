@@ -10,4 +10,7 @@ public sealed class ProjectWorkflowService(IProjectRepository projectRepository)
 
     public Task<(ProjectReopenOutcome Outcome, CompanyProjectDetailResponse? Project)> ReopenAsync(Guid companyId, Guid projectId, Guid userId, CancellationToken cancellationToken) =>
         projectRepository.ReopenAsync(companyId, projectId, userId, cancellationToken);
+
+    public Task<(ProjectCloseApplicationsOutcome Outcome, CompanyProjectDetailResponse? Project)> CloseApplicationsAsync(Guid companyId, Guid projectId, CancellationToken cancellationToken) =>
+        projectRepository.CloseApplicationsAsync(companyId, projectId, cancellationToken);
 }
