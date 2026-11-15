@@ -476,6 +476,8 @@ public sealed class M3RealtimeAndCommitmentLifecycleAdversarialTests
         public Task<bool> HasOpenWithdrawalAsync(Guid projectId, Guid studentId, CancellationToken cancellationToken) => Task.FromResult(false);
         public void AddWithdrawalRequest(WithdrawalRequest withdrawal) { }
         public Task<IReadOnlyCollection<WithdrawalResponse>> ListWithdrawalsAsync(Guid studentId, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyCollection<WithdrawalResponse>>([]);
+        public Task<DNTU.SkillBridge.Application.Common.PagedResponse<AdminWithdrawalListItemResponse>> ListWithdrawalsAdminAsync(AdminWithdrawalListQuery query, CancellationToken cancellationToken) =>
+            Task.FromResult(new DNTU.SkillBridge.Application.Common.PagedResponse<AdminWithdrawalListItemResponse>([], DNTU.SkillBridge.Application.Common.PageMetadata.Create(query.Page, query.PageSize, 0)));
         public Task<WithdrawalResponse?> FindWithdrawalAsync(Guid studentId, Guid withdrawalId, CancellationToken cancellationToken) => Task.FromResult<WithdrawalResponse?>(null);
         public Task<Guid?> FindLecturerIdAsync(Guid userId, CancellationToken cancellationToken) => Task.FromResult<Guid?>(null);
         public Task<WithdrawalRequest?> FindWithdrawalForUpdateAsync(Guid withdrawalId, CancellationToken cancellationToken) => Task.FromResult<WithdrawalRequest?>(null);

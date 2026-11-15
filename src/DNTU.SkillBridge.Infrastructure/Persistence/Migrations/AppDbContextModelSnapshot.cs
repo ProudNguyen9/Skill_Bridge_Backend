@@ -2826,6 +2826,10 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("nvarchar(16)");
 
+                    b.Property<string>("AvatarUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<string>("Bio")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");

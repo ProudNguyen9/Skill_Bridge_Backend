@@ -27,6 +27,20 @@ public sealed class Skill : AuditableEntity
     public void Deactivate() => IsActive = false;
 
     public void Activate() => IsActive = true;
+
+    /// <summary>Admin catalog maintenance: renames the skill (slug follows the name) and updates category/description.</summary>
+    public void Update(string name, SkillCategory category, string? description)
+    {
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            Name = name.Trim();
+            NormalizedName = Name.ToUpperInvariant();
+            Slug = SlugBuilder.Create(Name);
+        }
+
+        Category = category;
+        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+    }
 }
 
 public sealed class Industry : AuditableEntity
@@ -46,6 +60,16 @@ public sealed class Industry : AuditableEntity
     }
 
     public void Deactivate() => IsActive = false;
+
+    public void Activate() => IsActive = true;
+
+    public void Rename(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        Name = name.Trim();
+        NormalizedName = Name.ToUpperInvariant();
+        Slug = SlugBuilder.Create(Name);
+    }
 }
 
 public sealed class Faculty : AuditableEntity
@@ -65,6 +89,15 @@ public sealed class Faculty : AuditableEntity
     }
 
     public void Deactivate() => IsActive = false;
+
+    public void Activate() => IsActive = true;
+
+    public void Rename(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        Name = name.Trim();
+        NormalizedName = Name.ToUpperInvariant();
+    }
 }
 
 public sealed class Major : AuditableEntity
@@ -87,6 +120,15 @@ public sealed class Major : AuditableEntity
     }
 
     public void Deactivate() => IsActive = false;
+
+    public void Activate() => IsActive = true;
+
+    public void Rename(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        Name = name.Trim();
+        NormalizedName = Name.ToUpperInvariant();
+    }
 }
 
 public sealed class Bank : AuditableEntity

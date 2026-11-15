@@ -32,15 +32,9 @@ public sealed class StudentService(IStudentRepository studentRepository, IUnitOf
 
         if (majorId.HasValue || facultyId.HasValue)
         {
-            var valid = await studentRepository.ValidateMajorFacultyAsync(majorId, facultyId, cancellationToken);
-            if (!valid)
+            if (!await studentRepository.ValidateMajorFacultyAsync(majorId, facultyId, cancellationToken))
             {
-                // If invalid or inactive, clear invalid major rather than rejecting whole save
-                if (majorId.HasValue)
-                {
-                    var major = await studentRepository.FindMajorAsync(majorId.Value, cancellationToken);
-                    if (major is null || !major.IsActive) majorId = null;
-                }
+                return null;
             }
         }
 
@@ -88,6 +82,11 @@ public sealed class StudentService(IStudentRepository studentRepository, IUnitOf
 
         var requestedIds = skills.Select(item => item.SkillId).Where(id => id != Guid.Empty).Distinct().ToList();
         var existingSkillIds = await studentRepository.ListActiveSkillIdsAsync(requestedIds, cancellationToken);
+        if (existingSkillIds.Count != requestedIds.Count)
+        {
+            // Every requested skill must be an active catalog entry; unknown or inactive ids reject the whole save.
+            return false;
+        }
 
         var validSkills = skills.Where(item => existingSkillIds.Contains(item.SkillId)).ToList();
         var current = await studentRepository.ListSkillsForUpdateAsync(profile.Id, cancellationToken);

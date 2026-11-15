@@ -1,6 +1,7 @@
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Domain.Administration;
 using DNTU.SkillBridge.Domain.Companies;
+using DNTU.SkillBridge.Domain.Identity;
 using DNTU.SkillBridge.Domain.Lecturers;
 
 namespace DNTU.SkillBridge.Application.Administration;
@@ -9,6 +10,9 @@ namespace DNTU.SkillBridge.Application.Administration;
 public interface IAdministrationRepository
 {
     Task<PagedResponse<AdminUserListItemResponse>> ListUsersAsync(AdminUserListQuery query, CancellationToken cancellationToken);
+
+    /// <summary>Đọc một user dạng không tracked kèm roles (projection an toàn).</summary>
+    Task<AdminUserListItemResponse?> GetUserAsync(Guid userId, CancellationToken cancellationToken);
 
     Task<AdminDashboardResponse> GetDashboardAsync(CancellationToken cancellationToken);
 
@@ -35,4 +39,16 @@ public interface IAdministrationRepository
 
     /// <summary>Đọc công ty dạng tracked để verify/reject.</summary>
     Task<Company?> FindCompanyForUpdateAsync(Guid companyId, CancellationToken cancellationToken);
+
+    /// <summary>Đọc user (kèm roles) dạng tracked để khóa/mở/thay đổi vai trò.</summary>
+    Task<User?> FindUserForUpdateAsync(Guid userId, CancellationToken cancellationToken);
+
+    /// <summary>Nạp các role entity theo tên đã chuẩn hóa (upper).</summary>
+    Task<IReadOnlyCollection<Role>> FindRolesByNamesAsync(IReadOnlyCollection<string> normalizedNames, CancellationToken cancellationToken);
+
+    /// <summary>Id các user đang active, giới hạn theo vai trò (rỗng = tất cả).</summary>
+    Task<IReadOnlyCollection<Guid>> ListActiveUserIdsByRolesAsync(IReadOnlyCollection<string> normalizedRoleNames, CancellationToken cancellationToken);
+
+    /// <summary>Hồ sơ chi tiết giảng viên kèm tài khoản, phục vụ màn duyệt chi tiết.</summary>
+    Task<AdminLecturerDetailResponse?> GetLecturerDetailAsync(Guid lecturerId, CancellationToken cancellationToken);
 }

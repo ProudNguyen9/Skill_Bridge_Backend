@@ -34,7 +34,7 @@ public sealed class PaymentsController(IPaymentService paymentService, ICurrentU
     [HttpPost("admin/disbursements/{disbursementId:guid}/start-processing")]
     public async Task<IActionResult> StartDisbursementProcessing(Guid disbursementId, CancellationToken cancellationToken)
     {
-        if (!currentUser.Roles.Contains(RoleNames.Admin)) return Forbid();
+        if (!currentUser.Roles.Contains(RoleNames.Admin) && !currentUser.Roles.Contains(RoleNames.SuperAdmin)) return Forbid();
         return await paymentService.StartDisbursementProcessingAsync(disbursementId, cancellationToken) ? NoContent() : Conflict();
     }
 
@@ -45,21 +45,21 @@ public sealed class PaymentsController(IPaymentService paymentService, ICurrentU
         [FromQuery] string bankReference,
         CancellationToken cancellationToken)
     {
-        if (!currentUser.Roles.Contains(RoleNames.Admin) || string.IsNullOrWhiteSpace(idempotencyKey)) return Forbid();
+        if ((!currentUser.Roles.Contains(RoleNames.Admin) && !currentUser.Roles.Contains(RoleNames.SuperAdmin)) || string.IsNullOrWhiteSpace(idempotencyKey)) return Forbid();
         return await paymentService.MarkDisbursementPaidAsync(disbursementId, idempotencyKey, bankReference, cancellationToken) ? NoContent() : Conflict();
     }
 
     [HttpPost("admin/disbursements/{disbursementId:guid}/mark-failed")]
     public async Task<IActionResult> MarkDisbursementFailed(Guid disbursementId, [FromQuery] string? note, CancellationToken cancellationToken)
     {
-        if (!currentUser.Roles.Contains(RoleNames.Admin)) return Forbid();
+        if (!currentUser.Roles.Contains(RoleNames.Admin) && !currentUser.Roles.Contains(RoleNames.SuperAdmin)) return Forbid();
         return await paymentService.MarkDisbursementFailedAsync(disbursementId, note, cancellationToken) ? NoContent() : Conflict();
     }
 
     [HttpPost("admin/disbursements/{disbursementId:guid}/cancel")]
     public async Task<IActionResult> CancelDisbursement(Guid disbursementId, [FromQuery] string? note, CancellationToken cancellationToken)
     {
-        if (!currentUser.Roles.Contains(RoleNames.Admin)) return Forbid();
+        if (!currentUser.Roles.Contains(RoleNames.Admin) && !currentUser.Roles.Contains(RoleNames.SuperAdmin)) return Forbid();
         return await paymentService.CancelDisbursementAsync(disbursementId, note, cancellationToken) ? NoContent() : Conflict();
     }
 }

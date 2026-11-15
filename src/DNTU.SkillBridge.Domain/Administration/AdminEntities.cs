@@ -12,6 +12,15 @@ public static class AuditActions
     public const string LecturerRejected = "LECTURER_REJECTED";
     public const string CompanyVerified = "COMPANY_VERIFIED";
     public const string CompanyRejected = "COMPANY_REJECTED";
+    public const string CompanySuspended = "COMPANY_SUSPENDED";
+    public const string CompanyResumed = "COMPANY_RESUMED";
+    public const string UserActivated = "USER_ACTIVATED";
+    public const string UserDeactivated = "USER_DEACTIVATED";
+    public const string UserRolesUpdated = "USER_ROLES_UPDATED";
+    public const string CatalogEntryCreated = "CATALOG_ENTRY_CREATED";
+    public const string CatalogEntryUpdated = "CATALOG_ENTRY_UPDATED";
+    public const string CatalogEntryRemoved = "CATALOG_ENTRY_REMOVED";
+    public const string NotificationBroadcast = "NOTIFICATION_BROADCAST";
 }
 
 public sealed class AuditLog : BaseEntity

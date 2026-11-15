@@ -53,6 +53,88 @@ public sealed class AdminGovernanceController(
         return Ok(new ApiResponse<AdminDashboardResponse>(await governanceService.GetDashboardAsync(cancellationToken)));
     }
 
+    /// <summary>Kích hoạt lại tài khoản bị khóa.</summary>
+    [HttpPost("users/{userId:guid}/activate")]
+    [ProducesResponseType(typeof(ApiResponse<AdminUserManagementResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ApiResponse<AdminUserManagementResponse>>> ActivateUser(Guid userId, CancellationToken cancellationToken)
+    {
+        if (!IsAdmin()) return Forbid();
+        var outcome = await governanceService.SetUserActiveAsync(currentUser.UserId!.Value, userId, isActive: true, cancellationToken);
+        return await RespondUserManagementAsync(userId, outcome, cancellationToken);
+    }
+
+    /// <summary>Khóa tài khoản: chặn đăng nhập/refresh ngay lập tức. Không áp dụng cho SUPER_ADMIN hay chính mình.</summary>
+    [HttpPost("users/{userId:guid}/deactivate")]
+    [ProducesResponseType(typeof(ApiResponse<AdminUserManagementResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ApiResponse<AdminUserManagementResponse>>> DeactivateUser(Guid userId, CancellationToken cancellationToken)
+    {
+        if (!IsAdmin()) return Forbid();
+        var outcome = await governanceService.SetUserActiveAsync(currentUser.UserId!.Value, userId, isActive: false, cancellationToken);
+        return await RespondUserManagementAsync(userId, outcome, cancellationToken);
+    }
+
+    /// <summary>Thay thế toàn bộ vai trò của user. Chỉ SUPER_ADMIN được cấp/thu hồi ADMIN hoặc SUPER_ADMIN.</summary>
+    [HttpPut("users/{userId:guid}/roles")]
+    [ProducesResponseType(typeof(ApiResponse<AdminUserManagementResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ApiResponse<AdminUserManagementResponse>>> SetUserRoles(
+        Guid userId, [FromBody] AdminSetUserRolesRequest request, CancellationToken cancellationToken)
+    {
+        if (!IsAdmin()) return Forbid();
+        var actorIsSuperAdmin = currentUser.Roles.Contains(RoleNames.SuperAdmin);
+        var outcome = await governanceService.SetUserRolesAsync(currentUser.UserId!.Value, userId, request.Roles, actorIsSuperAdmin, cancellationToken);
+        return await RespondUserManagementAsync(userId, outcome, cancellationToken);
+    }
+
+    /// <summary>Gửi thông báo broadcast tới mọi user active (lọc theo vai trò nếu chỉ định).</summary>
+    [HttpPost("notifications/broadcast")]
+    [ProducesResponseType(typeof(ApiResponse<AdminBroadcastResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ApiResponse<AdminBroadcastResponse>>> Broadcast(
+        [FromBody] AdminBroadcastRequest request, CancellationToken cancellationToken)
+    {
+        if (!IsAdmin()) return Forbid();
+        if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > 300) return BadRequest();
+        if (string.IsNullOrWhiteSpace(request.Type) || request.Type.Trim().Length > 100) return BadRequest();
+
+        var response = await governanceService.BroadcastAsync(currentUser.UserId!.Value, new AdminBroadcastRequest(
+            request.Title.Trim(), request.Type.Trim(),
+            request.TargetRoles.Select(role => role.Trim()).Where(role => role.Length > 0).ToArray()), cancellationToken);
+        return Ok(new ApiResponse<AdminBroadcastResponse>(response));
+    }
+
+    private async Task<ActionResult<ApiResponse<AdminUserManagementResponse>>> RespondUserManagementAsync(
+        Guid userId, AdminUserManagementOutcome outcome, CancellationToken cancellationToken)
+    {
+        switch (outcome)
+        {
+            case AdminUserManagementOutcome.NotFound:
+                return NotFound();
+            case AdminUserManagementOutcome.SelfTargetForbidden:
+            case AdminUserManagementOutcome.PrivilegeEscalationForbidden:
+            case AdminUserManagementOutcome.UnknownRole:
+            case AdminUserManagementOutcome.NoRolesRequested:
+                return Conflict();
+        }
+
+        var user = await governanceService.GetUserAsync(userId, cancellationToken);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(new ApiResponse<AdminUserManagementResponse>(new AdminUserManagementResponse(user.UserId, user.IsActive, user.Roles)));
+    }
+
     [HttpGet("settings/{category}")]
     public async Task<ActionResult<ApiResponse<AdminPolicyResponse>>> GetPolicy(string category, CancellationToken cancellationToken)
     {

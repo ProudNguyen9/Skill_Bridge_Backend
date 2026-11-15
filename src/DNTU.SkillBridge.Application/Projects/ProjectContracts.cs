@@ -223,6 +223,18 @@ public sealed record AdminApprovalListItemResponse(
     string? LastDecision,
     DateTimeOffset? LastDecidedAt);
 
+public sealed record ApprovalSkillItem(
+    Guid SkillId,
+    string Name,
+    string RequirementLevel,
+    bool IsRequired);
+
+public sealed record ApprovalDeliverableItem(
+    Guid Id,
+    string Name,
+    string? Description,
+    int SortOrder);
+
 public sealed record AdminApprovalDetailResponse(
     Guid ProjectId,
     string Title,
@@ -243,6 +255,8 @@ public sealed record AdminApprovalDetailResponse(
     string? AllowanceCurrency,
     int SkillCount,
     int DeliverableCount,
+    IReadOnlyCollection<ApprovalSkillItem> Skills,
+    IReadOnlyCollection<ApprovalDeliverableItem> Deliverables,
     DateTimeOffset? SubmittedAt,
     DateTimeOffset? ApprovedAt,
     DateTimeOffset? PublishedAt,
