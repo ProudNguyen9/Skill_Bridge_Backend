@@ -12,6 +12,8 @@ public interface IAccountEmailSender
     Task SendVerificationAsync(string recipientEmail, string rawToken, CancellationToken cancellationToken);
 
     Task SendPasswordResetAsync(string recipientEmail, string rawToken, CancellationToken cancellationToken);
+
+    Task SendWelcomeEmailAsync(string recipientEmail, string displayName, string roleName, CancellationToken cancellationToken);
 }
 
 /// <summary>Sends account emails through the Resend Email API.</summary>
@@ -36,6 +38,9 @@ public sealed class ResendAccountEmailSender(
             "Đặt lại mật khẩu",
             "Nhấn nút bên dưới để tiếp tục đặt lại mật khẩu cho tài khoản SkillBridge.",
             cancellationToken);
+
+    public Task SendWelcomeEmailAsync(string recipientEmail, string displayName, string roleName, CancellationToken cancellationToken) =>
+        SendWelcomeNotificationAsync(recipientEmail, displayName, roleName, cancellationToken);
 
     private async Task SendVerificationCodeAsync(
         string recipientEmail,
@@ -72,6 +77,134 @@ public sealed class ResendAccountEmailSender(
                 response.StatusCode);
         }
     }
+
+    private async Task SendWelcomeNotificationAsync(
+        string recipientEmail,
+        string displayName,
+        string roleName,
+        CancellationToken cancellationToken)
+    {
+        if (!_email.Enabled)
+        {
+            return;
+        }
+
+        var safeDisplayName = WebUtility.HtmlEncode(displayName);
+        var safeRoleName = WebUtility.HtmlEncode(roleName);
+        var safeRecipientEmail = WebUtility.HtmlEncode(recipientEmail);
+        var fromName = string.IsNullOrWhiteSpace(_email.FromName) ? "DNTU SkillBridge" : _email.FromName.Trim();
+        var safeFromName = WebUtility.HtmlEncode(fromName) ?? "DNTU SkillBridge";
+        var appUrl = string.IsNullOrWhiteSpace(_app.FrontendBaseUrl) ? "http://localhost:3000" : _app.FrontendBaseUrl.TrimEnd('/');
+        var safeAppUrl = WebUtility.HtmlEncode(appUrl);
+
+        var payload = new ResendEmailRequest(
+            $"{fromName} <{_email.FromAddress}>",
+            [recipientEmail],
+            $"Chào mừng bạn đến với DNTU SkillBridge - Tài khoản {roleName}",
+            BuildWelcomeHtml(safeDisplayName, safeRoleName, safeRecipientEmail, safeAppUrl, safeFromName),
+            BuildWelcomeText(displayName, roleName, recipientEmail, appUrl));
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, ResendEmailsEndpoint)
+        {
+            Content = JsonContent.Create(payload)
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _email.ApiKey);
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(
+                $"Resend rejected the email request with HTTP {(int)response.StatusCode} ({response.StatusCode}).",
+                null,
+                response.StatusCode);
+        }
+    }
+
+    private static string BuildWelcomeHtml(string safeDisplayName, string safeRoleName, string safeRecipientEmail, string safeAppUrl, string safeFromName) => $$"""
+        <!doctype html>
+        <html lang="vi">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <meta name="color-scheme" content="light">
+          <title>Chào mừng bạn đến với {{safeFromName}}</title>
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+          <style>
+            html, body {
+              margin: 0; padding: 0; background-color: #f4f6fa; color: #334155;
+              font-family: 'Be Vietnam Pro', 'Inter', Arial, sans-serif;
+            }
+          </style>
+        </head>
+        <body style="margin: 0; padding: 0; background-color: #f4f6fa;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#f4f6fa" style="width: 100%; background-color: #f4f6fa;">
+            <tr>
+              <td align="center" style="padding: 24px 12px;">
+                <table role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" style="width: 100%; max-width: 640px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06);">
+                  <tr>
+                    <td style="background: linear-gradient(135deg, #c91a27 0%, #8f0c15 100%); padding: 32px 36px; text-align: center;">
+                      <h1 style="color: #ffffff; font-size: 22px; margin: 0; font-weight: 700; letter-spacing: 0.5px;">DNTU SKILLBRIDGE</h1>
+                      <p style="color: #fde5e8; font-size: 13px; margin: 8px 0 0; opacity: 0.95;">Cổng Hợp tác Doanh nghiệp & Đồ án Thực chiến</p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 36px 36px 28px;">
+                      <h2 style="font-size: 18px; color: #1e293b; margin: 0 0 16px; font-weight: 600;">Xin chào {{safeDisplayName}},</h2>
+                      <p style="font-size: 14px; line-height: 24px; color: #475569; margin: 0 0 20px;">
+                        Chúc mừng bạn đã tạo thành công tài khoản trên nền tảng <strong>DNTU SkillBridge</strong> với vai trò <strong style="color: #c91a27;">{{safeRoleName}}</strong> thông qua xác thực Google.
+                      </p>
+                      
+                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; margin: 0 0 24px;">
+                        <tr>
+                          <td style="padding: 16px 20px;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 13px; color: #334155;">
+                              <tr>
+                                <td style="padding: 6px 0; font-weight: 600; width: 140px; color: #64748b;">Email đăng nhập:</td>
+                                <td style="padding: 6px 0; font-weight: 600; color: #0f172a;">{{safeRecipientEmail}}</td>
+                              </tr>
+                              <tr>
+                                <td style="padding: 6px 0; font-weight: 600; color: #64748b;">Vai trò tài khoản:</td>
+                                <td style="padding: 6px 0; font-weight: 600; color: #c91a27;">{{safeRoleName}}</td>
+                              </tr>
+                              <tr>
+                                <td style="padding: 6px 0; font-weight: 600; color: #64748b;">Trạng thái:</td>
+                                <td style="padding: 6px 0; font-weight: 600; color: #16a34a;">Đã xác minh qua Google</td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <div style="text-align: center; margin: 28px 0;">
+                        <a href="{{safeAppUrl}}" target="_blank" style="display: inline-block; background-color: #c91a27; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(201, 26, 39, 0.25);">
+                          Truy cập DNTU SkillBridge
+                        </a>
+                      </div>
+
+                      <p style="font-size: 12px; line-height: 18px; color: #94a3b8; margin: 24px 0 0; text-align: center;">
+                        Nếu bạn không thực hiện đăng ký này, vui lòng liên hệ ngay với chúng tôi qua <a href="mailto:support-skillbridge@dntu.edu.vn" style="color: #c91a27; text-decoration: none;">support-skillbridge@dntu.edu.vn</a>.
+                      </p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="background-color: #0f172a; padding: 20px 36px; text-align: center; color: #94a3b8; font-size: 11px; line-height: 18px;">
+                      <p style="margin: 0;">Trường Đại học Công nghệ Đồng Nai (DNTU)</p>
+                      <p style="margin: 4px 0 0;">Số 206, Nguyễn Khuyến, KP. 5, P. Trảng Dài, TP. Biên Hòa, Tỉnh Đồng Nai</p>
+                      <p style="margin: 4px 0 0;">© 2026 DNTU SkillBridge. All rights reserved.</p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+        """;
+
+    private static string BuildWelcomeText(string displayName, string roleName, string recipientEmail, string appUrl) =>
+        $"DNTU SKILLBRIDGE — CHÀO MỪNG BẠN GIA NHẬP\n\nXin chào {displayName},\n\nChúc mừng bạn đã tạo thành công tài khoản trên nền tảng DNTU SkillBridge với vai trò {roleName}.\n\nThông tin tài khoản:\n- Email: {recipientEmail}\n- Vai trò: {roleName}\n- Trạng thái: Đã xác thực qua Google\n\nTruy cập hệ thống tại: {appUrl}\n\nTrân trọng,\nĐội ngũ DNTU SkillBridge\n© 2026 Đại học Công nghệ Đồng Nai";
 
     private static string BuildVerificationHtml(string safeOtp, string safeFromName) => $$"""
         <!doctype html>

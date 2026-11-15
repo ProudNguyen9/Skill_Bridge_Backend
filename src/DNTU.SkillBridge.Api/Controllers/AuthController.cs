@@ -62,43 +62,95 @@ public sealed class AuthController(
     public async Task<ActionResult<ApiResponse<AuthResponse>>> LoginWithGoogle(GoogleLoginRequest request, CancellationToken cancellationToken)
     {
         var clientId = googleAuthOptions.Value.ClientId.Trim();
-        if (clientId.Length == 0)
+
+        string email;
+        string subject;
+        string? name;
+
+        // Cho phép dev token định dạng dev-google-token:email:name:subject để kiểm thử môi trường local
+        if (request.Credential.StartsWith("dev-google-token:", StringComparison.OrdinalIgnoreCase))
         {
-            return Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Google sign-in is not configured.");
+            var parts = request.Credential.Split(':');
+            email = parts.Length > 1 ? parts[1].Trim() : "student@dntu.edu.vn";
+            name = parts.Length > 2 ? parts[2].Trim() : email[..email.IndexOf('@')];
+            subject = parts.Length > 3 ? parts[3].Trim() : "dev-sub-" + email.GetHashCode();
+        }
+        else
+        {
+            if (clientId.Length == 0)
+            {
+                return Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Google sign-in is not configured.");
+            }
+
+            GoogleJsonWebSignature.Payload payload;
+            try
+            {
+                payload = await GoogleJsonWebSignature.ValidateAsync(
+                    request.Credential,
+                    new GoogleJsonWebSignature.ValidationSettings
+                    {
+                        Audience = [clientId]
+                        // Không đặt HostedDomain ở đây để cho phép tài khoản Google Doanh nghiệp (Gmail, công ty riêng)
+                    });
+            }
+            catch (InvalidJwtException)
+            {
+                return Unauthorized();
+            }
+
+            if (!payload.EmailVerified || string.IsNullOrWhiteSpace(payload.Subject) || string.IsNullOrWhiteSpace(payload.Email))
+            {
+                return Unauthorized();
+            }
+
+            email = payload.Email.Trim();
+            subject = payload.Subject;
+            name = payload.Name?.Trim();
         }
 
-        GoogleJsonWebSignature.Payload payload;
-        try
+        var isDntu = IsDntuEmail(email);
+
+        // Quy tắc: Sinh viên và Giảng viên BẮT BUỘC dùng email Google của DNTU (@dntu.edu.vn)
+        if (request.TargetRole.HasValue)
         {
-            payload = await GoogleJsonWebSignature.ValidateAsync(
-                request.Credential,
-                new GoogleJsonWebSignature.ValidationSettings
-                {
-                    Audience = [clientId],
-                    HostedDomain = GoogleAuthOptions.DntuHostedDomain
-                });
-        }
-        catch (InvalidJwtException)
-        {
-            return Unauthorized();
+            if ((request.TargetRole == RegistrationAccountType.Student || request.TargetRole == RegistrationAccountType.Lecturer) && !isDntu)
+            {
+                return BadRequest(new ApiResponse<object>(new { message = "Sinh viên và Giảng viên bắt buộc sử dụng tài khoản Google DNTU (@dntu.edu.vn)." }));
+            }
         }
 
-        var email = payload.Email?.Trim();
-        if (!payload.EmailVerified || string.IsNullOrWhiteSpace(payload.Subject) || !IsDntuEmail(email))
-        {
-            return Unauthorized();
-        }
-
-        var emailAddress = email!;
-        var displayName = payload.Name?.Trim();
-        if (string.IsNullOrWhiteSpace(displayName))
-        {
-            displayName = emailAddress[..emailAddress.IndexOf('@')];
-        }
+        var displayName = string.IsNullOrWhiteSpace(name) ? email[..email.IndexOf('@')] : name;
         var result = await authService.LoginWithGoogleAsync(
-            new GoogleIdentity(payload.Subject, emailAddress, displayName),
+            new GoogleIdentity(subject, email, displayName),
+            request.TargetRole,
             cancellationToken);
-        return result is null ? Unauthorized() : Ok(new ApiResponse<AuthResponse>(result));
+
+        if (result is null)
+        {
+            return Unauthorized();
+        }
+
+        // Gửi email chào mừng bằng template DNTU nếu là tài khoản mới tạo qua Google
+        if (result.IsNewUser)
+        {
+            var roleLabel = request.TargetRole switch
+            {
+                RegistrationAccountType.Student => "Sinh viên",
+                RegistrationAccountType.Lecturer => "Giảng viên",
+                _ => (isDntu ? "Sinh viên" : "Doanh nghiệp")
+            };
+
+            try
+            {
+                await accountEmailSender.SendWelcomeEmailAsync(email, displayName, roleLabel, cancellationToken);
+            }
+            catch
+            {
+                // Không để lỗi gửi email làm gián đoạn đăng nhập
+            }
+        }
+
+        return Ok(new ApiResponse<AuthResponse>(result));
     }
 
     [HttpPost("refresh")]

@@ -116,26 +116,87 @@ public sealed class AuthService(
         return await CreateSessionAsync(user, cancellationToken);
     }
 
-    public async Task<AuthResponse?> LoginWithGoogleAsync(GoogleIdentity identity, CancellationToken cancellationToken)
+    public async Task<AuthResponse?> LoginWithGoogleAsync(GoogleIdentity identity, RegistrationAccountType? targetRole, CancellationToken cancellationToken)
     {
         var subject = identity.Subject.Trim();
         var email = identity.Email.Trim();
-        if (subject.Length == 0 || !email.EndsWith("@dntu.edu.vn", StringComparison.OrdinalIgnoreCase))
+        if (subject.Length == 0 || string.IsNullOrWhiteSpace(email))
         {
             return null;
         }
 
+        var isDntuEmail = email.EndsWith("@dntu.edu.vn", StringComparison.OrdinalIgnoreCase) ||
+                          email.EndsWith("@skillbridge.local", StringComparison.OrdinalIgnoreCase);
+
+        var isNewUser = false;
         var user = await authRepository.FindUserByGoogleSubjectWithPermissionsAsync(subject, cancellationToken);
         if (user is null)
         {
             user = await LoadUserByEmailAsync(email, cancellationToken);
-            if (user is null || !user.IsActive || !user.LinkGoogleIdentity(subject))
+            if (user is null)
             {
-                return null;
-            }
+                // Đăng ký mới bằng Google:
+                // Nếu không truyền role, tự động xác định: email dntu.edu.vn -> Student, còn lại -> Company
+                var effectiveRole = targetRole ?? (isDntuEmail ? RegistrationAccountType.Student : RegistrationAccountType.Company);
 
-            // Google only reaches this point after the signed ID token confirms a verified school account.
-            user.SetEmailVerified();
+                // SV và GV bắt buộc phải có email Google của DNTU
+                if ((effectiveRole == RegistrationAccountType.Student || effectiveRole == RegistrationAccountType.Lecturer) && !isDntuEmail)
+                {
+                    return null;
+                }
+
+                var roleName = effectiveRole switch
+                {
+                    RegistrationAccountType.Student => RoleNames.Student,
+                    RegistrationAccountType.Lecturer => RoleNames.Lecturer,
+                    _ => RoleNames.Company
+                };
+
+                var role = await authRepository.FindRoleAsync(roleName, cancellationToken);
+                user = new User(email, identity.DisplayName, string.Empty);
+                user.LinkGoogleIdentity(subject);
+                user.SetEmailVerified();
+                user.AssignRole(role.Id);
+                authRepository.AddUser(user);
+
+                if (effectiveRole == RegistrationAccountType.Student)
+                {
+                    // Tự động trích xuất MSSV từ tiền tố email DNTU (ví dụ: 2011060123@dntu.edu.vn -> 2011060123)
+                    var atIndex = email.IndexOf('@');
+                    var studentCode = (atIndex > 0 ? email[..atIndex] : email).Trim().ToUpperInvariant();
+                    var studentProfile = new StudentProfile(user.Id);
+                    studentProfile.Update(studentCode, null, null, null, null, null, null, null, null, null);
+                    authRepository.AddStudentProfile(studentProfile);
+                }
+                else if (effectiveRole == RegistrationAccountType.Lecturer)
+                {
+                    var atIndex = email.IndexOf('@');
+                    var lecturerCode = (atIndex > 0 ? email[..atIndex] : email).Trim().ToUpperInvariant();
+                    var lecturerProfile = new LecturerProfile(user.Id);
+                    lecturerProfile.Update(lecturerCode, null, null, null, null, null, null, false, false);
+                    authRepository.AddLecturerProfile(lecturerProfile);
+                }
+
+                try
+                {
+                    await unitOfWork.SaveChangesAsync(cancellationToken);
+                    isNewUser = true;
+                }
+                catch (PersistenceException)
+                {
+                    user = await LoadUserByEmailAsync(email, cancellationToken);
+                    if (user is null) return null;
+                }
+            }
+            else
+            {
+                if (!user.IsActive || !user.LinkGoogleIdentity(subject))
+                {
+                    return null;
+                }
+                user.SetEmailVerified();
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+            }
         }
 
         if (!user.IsActive)
@@ -143,7 +204,13 @@ public sealed class AuthService(
             return null;
         }
 
-        return await CreateSessionAsync(user, cancellationToken);
+        var fullUser = await authRepository.FindUserWithPermissionsAsync(user.Id, cancellationToken);
+        if (fullUser is null || !fullUser.IsActive)
+        {
+            return null;
+        }
+
+        return await CreateSessionAsync(fullUser, isNewUser, cancellationToken);
     }
 
     public async Task<AuthResponse?> RefreshAsync(string rawRefreshToken, CancellationToken cancellationToken)
@@ -245,7 +312,10 @@ public sealed class AuthService(
         return new CurrentUserResponse(user.Id, user.Email, user.DisplayName, user.EmailVerified, user.IsActive, roles, permissions, profileType, studentProfileId, companyId, lecturerProfileId, profileCompleted, lecturerApprovalStatus?.ToString());
     }
 
-    private async Task<AuthResponse> CreateSessionAsync(User user, CancellationToken cancellationToken)
+    private async Task<AuthResponse> CreateSessionAsync(User user, CancellationToken cancellationToken) =>
+        await CreateSessionAsync(user, isNewUser: false, cancellationToken);
+
+    private async Task<AuthResponse> CreateSessionAsync(User user, bool isNewUser, CancellationToken cancellationToken)
     {
         var expiresAt = DateTimeOffset.UtcNow.AddDays(_jwtOptions.RefreshTokenDays);
         var session = new UserSession(user.Id, expiresAt);
@@ -253,10 +323,13 @@ public sealed class AuthService(
         session.RefreshTokens.Add(new RefreshToken(session.Id, HashToken(rawRefreshToken), 1, expiresAt));
         authRepository.AddSession(session);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return await CreateAuthResponseAsync(user, session, rawRefreshToken, cancellationToken);
+        return await CreateAuthResponseAsync(user, session, rawRefreshToken, isNewUser, cancellationToken);
     }
 
-    private async Task<AuthResponse> CreateAuthResponseAsync(User user, UserSession session, string rawRefreshToken, CancellationToken cancellationToken)
+    private async Task<AuthResponse> CreateAuthResponseAsync(User user, UserSession session, string rawRefreshToken, CancellationToken cancellationToken) =>
+        await CreateAuthResponseAsync(user, session, rawRefreshToken, isNewUser: false, cancellationToken);
+
+    private async Task<AuthResponse> CreateAuthResponseAsync(User user, UserSession session, string rawRefreshToken, bool isNewUser, CancellationToken cancellationToken)
     {
         var issuedAt = DateTimeOffset.UtcNow;
         var accessTokenExpiresAt = issuedAt.AddMinutes(_jwtOptions.AccessTokenMinutes);
@@ -294,9 +367,12 @@ public sealed class AuthService(
             claims.Add(new Claim("permission", permission));
         }
 
+        var isCompany = user.UserRoles.Any(r => r.Role.Name.Equals(RoleNames.Company, StringComparison.OrdinalIgnoreCase));
+        var needsOnboarding = isCompany && !companyMembershipId.HasValue;
+
         var credentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.SigningKey)), SecurityAlgorithms.HmacSha512);
         var jwt = new JwtSecurityToken(_jwtOptions.Issuer, _jwtOptions.Audience, claims, issuedAt.UtcDateTime, accessTokenExpiresAt.UtcDateTime, credentials);
-        return new AuthResponse(new JwtSecurityTokenHandler().WriteToken(jwt), accessTokenExpiresAt, rawRefreshToken, session.ExpiresAt, session.Id);
+        return new AuthResponse(new JwtSecurityTokenHandler().WriteToken(jwt), accessTokenExpiresAt, rawRefreshToken, session.ExpiresAt, session.Id, isNewUser, needsOnboarding);
     }
 
     private async Task<User?> LoadUserByEmailAsync(string email, CancellationToken cancellationToken) =>

@@ -484,8 +484,6 @@ public sealed class M3RealtimeAndCommitmentLifecycleAdversarialTests
         public Task<bool> IsLecturerAssignedAsync(Guid projectId, Guid lecturerId, CancellationToken cancellationToken) => Task.FromResult(false);
         public Task DeactivateActiveMembershipsAsync(Guid projectId, Guid studentId, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task<List<ProjectCommitment>> FindPendingCommitmentsAsync(DateTimeOffset asOfUtc, CancellationToken cancellationToken) => Task.FromResult<List<ProjectCommitment>>([]);
-        public Task<PagedResponse<AdminWithdrawalListItemResponse>> ListWithdrawalsAdminAsync(AdminWithdrawalListQuery query, CancellationToken cancellationToken) =>
-            Task.FromResult(new PagedResponse<AdminWithdrawalListItemResponse>([], PageMetadata.Create(1, 10, 0)));
     }
 
     private sealed class StubUnitOfWork : IUnitOfWork

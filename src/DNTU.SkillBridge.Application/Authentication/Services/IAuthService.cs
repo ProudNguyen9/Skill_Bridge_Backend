@@ -6,7 +6,7 @@ public interface IAuthService
 {
     Task<bool> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken);
     Task<AuthResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken);
-    Task<AuthResponse?> LoginWithGoogleAsync(GoogleIdentity identity, CancellationToken cancellationToken);
+    Task<AuthResponse?> LoginWithGoogleAsync(GoogleIdentity identity, RegistrationAccountType? targetRole, CancellationToken cancellationToken);
     Task<AuthResponse?> RefreshAsync(string rawRefreshToken, CancellationToken cancellationToken);
     Task RevokeSessionAsync(Guid userId, Guid sessionId, CancellationToken cancellationToken);
     Task RevokeAllSessionsAsync(Guid userId, CancellationToken cancellationToken);
