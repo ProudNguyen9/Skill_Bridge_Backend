@@ -53,6 +53,8 @@ public sealed class CreateProjectRequest
     public List<ProjectSkillItem> Skills { get; init; } = [];
 
     public List<ProjectDeliverableItem> Deliverables { get; init; } = [];
+
+    public List<string>? IllustrationUrls { get; init; }
 }
 
 public sealed class UpdateProjectRequest
@@ -103,6 +105,8 @@ public sealed class UpdateProjectRequest
     public List<ProjectSkillItem> Skills { get; init; } = [];
 
     public List<ProjectDeliverableItem> Deliverables { get; init; } = [];
+
+    public List<string>? IllustrationUrls { get; init; }
 }
 
 public sealed class ProjectSkillItem
@@ -169,7 +173,8 @@ public sealed record CompanyProjectDetailResponse(
     DateTimeOffset? UpdatedAt,
     DateTimeOffset? SubmittedAt,
     DateTimeOffset? ApprovedAt,
-    DateTimeOffset? PublishedAt);
+    DateTimeOffset? PublishedAt,
+    IReadOnlyCollection<string>? IllustrationUrls = null);
 
 public sealed record ProjectSkillResponse(
     Guid SkillId,
@@ -355,7 +360,8 @@ public sealed record PublicProjectDetailResponse(
     IReadOnlyCollection<PublicProjectSkillResponse> Skills,
     IReadOnlyCollection<PublicProjectDeliverableResponse> Deliverables,
     int CurrentStudentCount = 0,
-    IReadOnlyCollection<PublicProjectMemberSummary>? Members = null);
+    IReadOnlyCollection<PublicProjectMemberSummary>? Members = null,
+    IReadOnlyCollection<string>? IllustrationUrls = null);
 
 public sealed record PublicProjectSkillResponse(
     Guid SkillId,

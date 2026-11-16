@@ -1,3 +1,4 @@
+using System.Text.Json;
 using DNTU.SkillBridge.Domain.Catalog;
 using DNTU.SkillBridge.Domain.Common;
 
@@ -17,6 +18,7 @@ public sealed class Project : AuditableEntity
     public string? ProblemStatement { get; private set; }
     public string? BusinessRequirements { get; private set; }
     public string? TechnicalConstraints { get; private set; }
+    public string? IllustrationUrlsJson { get; private set; }
     public Guid? IndustryId { get; private set; }
     public ProjectDifficulty Difficulty { get; private set; }
     public ProjectWorkType WorkType { get; private set; }
@@ -164,12 +166,56 @@ public sealed class Project : AuditableEntity
         }
     }
 
-    /// <summary>Soft delete; historical project data is preserved after submission (Task 13+).</summary>
+    /// <summary>Updates illustration URLs shown under project description on web client.</summary>
+    public void SetIllustrationUrls(IEnumerable<string>? urls)
+    {
+        if (urls is null)
+        {
+            IllustrationUrlsJson = null;
+            return;
+        }
+
+        var normalized = urls
+            .Select(u => u?.Trim())
+            .Where(u => !string.IsNullOrWhiteSpace(u))
+            .Select(u => u!)
+            .Distinct(StringComparer.Ordinal)
+            .Take(6)
+            .ToList();
+
+        IllustrationUrlsJson = normalized.Count == 0
+            ? null
+            : JsonSerializer.Serialize(normalized);
+    }
+
+    /// <summary>Parses stored JSON array of illustration image URLs safely.</summary>
+    public IReadOnlyList<string> GetIllustrationUrls()
+    {
+        if (string.IsNullOrWhiteSpace(IllustrationUrlsJson))
+        {
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(IllustrationUrlsJson) ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    /// <summary>Soft delete; allowed for unapproved projects (DRAFT, PENDING_APPROVAL, CHANGES_REQUESTED, REJECTED).</summary>
     public void Deactivate()
     {
-        if (Status != ProjectStatus.DRAFT)
+        if (Status is not (
+            ProjectStatus.DRAFT or
+            ProjectStatus.PENDING_APPROVAL or
+            ProjectStatus.CHANGES_REQUESTED or
+            ProjectStatus.REJECTED))
         {
-            throw new InvalidOperationException("Only projects in DRAFT status can be deleted.");
+            throw new InvalidOperationException("Only unapproved or draft projects can be deleted.");
         }
 
         IsActive = false;

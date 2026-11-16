@@ -184,6 +184,81 @@ public sealed class CompanyProjectEndpointTests(CatalogApiFactory factory)
     }
 
     [Fact]
+    public async Task Delete_UnapprovedPendingProject_Succeeds_AndRecruitingReturns409()
+    {
+        var client = await CreateCompanyAsync();
+        var pendingId = await CreateProjectAsync(client, "Dự án chờ duyệt");
+        var recruitingId = await CreateProjectAsync(client, "Dự án đã duyệt");
+
+        await factory.RunWithDbContextAsync(async dbContext =>
+        {
+            await dbContext.Projects
+                .Where(p => p.Id == pendingId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(p => p.Status, DNTU.SkillBridge.Domain.Projects.ProjectStatus.PENDING_APPROVAL));
+            await dbContext.Projects
+                .Where(p => p.Id == recruitingId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(p => p.Status, DNTU.SkillBridge.Domain.Projects.ProjectStatus.RECRUITING));
+        });
+
+        var pendingDelete = await client.DeleteAsync($"/api/v1/company/projects/{pendingId}");
+        Assert.Equal(HttpStatusCode.NoContent, pendingDelete.StatusCode);
+
+        var recruitingDelete = await client.DeleteAsync($"/api/v1/company/projects/{recruitingId}");
+        Assert.Equal(HttpStatusCode.Conflict, recruitingDelete.StatusCode);
+    }
+
+    [Fact]
+    public async Task Post_AndPublicGet_PreserveIllustrationUrls()
+    {
+        var client = await CreateCompanyAsync();
+        var skillIds = await GetActiveSkillIdsAsync(1);
+        var urls = new[]
+        {
+            "/assets/projects/smart-retail.jpg",
+            "https://example.com/diagram-architecture.png",
+        };
+
+        var created = await client.PostAsJsonAsync("/api/v1/company/projects", new
+        {
+            title = $"Dự án có hình minh họa {Guid.NewGuid():N}",
+            summary = "Tóm tắt có ảnh minh họa",
+            problemStatement = "Chi tiết bài toán",
+            businessRequirements = "Yêu cầu chức năng",
+            difficulty = "INTERMEDIATE",
+            workType = "HYBRID",
+            durationWeeks = 8,
+            expectedStudentCount = 4,
+            minTeamSize = 2,
+            maxTeamSize = 5,
+            skills = new[]
+            {
+                new { skillId = skillIds[0], requirementLevel = "MUST_HAVE", isRequired = true }
+            },
+            deliverables = new[]
+            {
+                new { name = "MVP", description = "Bản chạy thử" }
+            },
+            illustrationUrls = urls,
+        }, Json);
+
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var detail = (await created.Content.ReadFromJsonAsync<Envelope<ProjectDetailDto>>(Json))!.Data;
+        Assert.Equal(urls, detail.IllustrationUrls);
+
+        await factory.RunWithDbContextAsync(async dbContext =>
+        {
+            await dbContext.Projects
+                .Where(p => p.Id == detail.Id)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(p => p.Status, DNTU.SkillBridge.Domain.Projects.ProjectStatus.RECRUITING));
+        });
+
+        var publicRes = await factory.CreateClient().GetFromJsonAsync<Envelope<PublicProjectDetailDto>>(
+            $"/api/v1/projects/{detail.Slug}", Json);
+        Assert.NotNull(publicRes);
+        Assert.Equal(urls, publicRes!.Data.IllustrationUrls);
+    }
+
+    [Fact]
     public async Task SameTitle_AcrossCompanies_GetsUniqueSlugs()
     {
         var first = await CreateCompanyAsync();
@@ -289,7 +364,12 @@ public sealed class CompanyProjectEndpointTests(CatalogApiFactory factory)
         DateTimeOffset? ApplicationDeadline, int ExpectedStudentCount, int MinTeamSize, int MaxTeamSize,
         long? AllowanceAmount, string? AllowanceCurrency,
         IReadOnlyCollection<ProjectSkillDto> Skills, IReadOnlyCollection<ProjectDeliverableDto> Deliverables,
-        DateTimeOffset CreatedAt, DateTimeOffset? UpdatedAt);
+        DateTimeOffset CreatedAt, DateTimeOffset? UpdatedAt,
+        IReadOnlyCollection<string>? IllustrationUrls = null);
+
+    private sealed record PublicProjectDetailDto(
+        Guid Id, string Code, string Title, string Slug,
+        IReadOnlyCollection<string>? IllustrationUrls = null);
 
     private sealed record ProjectListDto(IReadOnlyCollection<ProjectListItemDto> Data, MetaDto Meta);
 

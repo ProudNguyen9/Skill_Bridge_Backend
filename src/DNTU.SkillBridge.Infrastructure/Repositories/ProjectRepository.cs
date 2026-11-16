@@ -135,6 +135,7 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
         await AssignUniqueCodeAsync(project.Code, cancellationToken, project);
         ApplySkills(project, request.Skills);
         ApplyDeliverables(project, request.Deliverables);
+        project.SetIllustrationUrls(request.IllustrationUrls);
 
         dbContext.Projects.Add(project);
         try
@@ -213,6 +214,11 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             await AssignUniqueSlugAsync(project.Slug, cancellationToken, project);
         }
 
+        if (request.IllustrationUrls is not null)
+        {
+            project.SetIllustrationUrls(request.IllustrationUrls);
+        }
+
         // Explicit diff through the DbSets: entities discovered via navigation changes with a preset
         // key are not attached as Added, so all adds/removes must go through the DbSet directly.
         var requestedSkills = request.Skills
@@ -276,7 +282,12 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             return ProjectDeleteOutcome.NotFound;
         }
 
-        if (project.Status != ProjectStatus.DRAFT)
+        // Cho phép doanh nghiệp xóa các bài toán chưa được duyệt (Nháp, Chờ duyệt, Yêu cầu sửa, Từ chối).
+        if (project.Status is not (
+            ProjectStatus.DRAFT or
+            ProjectStatus.PENDING_APPROVAL or
+            ProjectStatus.CHANGES_REQUESTED or
+            ProjectStatus.REJECTED))
         {
             return ProjectDeleteOutcome.NotDraft;
         }
@@ -897,7 +908,8 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             skills.GetValueOrDefault(project.Id, []),
             deliverables,
             currentStudentCount,
-            distinctMembers);
+            distinctMembers,
+            project.GetIllustrationUrls());
     }
 
     /// <summary>Skill requirements of one publicly visible project; null when the project is not publicly accessible.</summary>
@@ -1397,6 +1409,7 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             project.UpdatedAt,
             project.SubmittedAt,
             project.ApprovedAt,
-            project.PublishedAt);
+            project.PublishedAt,
+            project.GetIllustrationUrls());
     }
 }

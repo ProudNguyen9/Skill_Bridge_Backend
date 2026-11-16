@@ -226,6 +226,10 @@ public static class DevelopmentTestAccountSeed
             user = new User(email, displayName, string.Empty);
             dbContext.Users.Add(user);
         }
+        else
+        {
+            user.SetDisplayName(displayName);
+        }
 
         // These reserved development accounts intentionally reset to a known password on startup.
         user.SetPasswordHash(passwordHasher.HashPassword(user, Password));

@@ -2509,6 +2509,10 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.Property<int>("ExpectedStudentCount")
                         .HasColumnType("int");
 
+                    b.Property<string>("IllustrationUrlsJson")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("illustration_urls");
+
                     b.Property<Guid?>("IndustryId")
                         .HasColumnType("uniqueidentifier");
 

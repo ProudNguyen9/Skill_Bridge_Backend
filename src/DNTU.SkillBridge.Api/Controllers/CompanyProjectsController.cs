@@ -135,7 +135,7 @@ public sealed class CompanyProjectsController(IProjectService projectService, IP
         };
     }
 
-    /// <summary>Soft-deletes a project draft; only DRAFT projects can be deleted.</summary>
+    /// <summary>Soft-deletes a project that has not been approved yet (DRAFT, PENDING_APPROVAL, CHANGES_REQUESTED, REJECTED).</summary>
     [HttpDelete("{projectId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
