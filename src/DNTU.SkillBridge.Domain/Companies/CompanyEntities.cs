@@ -15,6 +15,10 @@ public sealed class Company : AuditableEntity
     public string? Address { get; private set; }
     public string? ContactEmail { get; private set; }
     public string? ContactPhone { get; private set; }
+    public string? Tagline { get; private set; }
+    public string? CompanyType { get; private set; }
+    public int? FoundedYear { get; private set; }
+    public string? BannerUrl { get; private set; }
     public CompanyVerificationStatus VerificationStatus { get; private set; } = CompanyVerificationStatus.PENDING;
     public DateTimeOffset? VerifiedAt { get; private set; }
     public string? VerificationNote { get; private set; }
@@ -42,7 +46,11 @@ public sealed class Company : AuditableEntity
         string? logoUrl,
         string? address,
         string? contactEmail,
-        string? contactPhone)
+        string? contactPhone,
+        string? tagline = null,
+        string? companyType = null,
+        int? foundedYear = null,
+        string? bannerUrl = null)
     {
         if (!string.IsNullOrWhiteSpace(name))
         {
@@ -58,6 +66,10 @@ public sealed class Company : AuditableEntity
         Address = string.IsNullOrWhiteSpace(address) ? null : address.Trim();
         ContactEmail = string.IsNullOrWhiteSpace(contactEmail) ? null : contactEmail.Trim();
         ContactPhone = string.IsNullOrWhiteSpace(contactPhone) ? null : contactPhone.Trim();
+        Tagline = string.IsNullOrWhiteSpace(tagline) ? null : tagline.Trim();
+        CompanyType = string.IsNullOrWhiteSpace(companyType) ? null : companyType.Trim();
+        FoundedYear = foundedYear;
+        BannerUrl = string.IsNullOrWhiteSpace(bannerUrl) ? null : bannerUrl.Trim();
     }
 
     public void AddMember(Guid userId, CompanyMemberRole role, string? title) =>

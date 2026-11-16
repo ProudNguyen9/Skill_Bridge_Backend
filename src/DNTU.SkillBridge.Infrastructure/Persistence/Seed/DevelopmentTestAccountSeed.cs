@@ -167,22 +167,28 @@ public static class DevelopmentTestAccountSeed
             var company = await dbContext.Companies.SingleOrDefaultAsync(c => c.TaxCode == companyAccount.TaxCode || c.Slug == companyAccount.Slug, cancellationToken);
             if (company is null)
             {
+                // Chỉ thiết lập profile mặc định khi tạo mới — company đã tồn tại
+                // giữ nguyên profile người dùng đã chỉnh (logo, website, địa chỉ…),
+                // tránh mỗi lần restart BE là xóa sạch dữ liệu thực tế.
                 company = new Company(companyAccount.CompanyName);
                 company.AssignSlug(companyAccount.Slug);
+                company.UpdateProfile(
+                    companyAccount.CompanyName,
+                    companyAccount.TaxCode,
+                    itIndustry?.Id,
+                    $"https://{companyAccount.Slug}.skillbridge.local",
+                    companyAccount.Description,
+                    null,
+                    companyAccount.Address,
+                    companyAccount.Email,
+                    companyAccount.Phone);
                 dbContext.Companies.Add(company);
             }
 
-            company.UpdateProfile(
-                companyAccount.CompanyName,
-                companyAccount.TaxCode,
-                itIndustry?.Id,
-                $"https://{companyAccount.Slug}.skillbridge.local",
-                companyAccount.Description,
-                null,
-                companyAccount.Address,
-                companyAccount.Email,
-                companyAccount.Phone);
-            company.MarkVerified(DateTimeOffset.UtcNow, "Auto-verified seed account");
+            if (company.VerificationStatus != CompanyVerificationStatus.VERIFIED)
+            {
+                company.MarkVerified(DateTimeOffset.UtcNow, "Auto-verified seed account");
+            }
 
             if (member is null)
             {

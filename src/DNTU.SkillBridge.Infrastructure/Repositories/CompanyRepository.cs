@@ -66,6 +66,10 @@ public sealed class CompanyRepository(AppDbContext dbContext) : ICompanyReposito
             company.Address,
             company.ContactEmail,
             company.ContactPhone,
+            company.Tagline,
+            company.CompanyType,
+            company.FoundedYear,
+            company.BannerUrl,
             company.VerificationStatus.ToString(),
             company.CanPublishProjects());
     }
@@ -131,7 +135,7 @@ public sealed class CompanyRepository(AppDbContext dbContext) : ICompanyReposito
     {
         var rows = await dbContext.Companies
             .AsNoTracking()
-            .Where(company => company.IsActive && company.VerificationStatus == CompanyVerificationStatus.VERIFIED)
+            .Where(company => company.IsActive)
             .OrderBy(company => company.Name)
             .Select(company => new
             {
@@ -142,20 +146,44 @@ public sealed class CompanyRepository(AppDbContext dbContext) : ICompanyReposito
                 company.Website,
                 company.Description,
                 company.LogoUrl,
-                company.Address
+                company.Address,
+                company.Tagline,
+                company.CompanyType,
+                company.FoundedYear,
+                company.BannerUrl,
+                VerificationStatus = company.VerificationStatus.ToString(),
+                OpenProjectsCount = dbContext.Projects.Count(p =>
+                    p.CompanyId == company.Id &&
+                    p.IsActive &&
+                    (p.Status == ProjectStatus.APPROVED || p.Status == ProjectStatus.RECRUITING))
             })
             .ToListAsync(cancellationToken);
 
         var industryNames = await ResolveIndustryNamesAsync(rows.Select(row => row.IndustryId), cancellationToken);
         return rows
-            .Select(row => new PublicCompanyResponse(row.Id, row.Name, row.Slug, row.IndustryId, row.IndustryId.HasValue ? industryNames[row.IndustryId.Value] : null, row.Website, row.Description, row.LogoUrl, row.Address))
+            .Select(row => new PublicCompanyResponse(
+                row.Id,
+                row.Name,
+                row.Slug,
+                row.IndustryId,
+                row.IndustryId.HasValue ? industryNames[row.IndustryId.Value] : null,
+                row.Website,
+                row.Description,
+                row.LogoUrl,
+                row.Address,
+                row.Tagline,
+                row.CompanyType,
+                row.FoundedYear,
+                row.BannerUrl,
+                row.VerificationStatus,
+                row.OpenProjectsCount))
             .ToList();
     }
 
     public async Task<Guid?> FindPublicCompanyIdBySlugAsync(string slug, CancellationToken cancellationToken) =>
         await dbContext.Companies
             .AsNoTracking()
-            .Where(company => company.Slug == slug && company.IsActive && company.VerificationStatus == CompanyVerificationStatus.VERIFIED)
+            .Where(company => company.Slug == slug && company.IsActive)
             .Select(company => (Guid?)company.Id)
             .SingleOrDefaultAsync(cancellationToken);
 
@@ -173,7 +201,28 @@ public sealed class CompanyRepository(AppDbContext dbContext) : ICompanyReposito
                 .SingleOrDefaultAsync(cancellationToken);
         }
 
-        return new PublicCompanyResponse(company.Id, company.Name, company.Slug, company.IndustryId, industryName, company.Website, company.Description, company.LogoUrl, company.Address);
+        var openProjectsCount = await dbContext.Projects
+            .CountAsync(p =>
+                p.CompanyId == company.Id &&
+                p.IsActive &&
+                (p.Status == ProjectStatus.APPROVED || p.Status == ProjectStatus.RECRUITING), cancellationToken);
+
+        return new PublicCompanyResponse(
+            company.Id,
+            company.Name,
+            company.Slug,
+            company.IndustryId,
+            industryName,
+            company.Website,
+            company.Description,
+            company.LogoUrl,
+            company.Address,
+            company.Tagline,
+            company.CompanyType,
+            company.FoundedYear,
+            company.BannerUrl,
+            company.VerificationStatus.ToString(),
+            openProjectsCount);
     }
 
     private async Task<Dictionary<Guid, string>> ResolveIndustryNamesAsync(IEnumerable<Guid?> industryIds, CancellationToken cancellationToken)

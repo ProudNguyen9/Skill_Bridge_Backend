@@ -1,6 +1,8 @@
 using System.Data;
+using System.Text.Json;
 using DNTU.SkillBridge.Application.Applications;
 using DNTU.SkillBridge.Application.Common;
+using DNTU.SkillBridge.Application.Notifications;
 using DNTU.SkillBridge.Domain.Applications;
 using DNTU.SkillBridge.Domain.Common;
 using DNTU.SkillBridge.Domain.Commitments;
@@ -11,7 +13,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DNTU.SkillBridge.Infrastructure.Repositories;
 
-public sealed class ApplicationRepository(AppDbContext dbContext) : IApplicationRepository
+public sealed class ApplicationRepository(AppDbContext dbContext, INotificationWriter notificationWriter) : IApplicationRepository
 {
     private static readonly ProjectStatus[] ApplyableStatuses =
     [
@@ -52,6 +54,31 @@ public sealed class ApplicationRepository(AppDbContext dbContext) : IApplication
         catch (DbUpdateException)
         {
             return (ApplicationApplyOutcome.AlreadyApplied, null);
+        }
+
+        // Thông báo cho các OWNER của doanh nghiệp khi có hồ sơ ứng tuyển mới
+        // (OutboxProcessor sẽ bắn "notifications.changed" qua SignalR hub).
+        var companyOwnerIds = await dbContext.CompanyMembers
+            .AsNoTracking()
+            .Where(member => member.CompanyId == project.CompanyId && member.Role == Domain.Companies.CompanyMemberRole.OWNER)
+            .Select(member => member.UserId)
+            .ToListAsync(cancellationToken);
+        if (companyOwnerIds.Count > 0)
+        {
+            var payload = JsonSerializer.Serialize(new
+            {
+                summary = "Một sinh viên vừa nộp hồ sơ ứng tuyển vào đề tài của bạn. Vào mục Hồ sơ ứng tuyển để duyệt.",
+                url = $"/company/projects/{projectId}/applications",
+            });
+            foreach (var ownerId in companyOwnerIds)
+            {
+                notificationWriter.Add(new NotificationMessage(
+                    ownerId,
+                    "application.created",
+                    $"Hồ sơ ứng tuyển mới cho đề tài {project.Title}",
+                    payload));
+            }
+            await dbContext.SaveChangesAsync(cancellationToken);
         }
 
         return (ApplicationApplyOutcome.Applied, await ProjectApplicationAsync(application.Id, studentId.Value, cancellationToken));
@@ -216,6 +243,36 @@ public sealed class ApplicationRepository(AppDbContext dbContext) : IApplication
             }
 
             dbContext.ProjectActivities.Add(new ProjectActivity(application.ProjectId, $"APPLICATION_{targetStatus}", companyUserId));
+
+            // Thông báo kết quả duyệt cho sinh viên (trong cùng transaction).
+            var notifiedStudentIds = application.Team?.Members.Select(member => member.StudentId).ToArray() ?? [application.StudentId];
+            var studentUserIds = await dbContext.StudentProfiles
+                .AsNoTracking()
+                .Where(profile => notifiedStudentIds.Contains(profile.Id))
+                .Select(profile => profile.UserId)
+                .ToListAsync(cancellationToken);
+            if (studentUserIds.Count > 0)
+            {
+                var (notifType, notifTitle, notifSummary) = targetStatus switch
+                {
+                    ApplicationStatus.ACCEPTED => ("application.accepted",
+                        "Chúc mừng! Hồ sơ ứng tuyển của bạn đã được chấp thuận",
+                        $"Bạn đã trúng tuyển đề tài {application.Project.Title}. Hãy kiểm tra cam kết và xác nhận trong vòng 7 ngày."),
+                    ApplicationStatus.SHORTLISTED => ("application.shortlisted",
+                        "Hồ sơ của bạn đã vào vòng phỏng vấn",
+                        $"Doanh nghiệp đã chuyển hồ sơ của bạn sang vòng phỏng vấn cho đề tài {application.Project.Title}."),
+                    _ => ("application.rejected",
+                        "Kết quả hồ sơ ứng tuyển",
+                        $"Hồ sơ ứng tuyển đề tài {application.Project.Title} chưa được duyệt lần này."
+                        + (string.IsNullOrWhiteSpace(reason) ? "" : $" Phản hồi từ doanh nghiệp: {reason}")),
+                };
+                var decisionPayload = JsonSerializer.Serialize(new { summary = notifSummary, url = "/student/applications" });
+                foreach (var studentUserId in studentUserIds)
+                {
+                    notificationWriter.Add(new NotificationMessage(studentUserId, notifType, notifTitle, decisionPayload));
+                }
+            }
+
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }

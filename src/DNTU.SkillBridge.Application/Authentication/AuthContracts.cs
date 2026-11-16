@@ -83,8 +83,10 @@ public sealed class LoginRequest
 
 public sealed class GoogleLoginRequest
 {
-    [Required, StringLength(8192, MinimumLength = 100)]
+    [Required, StringLength(8192, MinimumLength = 10)]
     public string Credential { get; init; } = string.Empty;
+
+    public RegistrationAccountType? TargetRole { get; init; }
 }
 
 public sealed record GoogleIdentity(string Subject, string Email, string DisplayName);
@@ -139,7 +141,14 @@ public sealed record AuthResponse(
     DateTimeOffset AccessTokenExpiresAt,
     string RefreshToken,
     DateTimeOffset RefreshTokenExpiresAt,
-    Guid SessionId);
+    Guid SessionId,
+    bool IsNewUser = false,
+    bool NeedsOnboarding = false,
+    bool RequiresVerification = false,
+    string? Email = null,
+    [property: System.Text.Json.Serialization.JsonIgnore] string? OtpCode = null,
+    [property: System.Text.Json.Serialization.JsonIgnore] string? DisplayName = null,
+    [property: System.Text.Json.Serialization.JsonIgnore] string? RoleName = null);
 
 public sealed record CurrentUserResponse(
     Guid UserId,

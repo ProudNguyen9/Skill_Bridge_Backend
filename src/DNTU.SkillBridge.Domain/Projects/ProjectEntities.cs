@@ -348,6 +348,20 @@ public sealed class Project : AuditableEntity
         PublishedAt = null;
     }
 
+    /// <summary>
+    /// Company stops accepting new applications early (e.g. enough candidates shortlisted)
+    /// by pinning the application deadline to now; ApplyToProjectAsync rejects on expired deadlines.
+    /// </summary>
+    public void CloseApplications(DateTimeOffset now)
+    {
+        if (Status is not (ProjectStatus.APPROVED or ProjectStatus.RECRUITING))
+        {
+            throw new InvalidOperationException("Only APPROVED or RECRUITING projects can close applications.");
+        }
+
+        ApplicationDeadline = now;
+    }
+
     /// <summary>Public visibility is enabled only for approved/published projects (13.07).</summary>
     public bool IsPubliclyVisible() =>
         Status is ProjectStatus.APPROVED or ProjectStatus.RECRUITING or ProjectStatus.IN_PROGRESS or ProjectStatus.COMPLETED;

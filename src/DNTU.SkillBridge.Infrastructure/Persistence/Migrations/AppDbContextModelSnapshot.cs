@@ -830,6 +830,12 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("BannerUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CompanyType")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("ContactEmail")
                         .HasMaxLength(320)
                         .HasColumnType("nvarchar(320)");
@@ -844,6 +850,9 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int?>("FoundedYear")
+                        .HasColumnType("int");
 
                     b.Property<Guid?>("IndustryId")
                         .HasColumnType("uniqueidentifier");
@@ -869,6 +878,9 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(220)
                         .HasColumnType("nvarchar(220)");
+
+                    b.Property<string>("Tagline")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("TaxCode")
                         .HasMaxLength(20)

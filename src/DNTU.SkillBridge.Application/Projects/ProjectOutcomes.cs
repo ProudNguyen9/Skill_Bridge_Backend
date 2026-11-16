@@ -50,6 +50,13 @@ public enum ProjectReopenOutcome
     InvalidTransition
 }
 
+public enum ProjectCloseApplicationsOutcome
+{
+    Closed,
+    NotFound,
+    InvalidTransition
+}
+
 public enum AdminDecisionOutcome
 {
     Applied,

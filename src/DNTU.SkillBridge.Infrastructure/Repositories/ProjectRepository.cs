@@ -420,6 +420,36 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
         return (ProjectReopenOutcome.Reopened, await ProjectDetailAsync(companyId, projectId, cancellationToken));
     }
 
+    /// <summary>Company closes application intake early; the expired-deadline check in ApplyToProjectAsync does the gating.</summary>
+    public async Task<(ProjectCloseApplicationsOutcome Outcome, CompanyProjectDetailResponse? Project)> CloseApplicationsAsync(
+        Guid companyId, Guid projectId, CancellationToken cancellationToken)
+    {
+        var project = await dbContext.Projects
+            .AsTracking()
+            .SingleOrDefaultAsync(item => item.Id == projectId && item.CompanyId == companyId && item.IsActive, cancellationToken);
+        if (project is null)
+        {
+            return (ProjectCloseApplicationsOutcome.NotFound, null);
+        }
+
+        if (project.Status is not (ProjectStatus.APPROVED or ProjectStatus.RECRUITING))
+        {
+            return (ProjectCloseApplicationsOutcome.InvalidTransition, null);
+        }
+
+        try
+        {
+            project.CloseApplications(DateTimeOffset.UtcNow);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (InvalidOperationException)
+        {
+            return (ProjectCloseApplicationsOutcome.InvalidTransition, null);
+        }
+
+        return (ProjectCloseApplicationsOutcome.Closed, await ProjectDetailAsync(companyId, projectId, cancellationToken));
+    }
+
     /// <summary>Admin approval queue: every non-DRAFT active project, newest submission first, optional status and search filters.</summary>
     public async Task<PagedResponse<AdminApprovalListItemResponse>> ListApprovalsAsync(
         string? status, AdminApprovalQuery query, CancellationToken cancellationToken)

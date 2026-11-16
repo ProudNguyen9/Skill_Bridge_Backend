@@ -36,14 +36,16 @@ public sealed class CompanyService(ICompanyRepository companyRepository, IUnitOf
 
             company = new Company(request.Name);
             await AssignUniqueSlugAsync(company, cancellationToken);
-            company.UpdateProfile(request.Name, request.TaxCode, request.IndustryId, request.Website, request.Description, request.LogoUrl, request.Address, request.ContactEmail, request.ContactPhone);
+            company.UpdateProfile(request.Name, request.TaxCode, request.IndustryId, request.Website, request.Description, request.LogoUrl, request.Address, request.ContactEmail, request.ContactPhone,
+                request.Tagline, request.CompanyType, request.FoundedYear, request.BannerUrl);
             company.AddMember(userId, CompanyMemberRole.OWNER, "Founder");
             companyRepository.AddCompany(company);
         }
         else
         {
             company = await companyRepository.FindCompanyForUpdateAsync(membership.CompanyId, cancellationToken);
-            company.UpdateProfile(request.Name, request.TaxCode, request.IndustryId, request.Website, request.Description, request.LogoUrl, request.Address, request.ContactEmail, request.ContactPhone);
+            company.UpdateProfile(request.Name, request.TaxCode, request.IndustryId, request.Website, request.Description, request.LogoUrl, request.Address, request.ContactEmail, request.ContactPhone,
+                request.Tagline, request.CompanyType, request.FoundedYear, request.BannerUrl);
         }
 
         try

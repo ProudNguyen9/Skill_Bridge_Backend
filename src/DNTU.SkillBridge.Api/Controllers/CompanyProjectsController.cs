@@ -331,6 +331,36 @@ public sealed class CompanyProjectsController(IProjectService projectService, IP
         };
     }
 
+    /// <summary>Closes application intake early on an approved/recruiting project (pins the application deadline to now).</summary>
+    [HttpPost("{projectId:guid}/close-applications")]
+    [ProducesResponseType(typeof(ApiResponse<CompanyProjectDetailResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ApiResponse<CompanyProjectDetailResponse>>> CloseApplications(
+        Guid projectId, CancellationToken cancellationToken)
+    {
+        if (!IsCompany())
+        {
+            return Forbid();
+        }
+
+        var companyId = await ResolveCompanyIdAsync(cancellationToken);
+        if (!companyId.HasValue)
+        {
+            return NotFound();
+        }
+
+        var (outcome, project) = await workflowService.CloseApplicationsAsync(
+            companyId.Value, projectId, cancellationToken);
+        return outcome switch
+        {
+            ProjectCloseApplicationsOutcome.NotFound => NotFound(),
+            ProjectCloseApplicationsOutcome.InvalidTransition => Conflict(),
+            _ => Ok(new ApiResponse<CompanyProjectDetailResponse>(project!))
+        };
+    }
+
     private bool IsCompany() => currentUser.IsAuthenticated && currentUser.Roles.Contains(RoleNames.Company);
 
     private async Task<Guid?> ResolveCompanyIdAsync(CancellationToken cancellationToken) =>
