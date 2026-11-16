@@ -27,10 +27,10 @@ public sealed class AuthController(
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<object>>> Register(RegisterRequest request, CancellationToken cancellationToken)
     {
-        var created = await authService.RegisterAsync(request, cancellationToken);
-        if (!created)
+        var result = await authService.RegisterAsync(request, cancellationToken);
+        if (!result.Succeeded)
         {
-            ModelState.AddModelError("email", "Unable to complete registration.");
+            ModelState.AddModelError(result.TargetField ?? "email", result.ErrorMessage ?? "Không thể hoàn tất đăng ký.");
             return ValidationProblem(ModelState);
         }
 
@@ -130,24 +130,22 @@ public sealed class AuthController(
             return Unauthorized();
         }
 
-        // Gửi email chào mừng bằng template DNTU nếu là tài khoản mới tạo qua Google
-        if (result.IsNewUser)
+        // Nếu tài khoản mới cần xác thực OTP (bao gồm tài khoản Google mới)
+        if (result.RequiresVerification)
         {
-            var roleLabel = request.TargetRole switch
+            if (!string.IsNullOrWhiteSpace(result.OtpCode))
             {
-                RegistrationAccountType.Student => "Sinh viên",
-                RegistrationAccountType.Lecturer => "Giảng viên",
-                _ => (isDntu ? "Sinh viên" : "Doanh nghiệp")
-            };
+                try
+                {
+                    await accountEmailSender.SendVerificationAsync(result.Email ?? email, result.OtpCode, cancellationToken);
+                }
+                catch
+                {
+                    // Không để lỗi gửi email làm gián đoạn flow
+                }
+            }
 
-            try
-            {
-                await accountEmailSender.SendWelcomeEmailAsync(email, displayName, roleLabel, cancellationToken);
-            }
-            catch
-            {
-                // Không để lỗi gửi email làm gián đoạn đăng nhập
-            }
+            return Ok(new ApiResponse<AuthResponse>(result));
         }
 
         return Ok(new ApiResponse<AuthResponse>(result));
@@ -234,9 +232,30 @@ public sealed class AuthController(
     }
     [HttpPost("verify-email")]
     [AllowAnonymous]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> VerifyEmail(VerifyEmailOtpRequest request, CancellationToken cancellationToken) =>
-        await authService.VerifyEmailAsync(request.Email, request.Otp, cancellationToken) ? NoContent() : Unauthorized();
+    [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ApiResponse<AuthResponse>>> VerifyEmail(VerifyEmailOtpRequest request, CancellationToken cancellationToken)
+    {
+        var result = await authService.VerifyEmailAndLoginAsync(request.Email, request.Otp, cancellationToken);
+        if (result is null)
+        {
+            return Unauthorized();
+        }
+
+        // Gửi email chào mừng bằng template DNTU sau khi xác minh email thành công
+        try
+        {
+            var roleLabel = !string.IsNullOrWhiteSpace(result.RoleName) ? result.RoleName : "Thành viên";
+            var displayName = !string.IsNullOrWhiteSpace(result.DisplayName) ? result.DisplayName : request.Email[..request.Email.IndexOf('@')];
+            await accountEmailSender.SendWelcomeEmailAsync(request.Email, displayName, roleLabel, cancellationToken);
+        }
+        catch
+        {
+            // Không để lỗi gửi email làm gián đoạn
+        }
+
+        return Ok(new ApiResponse<AuthResponse>(result));
+    }
 
     [HttpPost("resend-verification")]
     [AllowAnonymous]

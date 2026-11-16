@@ -179,6 +179,29 @@ public sealed class CompaniesController(ICompanyService companyService, ICurrent
     public async Task<ActionResult<ApiResponse<PublicCompanyResponse>>> GetPublic(string slug, CancellationToken cancellationToken)
     {
         var company = await companyService.GetPublicCompanyAsync(slug, cancellationToken);
+        if (company is null && IsCompany())
+        {
+            var myCompany = await companyService.GetMyCompanyAsync(currentUser.UserId!.Value, cancellationToken);
+            if (myCompany != null && string.Equals(myCompany.Slug, slug, StringComparison.OrdinalIgnoreCase))
+            {
+                return Ok(new ApiResponse<PublicCompanyResponse>(new PublicCompanyResponse(
+                    myCompany.Id,
+                    myCompany.Name,
+                    myCompany.Slug,
+                    myCompany.IndustryId,
+                    myCompany.IndustryName,
+                    myCompany.Website,
+                    myCompany.Description,
+                    myCompany.LogoUrl,
+                    myCompany.Address,
+                    myCompany.Tagline,
+                    myCompany.CompanyType,
+                    myCompany.FoundedYear,
+                    myCompany.BannerUrl,
+                    myCompany.VerificationStatus,
+                    0)));
+            }
+        }
         return company is null ? NotFound() : Ok(new ApiResponse<PublicCompanyResponse>(company));
     }
 
@@ -190,6 +213,14 @@ public sealed class CompaniesController(ICompanyService companyService, ICurrent
     public async Task<ActionResult<ApiResponse<IReadOnlyCollection<object>>>> GetPublicProjects(string slug, CancellationToken cancellationToken)
     {
         var company = await companyService.GetPublicCompanyAsync(slug, cancellationToken);
+        if (company is null && IsCompany())
+        {
+            var myCompany = await companyService.GetMyCompanyAsync(currentUser.UserId!.Value, cancellationToken);
+            if (myCompany != null && string.Equals(myCompany.Slug, slug, StringComparison.OrdinalIgnoreCase))
+            {
+                return Ok(new ApiResponse<IReadOnlyCollection<object>>([]));
+            }
+        }
         return company is null
             ? NotFound()
             : Ok(new ApiResponse<IReadOnlyCollection<object>>(await companyService.ListPublicCompanyProjectsAsync(slug, cancellationToken)));

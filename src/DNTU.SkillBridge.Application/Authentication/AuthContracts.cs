@@ -143,7 +143,12 @@ public sealed record AuthResponse(
     DateTimeOffset RefreshTokenExpiresAt,
     Guid SessionId,
     bool IsNewUser = false,
-    bool NeedsOnboarding = false);
+    bool NeedsOnboarding = false,
+    bool RequiresVerification = false,
+    string? Email = null,
+    [property: System.Text.Json.Serialization.JsonIgnore] string? OtpCode = null,
+    [property: System.Text.Json.Serialization.JsonIgnore] string? DisplayName = null,
+    [property: System.Text.Json.Serialization.JsonIgnore] string? RoleName = null);
 
 public sealed record CurrentUserResponse(
     Guid UserId,

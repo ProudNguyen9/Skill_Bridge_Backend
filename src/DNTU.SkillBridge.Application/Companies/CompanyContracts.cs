@@ -33,7 +33,7 @@ public sealed class UpdateCompanyProfileRequest
 
     public Guid? IndustryId { get; init; }
 
-    [Url, StringLength(500)]
+    [StringLength(500)]
     public string? Website { get; init; }
 
     [StringLength(2000)]
@@ -45,10 +45,10 @@ public sealed class UpdateCompanyProfileRequest
     [StringLength(500)]
     public string? Address { get; init; }
 
-    [EmailAddress, StringLength(320)]
+    [StringLength(320)]
     public string? ContactEmail { get; init; }
 
-    [Phone, StringLength(20)]
+    [StringLength(50)]
     public string? ContactPhone { get; init; }
 
     [StringLength(200)]
@@ -104,4 +104,10 @@ public sealed record PublicCompanyResponse(
     string? Website,
     string? Description,
     string? LogoUrl,
-    string? Address);
+    string? Address,
+    string? Tagline = null,
+    string? CompanyType = null,
+    int? FoundedYear = null,
+    string? BannerUrl = null,
+    string? VerificationStatus = null,
+    int OpenProjectsCount = 0);

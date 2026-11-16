@@ -40,6 +40,7 @@ if (!File.Exists(envFile) && builder.Environment.IsDevelopment())
 if (File.Exists(envFile))
 {
     var envSettings = DotNetEnv.Env.NoEnvVars().Load(envFile)
+        .Where(entry => !string.IsNullOrWhiteSpace(entry.Value))
         .Select(entry => new KeyValuePair<string, string?>(entry.Key.Replace("__", ":"), entry.Value));
     builder.Configuration.AddInMemoryCollection(envSettings)
         .AddEnvironmentVariables()

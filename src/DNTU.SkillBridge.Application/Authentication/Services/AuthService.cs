@@ -23,40 +23,58 @@ public sealed class AuthService(
 {
     private readonly JwtOptions _jwtOptions = jwtOptions.Value;
 
-    public async Task<bool> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken)
+    public async Task<RegisterResult> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken)
     {
         var normalizedEmail = request.Email.Trim().ToUpperInvariant();
         var normalizedStudentCode = request.StudentCode?.Trim().ToUpperInvariant();
         var normalizedLecturerCode = request.LecturerCode?.Trim().ToUpperInvariant();
         var isDntuEmail = normalizedEmail.EndsWith("@DNTU.EDU.VN", StringComparison.Ordinal) ||
                           normalizedEmail.EndsWith("@SKILLBRIDGE.LOCAL", StringComparison.Ordinal);
-        if (request.AccountType == RegistrationAccountType.Student &&
-            (!isDntuEmail || string.IsNullOrWhiteSpace(normalizedStudentCode)))
+
+        if (request.AccountType == RegistrationAccountType.Student)
         {
-            return false;
+            if (!isDntuEmail)
+            {
+                return RegisterResult.Failed("email", "Sinh viên bắt buộc đăng ký bằng email trường (@dntu.edu.vn).");
+            }
+            if (string.IsNullOrWhiteSpace(normalizedStudentCode))
+            {
+                return RegisterResult.Failed("studentCode", "Vui lòng nhập mã số sinh viên.");
+            }
         }
 
-        if (request.AccountType == RegistrationAccountType.Lecturer &&
-            (!isDntuEmail || string.IsNullOrWhiteSpace(normalizedLecturerCode)))
+        if (request.AccountType == RegistrationAccountType.Lecturer)
         {
-            return false;
+            if (!isDntuEmail)
+            {
+                return RegisterResult.Failed("email", "Giảng viên bắt buộc đăng ký bằng email trường (@dntu.edu.vn).");
+            }
+            if (string.IsNullOrWhiteSpace(normalizedLecturerCode))
+            {
+                return RegisterResult.Failed("lecturerCode", "Vui lòng nhập mã giảng viên.");
+            }
         }
 
         if (await authRepository.EmailExistsAsync(normalizedEmail, cancellationToken))
         {
-            return false;
+            return RegisterResult.Failed("email", "Email này đã được sử dụng. Vui lòng đăng nhập hoặc dùng email khác.");
         }
 
         if (request.AccountType == RegistrationAccountType.Student &&
             await authRepository.StudentCodeExistsAsync(normalizedStudentCode!, cancellationToken))
         {
-            return false;
+            return RegisterResult.Failed("studentCode", "Mã số sinh viên này đã tồn tại trong hệ thống.");
         }
 
         if (request.AccountType == RegistrationAccountType.Lecturer &&
             await authRepository.LecturerCodeExistsAsync(normalizedLecturerCode!, cancellationToken))
         {
-            return false;
+            return RegisterResult.Failed("lecturerCode", "Mã giảng viên này đã tồn tại trong hệ thống.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 12)
+        {
+            return RegisterResult.Failed("password", "Mật khẩu phải có ít nhất 12 ký tự.");
         }
 
         var roleName = request.AccountType switch
@@ -93,12 +111,12 @@ public sealed class AuthService(
         try
         {
             await unitOfWork.SaveChangesAsync(cancellationToken);
-            return true;
+            return RegisterResult.Success();
         }
         catch (PersistenceException)
         {
             // Unique email / student-code / lecturer-code indexes are the final authority under concurrent registration.
-            return false;
+            return RegisterResult.Failed("email", "Email hoặc mã định danh đã được đăng ký trong hệ thống.");
         }
     }
 
@@ -155,7 +173,7 @@ public sealed class AuthService(
                 var role = await authRepository.FindRoleAsync(roleName, cancellationToken);
                 user = new User(email, identity.DisplayName, string.Empty);
                 user.LinkGoogleIdentity(subject);
-                user.SetEmailVerified();
+                // Giữ EmailVerified = false để yêu cầu xác thực OTP qua email trước khi đăng nhập thành công
                 user.AssignRole(role.Id);
                 authRepository.AddUser(user);
 
@@ -194,7 +212,6 @@ public sealed class AuthService(
                 {
                     return null;
                 }
-                user.SetEmailVerified();
                 await unitOfWork.SaveChangesAsync(cancellationToken);
             }
         }
@@ -208,6 +225,32 @@ public sealed class AuthService(
         if (fullUser is null || !fullUser.IsActive)
         {
             return null;
+        }
+
+        // Nếu tài khoản chưa xác thực email (bao gồm tài khoản Google mới đăng ký), gửi OTP và yêu cầu xác thực
+        if (!fullUser.EmailVerified)
+        {
+            var otp = await CreateAccountTokenAsync(fullUser.Email, AccountTokenPurpose.EmailVerification, cancellationToken);
+            var roleLabel = targetRole switch
+            {
+                RegistrationAccountType.Student => "Sinh viên",
+                RegistrationAccountType.Lecturer => "Giảng viên",
+                _ => (isDntuEmail ? "Sinh viên" : "Doanh nghiệp")
+            };
+
+            return new AuthResponse(
+                AccessToken: string.Empty,
+                AccessTokenExpiresAt: DateTimeOffset.MinValue,
+                RefreshToken: string.Empty,
+                RefreshTokenExpiresAt: DateTimeOffset.MinValue,
+                SessionId: Guid.Empty,
+                IsNewUser: true,
+                NeedsOnboarding: false,
+                RequiresVerification: true,
+                Email: fullUser.Email,
+                OtpCode: otp,
+                DisplayName: fullUser.DisplayName,
+                RoleName: roleLabel);
         }
 
         return await CreateSessionAsync(fullUser, isNewUser, cancellationToken);
@@ -414,13 +457,19 @@ public sealed class AuthService(
 
     public async Task<bool> VerifyEmailAsync(string email, string otp, CancellationToken cancellationToken)
     {
+        var result = await VerifyEmailAndLoginAsync(email, otp, cancellationToken);
+        return result is not null;
+    }
+
+    public async Task<AuthResponse?> VerifyEmailAndLoginAsync(string email, string otp, CancellationToken cancellationToken)
+    {
         var now = DateTimeOffset.UtcNow;
         await using var transaction = await unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
         var user = await authRepository.FindUserByEmailAsync(email.Trim().ToUpperInvariant(), cancellationToken);
         if (user is null || !user.IsActive || user.EmailVerified)
         {
             await transaction.RollbackAsync(cancellationToken);
-            return false;
+            return null;
         }
 
         var token = await authRepository.FindLatestActiveAccountTokenWithUserAsync(
@@ -430,7 +479,7 @@ public sealed class AuthService(
         if (token is null || !token.IsUsable(now))
         {
             await transaction.RollbackAsync(cancellationToken);
-            return false;
+            return null;
         }
 
         var providedHash = HashVerificationCode(otp);
@@ -441,14 +490,31 @@ public sealed class AuthService(
             token.RegisterFailedAttempt(now);
             await unitOfWork.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            return false;
+            return null;
         }
 
         token.Consume(now);
         user.SetEmailVerified();
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        return true;
+
+        var fullUser = await authRepository.FindUserWithPermissionsAsync(user.Id, cancellationToken);
+        if (fullUser is null) return null;
+
+        var isCompany = fullUser.UserRoles.Any(r => r.Role.Name == RoleNames.Company);
+        var companyId = await authRepository.FindCompanyIdAsync(fullUser.Id, cancellationToken);
+        var needsOnboarding = isCompany && companyId is null;
+
+        var response = await CreateSessionAsync(fullUser, isNewUser: true, cancellationToken);
+        var roleLabel = fullUser.UserRoles.Any(r => r.Role.Name == RoleNames.Student) ? "Sinh viên" :
+                        fullUser.UserRoles.Any(r => r.Role.Name == RoleNames.Lecturer) ? "Giảng viên" : "Doanh nghiệp";
+
+        return response with
+        {
+            NeedsOnboarding = needsOnboarding,
+            DisplayName = fullUser.DisplayName,
+            RoleName = roleLabel
+        };
     }
 
     public async Task<bool> ResetPasswordAsync(string rawToken, string newPassword, CancellationToken cancellationToken)
