@@ -12,6 +12,7 @@ using DNTU.SkillBridge.Application.Lecturers;
 using DNTU.SkillBridge.Application.Meetings;
 using DNTU.SkillBridge.Application.Milestones;
 using DNTU.SkillBridge.Application.Notifications;
+using DNTU.SkillBridge.Application.News;
 using DNTU.SkillBridge.Application.Payments;
 using DNTU.SkillBridge.Application.Projects;
 using DNTU.SkillBridge.Application.SePay;
@@ -87,6 +88,7 @@ public static class PersistenceServiceCollectionExtensions
         services.AddScoped<ITechnicalReviewRepository, TechnicalReviewRepository>();
         services.AddScoped<IBusinessReviewRepository, BusinessReviewRepository>();
         services.AddScoped<IPortfolioRepository, PortfolioRepository>();
+        services.AddScoped<INewsRepository, NewsRepository>();
 
         return services;
     }
