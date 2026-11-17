@@ -16,7 +16,7 @@ public static class HomeCmsDefaultPayload
         { "id": "get-started", "label": "Bắt đầu" }
       ],
       "header": {
-        "brand": { "kicker": "DNTU", "name": "SkillBridge", "subtitle": "Kết nối tri thức & thực tiễn", "imageUrl": "/assets/dntu-logo.png", "imageAlt": "DNTU" },
+        "brand": { "kicker": "DNTU", "name": "SkillBridge", "subtitle": "Kết nối tri thức & thực tiễn", "imageUrl": "/api/v1/files/view?key=cms%2Fhome%2Fdefault-v1%2Fbrand-dntu-logo.png", "imageAlt": "DNTU" },
         "universityName": "TRƯỜNG ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI",
         "universityLinkLabel": "Cổng thông tin DNTU",
         "universityLinkHref": "https://dntu.edu.vn",
@@ -49,13 +49,13 @@ public static class HomeCmsDefaultPayload
         "suggestionsLabel": "Gợi ý phổ biến:",
         "suggestions": ["React", "Dashboard", "IoT", "Logistics", "Mobile"],
         "visual": {
-          "stageImageUrl": "/assets/4_buc_san_khau_va_trang_tri_ben_phai.png",
+          "stageImageUrl": "/api/v1/files/view?key=cms%2Fhome%2Fdefault-v1%2Fhero-stage.png",
           "stageAlt": "Bục sân khấu và con đường kết nối thực tiễn DNTU",
-          "decorImageUrl": "/assets/2_cum_3D_ben_trai_tach_nen.png",
+          "decorImageUrl": "/api/v1/files/view?key=cms%2Fhome%2Fdefault-v1%2Fhero-decor.png",
           "decorAlt": "Cụm khối 3D biểu tượng tương tác DNTU",
-          "screenImageUrl": "/assets/4_man_hinh_cuoc_hop_tach_nen.png",
+          "screenImageUrl": "/api/v1/files/view?key=cms%2Fhome%2Fdefault-v1%2Fhero-screen.png",
           "screenAlt": "Màn hình hội đồng bảo vệ đồ án CNTT DNTU và Copilot",
-          "phoneImageUrl": "/assets/5_dien_thoai_Copilot_tach_nen.png",
+          "phoneImageUrl": "/api/v1/files/view?key=cms%2Fhome%2Fdefault-v1%2Fhero-phone.png",
           "phoneAlt": "Trợ lý DNTU AI Copilot trên di động",
           "badgeLabel": "Lịch nghiệm thu đồ án"
         }
@@ -66,9 +66,9 @@ public static class HomeCmsDefaultPayload
         "subtitle": "Các bài toán đang mở tuyển sinh viên giải quyết cùng sự đồng hành, bảo trợ chuyên môn từ giảng viên khoa CNTT.",
         "allLabel": "Khám phá tất cả",
         "categories": [
-          { "id": "all", "label": "Tất cả bài toán" },
-          { "id": "web", "label": "Web & ứng dụng" },
-          { "id": "data", "label": "Dữ liệu & IoT" }
+          { "id": "all", "label": "Tất cả bài toán", "keywords": [], "matchMode": "include", "isActive": true, "sortOrder": 0 },
+          { "id": "web", "label": "Web & ứng dụng", "keywords": ["data", "iot", "ai", "machine learning", "analytics", "sensor", "dữ liệu", "phân tích"], "matchMode": "exclude", "isActive": true, "sortOrder": 1 },
+          { "id": "data", "label": "Dữ liệu & IoT", "keywords": ["data", "iot", "ai", "machine learning", "analytics", "sensor", "dữ liệu", "phân tích"], "matchMode": "include", "isActive": true, "sortOrder": 2 }
         ]
       },
       "workspace": {
@@ -87,7 +87,7 @@ public static class HomeCmsDefaultPayload
             ],
             "actionText": "KHÁM PHÁ DỰ ÁN", "actionLink": "/student/dashboard", "cardTag": "01 • SINH VIÊN",
             "photoTitle": "ĐỘI NGŨ KỸ THUẬT LAB DNTU", "photoSubtitle": "Sinh viên nghiên cứu giải pháp, lập trình và bảo vệ đồ án thực tế",
-            "image": "/assets/dntu-students.jpg", "fallbackImage": "/assets/dntu-computer-lab.jpg",
+            "image": "/api/v1/files/view?key=cms%2Fhome%2Fdefault-v1%2Fworkspace-students.jpg", "fallbackImage": "/api/v1/files/view?key=cms%2Fhome%2Fdefault-v1%2Fworkspace-computer-lab.jpg",
             "previewTitle": "Nhận việc, làm cùng đội nhóm", "previewDesc": "Chọn một bài toán và biến ý tưởng thành sản phẩm có thể nghiệm thu."
           },
           {
@@ -99,7 +99,7 @@ public static class HomeCmsDefaultPayload
             ],
             "actionText": "THAM GIA CÙNG DNTU", "actionLink": "/company/dashboard", "cardTag": "02 • DOANH NGHIỆP TRỌNG TÂM",
             "photoTitle": "CHỦ QUẢN ĐẦU BÀI & TÀI TRỢ DỮ LIỆU", "photoSubtitle": "Hội đồng doanh nghiệp duyệt lộ trình chuyển giao công nghệ",
-            "image": "/assets/dntu-computer-lab.jpg", "fallbackImage": "/assets/teams-hero-3d-showcase.png",
+            "image": "/api/v1/files/view?key=cms%2Fhome%2Fdefault-v1%2Fworkspace-computer-lab.jpg", "fallbackImage": "/api/v1/files/view?key=cms%2Fhome%2Fdefault-v1%2Fworkspace-deck.png",
             "previewTitle": "Đặt bài toán, nhận sản phẩm", "previewDesc": "Gửi nhu cầu, xem tiến độ và nghiệm thu theo từng mốc."
           },
           {
@@ -111,7 +111,7 @@ public static class HomeCmsDefaultPayload
             ],
             "actionText": "VÀO KHÔNG GIAN GIẢNG VIÊN", "actionLink": "/lecturer/dashboard", "cardTag": "03 • GIẢNG VIÊN",
             "photoTitle": "HỘI ĐỒNG & MENTOR DNTU", "photoSubtitle": "Khoa CNTT - DNTU bảo trợ phương pháp luận và chuẩn mực giải pháp",
-            "image": "/assets/dntu-engineering.jpg", "fallbackImage": "/assets/dntu-laboratory.jpg",
+            "image": "/api/v1/files/view?key=cms%2Fhome%2Fdefault-v1%2Fworkspace-engineering.jpg", "fallbackImage": "/api/v1/files/view?key=cms%2Fhome%2Fdefault-v1%2Fworkspace-laboratory.jpg",
             "previewTitle": "Dẫn dắt chất lượng", "previewDesc": "Góp ý đúng lúc, giữ chuẩn học thuật và xác thực năng lực."
           }
         ]
@@ -120,7 +120,7 @@ public static class HomeCmsDefaultPayload
         "eyebrow": "DNTU SKILL PASSPORT",
         "title": "Năng lực được ghi nhận từ chính điều bạn làm",
         "lead": "Mỗi dự án hoàn thành là một dấu mốc đáng tin cậy trong hồ sơ của bạn, với sản phẩm thực tế, đóng góp cụ thể và đánh giá chính thức từ giảng viên hướng dẫn.",
-        "imageUrl": "/assets/dntu-students.jpg",
+        "imageUrl": "/api/v1/files/view?key=cms%2Fhome%2Fdefault-v1%2Fworkspace-students.jpg",
         "imageAlt": "Sinh viên DNTU cùng trao đổi trên máy tính tại khuôn viên trường",
         "imageCaption": "Sinh viên Khoa CNTT Trường Đại học Công nghệ Đồng Nai",
         "benefits": [
