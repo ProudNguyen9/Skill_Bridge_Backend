@@ -135,7 +135,7 @@ public sealed class CompanyRepository(AppDbContext dbContext) : ICompanyReposito
     {
         var rows = await dbContext.Companies
             .AsNoTracking()
-            .Where(company => company.IsActive)
+            .Where(company => company.IsActive && company.VerificationStatus == CompanyVerificationStatus.VERIFIED)
             .OrderBy(company => company.Name)
             .Select(company => new
             {
@@ -183,7 +183,10 @@ public sealed class CompanyRepository(AppDbContext dbContext) : ICompanyReposito
     public async Task<Guid?> FindPublicCompanyIdBySlugAsync(string slug, CancellationToken cancellationToken) =>
         await dbContext.Companies
             .AsNoTracking()
-            .Where(company => company.Slug == slug && company.IsActive)
+            .Where(company =>
+                company.Slug == slug &&
+                company.IsActive &&
+                company.VerificationStatus == CompanyVerificationStatus.VERIFIED)
             .Select(company => (Guid?)company.Id)
             .SingleOrDefaultAsync(cancellationToken);
 

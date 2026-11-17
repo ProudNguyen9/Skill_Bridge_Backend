@@ -246,8 +246,9 @@ public sealed class AdminUserDirectoryEndpointTests(CatalogApiFactory factory)
 
     private HttpClient CreateClient(string? role, bool withPermissions = false)
     {
-        // Refuse any non-LocalDB / non-test database before tests seed or query data.
-        AssertIsolatedLocalDb();
+        // Refuse any non-test database before tests seed or query data. CI uses a
+        // SQL Server service container, while local runs use LocalDB.
+        AssertIsolatedTestDatabase();
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()) };
         if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));
         if (withPermissions) claims.AddRange(PermissionNames.All.Select(permission => new Claim("permission", permission)));
@@ -260,16 +261,16 @@ public sealed class AdminUserDirectoryEndpointTests(CatalogApiFactory factory)
         return client;
     }
 
-    private void AssertIsolatedLocalDb()
+    private void AssertIsolatedTestDatabase()
     {
         var connection = new SqlConnectionStringBuilder(factory.ConnectionString);
-        Assert.StartsWith("(localdb)\\", connection.DataSource, StringComparison.OrdinalIgnoreCase);
-        Assert.StartsWith("skillbridge_tests_", connection.InitialCatalog);
+        Assert.False(string.IsNullOrWhiteSpace(connection.DataSource));
+        Assert.StartsWith("skillbridge_tests_", connection.InitialCatalog, StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<DirectoryFixture> SeedAsync()
     {
-        AssertIsolatedLocalDb();
+        AssertIsolatedTestDatabase();
         var marker = $"directory-{Guid.NewGuid():N}";
         var createdAt = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
         await using var db = factory.CreateDbContext();
