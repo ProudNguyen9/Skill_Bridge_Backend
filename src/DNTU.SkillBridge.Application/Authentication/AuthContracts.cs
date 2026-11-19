@@ -23,6 +23,15 @@ public sealed class RegisterRequest : IValidatableObject
     [StringLength(32)]
     public string? LecturerCode { get; init; }
 
+    [StringLength(200)]
+    public string? CompanyName { get; init; }
+
+    [StringLength(20)]
+    public string? TaxCode { get; init; }
+
+    [StringLength(32)]
+    public string? PhoneNumber { get; init; }
+
     [Required, StringLength(128, MinimumLength = 12)]
     public string Password { get; init; } = string.Empty;
 
@@ -61,6 +70,26 @@ public sealed class RegisterRequest : IValidatableObject
                 yield return new ValidationResult(
                     "Mã giảng viên là bắt buộc.",
                     [nameof(LecturerCode)]);
+            }
+        }
+        else if (AccountType == RegistrationAccountType.Company)
+        {
+            if (string.IsNullOrWhiteSpace(CompanyName))
+            {
+                yield return new ValidationResult(
+                    "Tên doanh nghiệp là bắt buộc.",
+                    [nameof(CompanyName)]);
+            }
+
+            if (!string.IsNullOrWhiteSpace(TaxCode))
+            {
+                var cleanTax = TaxCode.Trim();
+                if (!System.Text.RegularExpressions.Regex.IsMatch(cleanTax, @"^\d{10}(\d{3})?$"))
+                {
+                    yield return new ValidationResult(
+                        "Mã số thuế doanh nghiệp phải gồm 10 hoặc 13 chữ số.",
+                        [nameof(TaxCode)]);
+                }
             }
         }
     }
