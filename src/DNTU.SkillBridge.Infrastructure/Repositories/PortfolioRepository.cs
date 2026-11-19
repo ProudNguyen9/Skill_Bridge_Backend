@@ -149,7 +149,7 @@ public sealed class PortfolioRepository(AppDbContext dbContext) : IPortfolioRepo
             join proj in dbContext.Projects.AsNoTracking() on verified.ProjectId equals proj.Id into projectGroup
             from project in projectGroup.DefaultIfEmpty()
             orderby skill.Name
-            select new { verified, SkillName = skill.Name, ProjectTitle = project != null ? project.Title : "Hồ sơ Năng lực Thực tế" }
+            select new { verified, SkillName = skill.Name, SkillBadgeImageUrl = skill.BadgeImageUrl, ProjectTitle = project != null ? project.Title : "Hồ sơ Năng lực Thực tế" }
         ).ToListAsync(cancellationToken);
 
         var evalIds = rows.Where(r => r.verified.EvidenceEvaluationId.HasValue).Select(r => r.verified.EvidenceEvaluationId!.Value).Distinct().ToList();
@@ -177,7 +177,8 @@ public sealed class PortfolioRepository(AppDbContext dbContext) : IPortfolioRepo
                 row.verified.RevokedAt,
                 row.verified.EvidenceSubmissionId,
                 row.verified.EvidenceEvaluationId,
-                hash);
+                hash,
+                row.SkillBadgeImageUrl);
         }).ToList();
     }
 
