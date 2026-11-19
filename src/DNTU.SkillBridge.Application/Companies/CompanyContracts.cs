@@ -21,7 +21,8 @@ public sealed record CompanyProfileResponse(
     int? FoundedYear,
     string? BannerUrl,
     string VerificationStatus,
-    bool CanPublishProjects);
+    bool CanPublishProjects,
+    string? VerificationNote = null);
 
 public sealed class UpdateCompanyProfileRequest
 {
