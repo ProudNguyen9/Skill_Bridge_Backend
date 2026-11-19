@@ -27,6 +27,24 @@ public sealed class AdminGovernanceService(IAdministrationRepository administrat
     public async Task<AdminPolicyResponse?> GetPolicyAsync(string category, CancellationToken cancellationToken)
     {
         var policy = await administrationRepository.FindPolicyAsync(category, cancellationToken);
+        if (string.Equals(category, AboutCmsDefaultPayload.CategoryKey, StringComparison.OrdinalIgnoreCase) &&
+            (policy is null || string.IsNullOrWhiteSpace(policy.SettingsJson) || policy.SettingsJson.Trim() == "{}"))
+        {
+            var tracked = await administrationRepository.FindPolicyForUpdateAsync(AboutCmsDefaultPayload.CategoryKey, cancellationToken);
+            if (tracked is null)
+            {
+                tracked = new AdminPolicySetting(AboutCmsDefaultPayload.CategoryKey, AboutCmsDefaultPayload.DefaultJson);
+                administrationRepository.AddPolicy(tracked);
+            }
+            else
+            {
+                tracked.Update(AboutCmsDefaultPayload.DefaultJson);
+            }
+
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            return Map(tracked);
+        }
+
         return policy is null ? null : Map(policy);
     }
 

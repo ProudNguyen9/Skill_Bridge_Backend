@@ -16,6 +16,7 @@ using DNTU.SkillBridge.Domain.Students;
 using DNTU.SkillBridge.Domain.Submissions;
 using DNTU.SkillBridge.Domain.Portfolio;
 using DNTU.SkillBridge.Domain.Payments;
+using DNTU.SkillBridge.Domain.News;
 using DNTU.SkillBridge.Domain.Teams;
 using DNTU.SkillBridge.Domain.Workspaces;
 using Microsoft.EntityFrameworkCore;
@@ -105,6 +106,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
     public DbSet<SePayIpnEvent> SePayIpnEvents => Set<SePayIpnEvent>();
     public DbSet<ReconciliationRun> ReconciliationRuns => Set<ReconciliationRun>();
+    public DbSet<NewsArticle> NewsArticles => Set<NewsArticle>();
+    public DbSet<NewsCategory> NewsCategories => Set<NewsCategory>();
+    public DbSet<NewsPinSettings> NewsPinSettings => Set<NewsPinSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

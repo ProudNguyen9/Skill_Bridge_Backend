@@ -18,6 +18,7 @@ public sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
         builder.Property(entity => entity.ProblemStatement).HasMaxLength(4000);
         builder.Property(entity => entity.BusinessRequirements).HasMaxLength(4000);
         builder.Property(entity => entity.TechnicalConstraints).HasMaxLength(4000);
+        builder.Property(entity => entity.IllustrationUrlsJson).HasColumnName("illustration_urls");
         builder.Property(entity => entity.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(entity => entity.AllowanceCurrency).HasMaxLength(3);
         builder.HasIndex(entity => entity.Slug).IsUnique();

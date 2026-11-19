@@ -56,15 +56,53 @@ public sealed class FilesController(
     }
 
     /// <summary>
-    /// Chuyển hướng trực tiếp đến signed download URL để browser load ảnh được ngay không bị 403.
+    /// Xem / tải ảnh trực tiếp (ưu tiên trả stream nội bộ nếu lưu local để không lỗi proxy/CORS, hoặc chuyển hướng signed URL nếu dùng S3).
     /// </summary>
     [HttpGet("/files/view")]
+    [HttpGet("api/v1/files/view")]
     [AllowAnonymous]
     public async Task<IActionResult> ViewFile([FromQuery] string key, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(key))
         {
             return BadRequest(new { message = "Key không hợp lệ." });
+        }
+
+        var cleanKey = key.TrimStart('/').Replace('\\', '/');
+        if (cleanKey.Contains("..", StringComparison.Ordinal))
+        {
+            return BadRequest(new { message = "Key không hợp lệ." });
+        }
+
+        var webRoot = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"));
+        var normalizedRel = cleanKey.StartsWith("uploads/", StringComparison.OrdinalIgnoreCase)
+            ? cleanKey
+            : $"uploads/{cleanKey}";
+        var candidatePath = Path.GetFullPath(Path.Combine(webRoot, normalizedRel));
+
+        if (!candidatePath.StartsWith(webRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "Key không hợp lệ." });
+        }
+
+        if (!System.IO.File.Exists(candidatePath))
+        {
+            var baseRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "wwwroot"));
+            var altPath = Path.GetFullPath(Path.Combine(baseRoot, normalizedRel));
+            if (altPath.StartsWith(baseRoot, StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(altPath))
+            {
+                candidatePath = altPath;
+            }
+        }
+
+        if (System.IO.File.Exists(candidatePath))
+        {
+            var provider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+            if (!provider.TryGetContentType(candidatePath, out var contentType))
+            {
+                contentType = "application/octet-stream";
+            }
+            return PhysicalFile(candidatePath, contentType, enableRangeProcessing: true);
         }
 
         try
@@ -79,7 +117,7 @@ public sealed class FilesController(
     }
 
     /// <summary>
-    /// Upload file trực tiếp lên Filebase S3 bucket.
+    /// Upload file trực tiếp lên máy chủ / Filebase S3 bucket.
     /// </summary>
     [HttpPost("/files")]
     [HttpPost("api/v1/files")]
@@ -101,7 +139,7 @@ public sealed class FilesController(
         var baseName = Path.GetFileNameWithoutExtension(file.FileName);
         var safeName = Regex.Replace(baseName, @"[^a-zA-Z0-9_\-\.]", "_");
         var storageKey = string.IsNullOrWhiteSpace(customKey)
-            ? $"uploads/{DateTime.UtcNow:yyyyMMdd_HHmmss}_{safeName}{extension}"
+            ? $"uploads/{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Guid.NewGuid().ToString("N")[..6]}_{safeName}{extension}"
             : customKey.TrimStart('/');
 
         try
@@ -113,6 +151,7 @@ public sealed class FilesController(
                 return Conflict(new { message = "File key already exists or file metadata is invalid." });
             }
             var viewUrl = $"{Request.Scheme}://{Request.Host}/files/view?key={Uri.EscapeDataString(storageKey)}";
+            var proxyUrl = $"/api/v1/files/view?key={Uri.EscapeDataString(storageKey)}";
 
             return Ok(new
             {
@@ -124,6 +163,7 @@ public sealed class FilesController(
                 size = file.Length,
                 contentType = file.ContentType,
                 directUrl = viewUrl,
+                proxyUrl,
                 downloadUrl = upload.DownloadUrl.ToString()
             });
         }
@@ -132,7 +172,7 @@ public sealed class FilesController(
             return StatusCode(StatusCodes.Status500InternalServerError, new
             {
                 success = false,
-                message = $"Lỗi khi tải file lên Filebase S3: {ex.Message}"
+                message = $"Lỗi khi tải file: {ex.Message}"
             });
         }
     }
