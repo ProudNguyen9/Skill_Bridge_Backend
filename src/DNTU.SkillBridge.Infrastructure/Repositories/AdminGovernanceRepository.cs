@@ -141,7 +141,7 @@ public sealed class AdminGovernanceRepository(AppDbContext dbContext) : IAdminis
             .Select(item => new AdminLecturerReviewItem(
                 item.profile.Id, item.user.Id, item.user.Email, item.user.DisplayName,
                 item.profile.LecturerCode, item.profile.Department,
-                item.profile.ApprovalStatus.ToString(), item.profile.CreatedAt))
+                item.profile.ApprovalStatus.ToString(), item.profile.CreatedAt, item.profile.AvatarUrl))
             .ToListAsync(cancellationToken);
     }
 
@@ -216,7 +216,7 @@ public sealed class AdminGovernanceRepository(AppDbContext dbContext) : IAdminis
                                 profile.LecturerCode, profile.Department, profile.AcademicTitle, profile.Bio,
                                 profile.WebsiteUrl, profile.OfficeLocation, profile.PhoneNumber,
                                 profile.ApprovalStatus.ToString(), profile.ReviewNote, profile.ReviewedAt,
-                                profile.IsActive, profile.CreatedAt))
+                                profile.IsActive, profile.CreatedAt, profile.AvatarUrl))
             .SingleOrDefaultAsync(cancellationToken);
         return detail;
     }

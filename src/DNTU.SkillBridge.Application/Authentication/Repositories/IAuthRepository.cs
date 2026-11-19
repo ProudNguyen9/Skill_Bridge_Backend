@@ -28,6 +28,7 @@ public interface IAuthRepository
     Task<Guid?> FindStudentProfileIdAsync(Guid userId, CancellationToken cancellationToken);
     Task<Guid?> FindCompanyIdAsync(Guid userId, CancellationToken cancellationToken);
     Task<Guid?> FindLecturerProfileIdAsync(Guid userId, CancellationToken cancellationToken);
+    Task<string?> FindCurrentAvatarUrlAsync(Guid? studentProfileId, Guid? companyId, Guid? lecturerProfileId, CancellationToken cancellationToken);
     Task<bool> IsStudentProfileCompletedAsync(Guid studentProfileId, CancellationToken cancellationToken);
     void AddSession(UserSession session);
     Task<User?> FindUserByEmailAsync(string normalizedEmail, CancellationToken cancellationToken);

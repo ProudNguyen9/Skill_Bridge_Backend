@@ -30,7 +30,8 @@ public sealed record AdminLecturerReviewItem(
     string? LecturerCode,
     string? Department,
     string ApprovalStatus,
-    DateTimeOffset RegisteredAt);
+    DateTimeOffset RegisteredAt,
+    string? AvatarUrl = null);
 
 public sealed record AdminCompanyReviewItem(
     Guid CompanyId,
@@ -88,7 +89,8 @@ public sealed record AdminLecturerDetailResponse(
     string? ReviewNote,
     DateTimeOffset? ReviewedAt,
     bool IsActive,
-    DateTimeOffset RegisteredAt);
+    DateTimeOffset RegisteredAt,
+    string? AvatarUrl = null);
 
 /// <summary>Admin broadcast notification request; empty target roles means every active user.</summary>
 public sealed record AdminBroadcastRequest(string Title, string Type, IReadOnlyCollection<string> TargetRoles);

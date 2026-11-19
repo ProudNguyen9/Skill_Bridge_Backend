@@ -1,4 +1,6 @@
+using DNTU.SkillBridge.Application.Teams;
 using DNTU.SkillBridge.Domain.Lecturers;
+using DNTU.SkillBridge.Domain.Teams;
 
 namespace DNTU.SkillBridge.Application.Lecturers;
 
@@ -10,6 +12,8 @@ public interface ILecturerRepository
 
     /// <summary>Reads a lecturer profile by id as a tracked entity so assignment writes mutate it.</summary>
     Task<LecturerProfile?> FindProfileForUpdateAsync(Guid lecturerId, CancellationToken cancellationToken);
+
+    Task UpdateUserDisplayNameAsync(Guid userId, string displayName, CancellationToken cancellationToken);
 
     void AddProfile(LecturerProfile profile);
 
@@ -27,4 +31,32 @@ public interface ILecturerRepository
 
     /// <summary>Lists a lecturer's supervision assignments detached, oldest first.</summary>
     Task<IReadOnlyCollection<LecturerAssignment>> ListAssignmentsAsync(Guid lecturerId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<LecturerAssignmentResponse>> ListEnrichedAssignmentsAsync(Guid lecturerId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<LecturerAssignmentResponse>> ListProjectAssignmentsAsync(Guid projectId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<LecturerAssignmentResponse>> ListSentProjectInvitationsAsync(Guid userId, CancellationToken cancellationToken);
+
+    Task<LecturerAssignmentResponse?> ProjectAssignmentAsync(Guid assignmentId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<LecturerDirectoryItemResponse>> SearchDirectoryAsync(string? query, int limit, CancellationToken cancellationToken);
+
+    Task<bool> ProjectExistsAsync(Guid projectId, CancellationToken cancellationToken);
+
+    Task<bool> CanUserInviteLecturerForProjectAsync(Guid userId, Guid projectId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<Guid>> ListProjectParticipantUserIdsAsync(Guid projectId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<LecturerTeamItemResponse>> ListTeamsForLecturerAsync(string? query, CancellationToken cancellationToken);
+
+    Task<(Guid LeaderUserId, string TeamName)?> FindTeamLeaderInfoAsync(Guid teamId, CancellationToken cancellationToken);
+
+    Task<bool> IsTeamBusyWithAnotherProjectAsync(Guid teamId, CancellationToken cancellationToken);
+
+    Task<bool> HasPendingRecommendationAsync(Guid lecturerId, Guid teamId, Guid projectId, CancellationToken cancellationToken);
+
+    void AddRecommendation(TeamProjectRecommendation recommendation);
+
+    Task<IReadOnlyCollection<TeamProjectRecommendationResponse>> ListLecturerRecommendationsAsync(Guid lecturerId, CancellationToken cancellationToken);
 }

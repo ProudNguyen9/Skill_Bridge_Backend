@@ -168,6 +168,16 @@ public sealed class StudentService(IStudentRepository studentRepository, IUnitOf
         return await studentRepository.FindPublicStudentAsync(studentId, cancellationToken);
     }
 
+    public async Task<IReadOnlyCollection<StudentSearchItemResponse>> SearchStudentsAsync(string query, int limit, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return [];
+        }
+
+        return await studentRepository.SearchStudentsAsync(query.Trim(), Math.Clamp(limit, 1, 30), cancellationToken);
+    }
+
     private async Task<StudentProfile> EnsureProfileAsync(Guid userId, CancellationToken cancellationToken)
     {
         // Tracked on purpose: the context defaults to NoTracking and /me writes mutate this entity.

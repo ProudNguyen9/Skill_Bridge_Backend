@@ -1,6 +1,7 @@
 using System.Text.Json;
 using DNTU.SkillBridge.Application.Projects;
 using DNTU.SkillBridge.Application.Workspaces;
+using DNTU.SkillBridge.Domain.Applications;
 using DNTU.SkillBridge.Domain.Lecturers;
 using DNTU.SkillBridge.Domain.Notifications;
 using DNTU.SkillBridge.Domain.Payments;
@@ -47,6 +48,17 @@ public sealed class ProjectCompletionRepository(AppDbContext dbContext, IProject
         try
         {
             project.Complete();
+            var boundTeams = await dbContext.Teams
+                .Where(t => t.TargetProjectId == projectId ||
+                            dbContext.Applications.Any(a => a.ProjectId == projectId &&
+                                                            a.Status == ApplicationStatus.ACCEPTED &&
+                                                            a.TeamId == t.Id))
+                .ToListAsync(cancellationToken);
+            foreach (var team in boundTeams)
+            {
+                team.ReleaseFromCompletedProject();
+            }
+
             var completedStudentIds = await dbContext.ProjectMembers
                 .Where(item => item.ProjectId == projectId && item.IsActive)
                 .Select(item => item.StudentId)

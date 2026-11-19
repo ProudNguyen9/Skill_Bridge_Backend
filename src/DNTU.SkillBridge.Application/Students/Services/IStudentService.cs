@@ -16,4 +16,5 @@ public interface IStudentService
     Task<CertificateResponse?> UpdateMyCertificateAsync(Guid userId, Guid certificateId, UpsertCertificateRequest request, CancellationToken cancellationToken);
     Task<bool> DeleteMyCertificateAsync(Guid userId, Guid certificateId, CancellationToken cancellationToken);
     Task<PublicStudentResponse?> GetPublicStudentAsync(Guid studentId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<StudentSearchItemResponse>> SearchStudentsAsync(string query, int limit, CancellationToken cancellationToken);
 }

@@ -119,5 +119,8 @@ public sealed class AcademicEvaluationService(IAcademicEvaluationRepository eval
         evaluation.Status.ToString(),
         evaluation.Version,
         evaluation.FinalizedAt,
-        evaluation.ProofHash);
+        evaluation.ProofHash,
+        evaluation.Scores
+            .Select(s => new AcademicCriterionScoreResponse(s.RubricCriterionId, s.Score, s.Weight))
+            .ToList());
 }

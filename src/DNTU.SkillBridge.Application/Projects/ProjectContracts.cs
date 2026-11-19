@@ -142,7 +142,12 @@ public sealed record CompanyProjectListItemResponse(
     int ExpectedStudentCount,
     long? AllowanceAmount,
     string? AllowanceCurrency,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    IReadOnlyCollection<string>? IllustrationUrls = null,
+    string? CompanyLogoUrl = null,
+    string? SupervisorName = null,
+    string? SupervisorTitle = null,
+    string? SupervisorStatus = null);
 
 public sealed record CompanyProjectDetailResponse(
     Guid Id,
@@ -174,7 +179,11 @@ public sealed record CompanyProjectDetailResponse(
     DateTimeOffset? SubmittedAt,
     DateTimeOffset? ApprovedAt,
     DateTimeOffset? PublishedAt,
-    IReadOnlyCollection<string>? IllustrationUrls = null);
+    IReadOnlyCollection<string>? IllustrationUrls = null,
+    string? CompanyLogoUrl = null,
+    string? SupervisorName = null,
+    string? SupervisorTitle = null,
+    string? SupervisorStatus = null);
 
 public sealed record ProjectSkillResponse(
     Guid SkillId,
@@ -226,7 +235,8 @@ public sealed record AdminApprovalListItemResponse(
     string Status,
     DateTimeOffset? SubmittedAt,
     string? LastDecision,
-    DateTimeOffset? LastDecidedAt);
+    DateTimeOffset? LastDecidedAt,
+    IReadOnlyCollection<string>? IllustrationUrls = null);
 
 public sealed record ApprovalSkillItem(
     Guid SkillId,
@@ -265,7 +275,9 @@ public sealed record AdminApprovalDetailResponse(
     DateTimeOffset? SubmittedAt,
     DateTimeOffset? ApprovedAt,
     DateTimeOffset? PublishedAt,
-    IReadOnlyCollection<ApprovalHistoryItem> History);
+    IReadOnlyCollection<ApprovalHistoryItem> History,
+    string? CompanyLogoUrl = null,
+    IReadOnlyCollection<string>? IllustrationUrls = null);
 
 /// <summary>
 /// Public browse filters; every filter is optional and combined with AND.
@@ -329,7 +341,12 @@ public sealed record PublicProjectListItemResponse(
     string CompanySlug,
     IReadOnlyCollection<string> SkillNames,
     int CurrentStudentCount = 0,
-    IReadOnlyCollection<PublicProjectMemberSummary>? Members = null);
+    IReadOnlyCollection<PublicProjectMemberSummary>? Members = null,
+    string? CompanyLogoUrl = null,
+    IReadOnlyCollection<string>? IllustrationUrls = null,
+    string? SupervisorName = null,
+    string? SupervisorTitle = null,
+    string? SupervisorStatus = null);
 
 /// <summary>Public project detail; never exposes internal workflow or private company data.</summary>
 public sealed record PublicProjectDetailResponse(
@@ -361,7 +378,11 @@ public sealed record PublicProjectDetailResponse(
     IReadOnlyCollection<PublicProjectDeliverableResponse> Deliverables,
     int CurrentStudentCount = 0,
     IReadOnlyCollection<PublicProjectMemberSummary>? Members = null,
-    IReadOnlyCollection<string>? IllustrationUrls = null);
+    IReadOnlyCollection<string>? IllustrationUrls = null,
+    string? CompanyLogoUrl = null,
+    string? SupervisorName = null,
+    string? SupervisorTitle = null,
+    string? SupervisorStatus = null);
 
 public sealed record PublicProjectSkillResponse(
     Guid SkillId,

@@ -352,7 +352,8 @@ public sealed class AuthService(
         var lecturerApprovalStatus = lecturerProfileId.HasValue
             ? await authRepository.FindLecturerApprovalStatusAsync(userId, cancellationToken)
             : null;
-        return new CurrentUserResponse(user.Id, user.Email, user.DisplayName, user.EmailVerified, user.IsActive, roles, permissions, profileType, studentProfileId, companyId, lecturerProfileId, profileCompleted, lecturerApprovalStatus?.ToString());
+        var avatarUrl = await authRepository.FindCurrentAvatarUrlAsync(studentProfileId, companyId, lecturerProfileId, cancellationToken);
+        return new CurrentUserResponse(user.Id, user.Email, user.DisplayName, user.EmailVerified, user.IsActive, roles, permissions, profileType, studentProfileId, companyId, lecturerProfileId, profileCompleted, lecturerApprovalStatus?.ToString(), avatarUrl);
     }
 
     private async Task<AuthResponse> CreateSessionAsync(User user, CancellationToken cancellationToken) =>

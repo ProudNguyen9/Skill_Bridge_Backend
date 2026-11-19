@@ -15,3 +15,11 @@ public enum ApplicationWithdrawOutcome
     NotFound,
     NotWithdrawable
 }
+
+public enum ApplicationActionOutcome
+{
+    Success,
+    NotFound,
+    Forbidden,
+    Conflict
+}

@@ -9,7 +9,8 @@ public enum CommitmentStatus
     /// New overdue commitments transition to <see cref="ABANDONED"/>.
     /// </summary>
     EXPIRED = 3,
-    ABANDONED = 4
+    ABANDONED = 4,
+    DECLINED = 5
 }
 
 public enum WithdrawalStatus

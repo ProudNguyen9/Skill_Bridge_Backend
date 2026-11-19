@@ -132,6 +132,39 @@ public sealed class AuthRepository(AppDbContext dbContext) : IAuthRepository
             .Select(profile => (Guid?)profile.Id)
             .SingleOrDefaultAsync(cancellationToken);
 
+    public async Task<string?> FindCurrentAvatarUrlAsync(
+        Guid? studentProfileId,
+        Guid? companyId,
+        Guid? lecturerProfileId,
+        CancellationToken cancellationToken)
+    {
+        if (studentProfileId.HasValue)
+        {
+            return await dbContext.StudentProfiles
+                .Where(profile => profile.Id == studentProfileId.Value)
+                .Select(profile => profile.AvatarUrl)
+                .SingleOrDefaultAsync(cancellationToken);
+        }
+
+        if (companyId.HasValue)
+        {
+            return await dbContext.Companies
+                .Where(company => company.Id == companyId.Value)
+                .Select(company => company.LogoUrl)
+                .SingleOrDefaultAsync(cancellationToken);
+        }
+
+        if (lecturerProfileId.HasValue)
+        {
+            return await dbContext.LecturerProfiles
+                .Where(profile => profile.Id == lecturerProfileId.Value)
+                .Select(profile => profile.AvatarUrl)
+                .SingleOrDefaultAsync(cancellationToken);
+        }
+
+        return null;
+    }
+
     public async Task<DNTU.SkillBridge.Domain.Lecturers.LecturerApprovalStatus?> FindLecturerApprovalStatusAsync(Guid userId, CancellationToken cancellationToken) =>
         await dbContext.LecturerProfiles
             .Where(profile => profile.UserId == userId)

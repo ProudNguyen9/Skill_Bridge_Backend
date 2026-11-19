@@ -39,9 +39,21 @@ public sealed class ApplicationsController(IApplicationService applicationServic
         {
             ApplicationApplyOutcome.Applied when application is not null =>
                 Created(string.Empty, new ApiResponse<ApplicationResponse>(application)),
-            ApplicationApplyOutcome.AlreadyApplied => Conflict(),
+            ApplicationApplyOutcome.AlreadyApplied => Conflict(new ProblemDetails
+            {
+                Title = "Không thể nộp hồ sơ",
+                Detail = request.TeamId.HasValue
+                    ? "Nhóm đã có hồ sơ ứng tuyển hoặc đang thực hiện một dự án chính khác. Chỉ được làm dự án mới sau khi dự án hiện tại kết thúc hoặc rút đơn."
+                    : "Bạn đã nộp hồ sơ cho đề tài này rồi.",
+                Status = StatusCodes.Status409Conflict
+            }),
             ApplicationApplyOutcome.ProjectNotFound => NotFound(),
-            ApplicationApplyOutcome.ProjectNotAccepting => Conflict(),
+            ApplicationApplyOutcome.ProjectNotAccepting => Conflict(new ProblemDetails
+            {
+                Title = "Không thể nộp hồ sơ",
+                Detail = "Đề tài không còn nhận hồ sơ hoặc nhóm/thành viên không đủ điều kiện (nhóm đang khóa cho dự án hiện tại hoặc số lượng thành viên chưa phù hợp).",
+                Status = StatusCodes.Status409Conflict
+            }),
             _ => Forbid() // StudentNotFound — the authenticated user has no student profile.
         };
     }
@@ -60,6 +72,138 @@ public sealed class ApplicationsController(IApplicationService applicationServic
         }
 
         return Ok(await applicationService.ListMyApplicationsAsync(currentUser.UserId!.Value, query, cancellationToken));
+    }
+
+    /// <summary>Lists team applications where the caller is listed as a team member requiring consent or tracking (Bước 15).</summary>
+    [HttpGet("applications/me/group-consents")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<ApplicationResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<IReadOnlyCollection<ApplicationResponse>>>> ListGroupConsents(CancellationToken cancellationToken)
+    {
+        if (!IsStudent()) return Forbid();
+        return Ok(new ApiResponse<IReadOnlyCollection<ApplicationResponse>>(
+            await applicationService.ListMyGroupMemberApplicationsAsync(currentUser.UserId!.Value, cancellationToken)));
+    }
+
+    /// <summary>Lists individual applications waiting for this team leader's approval to join an accepted team.</summary>
+    [HttpGet("applications/me/leader-join-requests")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<ApplicationResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<IReadOnlyCollection<ApplicationResponse>>>> ListLeaderJoinRequests(CancellationToken cancellationToken)
+    {
+        if (!IsStudent()) return Forbid();
+        return Ok(new ApiResponse<IReadOnlyCollection<ApplicationResponse>>(
+            await applicationService.ListLeaderJoinRequestsAsync(currentUser.UserId!.Value, cancellationToken)));
+    }
+
+    /// <summary>Team leader approves or declines adding a company-proposed individual applicant to the existing team.</summary>
+    [HttpPost("applications/{applicationId:guid}/leader-join-approval")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<ApplicationResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ApiResponse<ApplicationResponse>>> RespondLeaderJoinApproval(
+        Guid applicationId, [FromBody] LeaderJoinApprovalRequest request, CancellationToken cancellationToken)
+    {
+        if (!IsStudent()) return Forbid();
+        var (outcome, application) = await applicationService.RespondLeaderJoinApprovalAsync(
+            currentUser.UserId!.Value, applicationId, request.Approve, request.Note, cancellationToken);
+        return outcome switch
+        {
+            ApplicationActionOutcome.NotFound => NotFound(),
+            ApplicationActionOutcome.Forbidden => Forbid(),
+            ApplicationActionOutcome.Conflict => Conflict(new ProblemDetails
+            {
+                Title = "Không thể thêm thành viên vào nhóm",
+                Detail = "Dự án đã đủ chỉ tiêu sinh viên hoặc ứng viên đã tham gia đề tài khác.",
+                Status = StatusCodes.Status409Conflict
+            }),
+            _ => Ok(new ApiResponse<ApplicationResponse>(application!))
+        };
+    }
+
+    /// <summary>Member confirms or declines sharing their profile in a team application (Bước 15).</summary>
+    [HttpPost("applications/{applicationId:guid}/member-consent")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<ApplicationResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<ApplicationResponse>>> RespondMemberConsent(
+        Guid applicationId, [FromBody] MemberConsentRequest request, CancellationToken cancellationToken)
+    {
+        if (!IsStudent()) return Forbid();
+        var (outcome, application) = await applicationService.RespondMemberConsentAsync(
+            currentUser.UserId!.Value, applicationId, request.Approve, request.Note, cancellationToken);
+        return outcome switch
+        {
+            ApplicationActionOutcome.NotFound => NotFound(),
+            ApplicationActionOutcome.Forbidden => Forbid(),
+            ApplicationActionOutcome.Conflict => Conflict(),
+            _ => Ok(new ApiResponse<ApplicationResponse>(application!))
+        };
+    }
+
+    /// <summary>Team leader submits a prepared team application once all members have confirmed consent (Bước 16).</summary>
+    [HttpPost("applications/{applicationId:guid}/submit")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<ApplicationResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<ApplicationResponse>>> SubmitTeamApplication(
+        Guid applicationId, CancellationToken cancellationToken)
+    {
+        if (!IsStudent()) return Forbid();
+        var (outcome, application) = await applicationService.SubmitTeamApplicationAsync(currentUser.UserId!.Value, applicationId, cancellationToken);
+        return outcome switch
+        {
+            ApplicationActionOutcome.NotFound => NotFound(),
+            ApplicationActionOutcome.Forbidden => Forbid(),
+            ApplicationActionOutcome.Conflict => Conflict(),
+            _ => Ok(new ApiResponse<ApplicationResponse>(application!))
+        };
+    }
+
+    /// <summary>Team leader confirms company's adjustment proposal on team size/roles (Bước 21).</summary>
+    [HttpPost("applications/{applicationId:guid}/confirm-adjustment")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<ApplicationResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<ApplicationResponse>>> ConfirmAdjustment(
+        Guid applicationId, CancellationToken cancellationToken)
+    {
+        if (!IsStudent()) return Forbid();
+        var (outcome, application) = await applicationService.ConfirmAdjustmentAsync(currentUser.UserId!.Value, applicationId, cancellationToken);
+        return outcome switch
+        {
+            ApplicationActionOutcome.NotFound => NotFound(),
+            ApplicationActionOutcome.Forbidden => Forbid(),
+            ApplicationActionOutcome.Conflict => Conflict(),
+            _ => Ok(new ApiResponse<ApplicationResponse>(application!))
+        };
+    }
+
+    /// <summary>Checks for overlapping individual vs team applications on a project for the current student (Bước 18).</summary>
+    [HttpGet("projects/{projectId:guid}/application-conflicts")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<ApplicationConflictItemResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<IReadOnlyCollection<ApplicationConflictItemResponse>>>> CheckConflicts(
+        Guid projectId, CancellationToken cancellationToken)
+    {
+        if (!IsStudent()) return Forbid();
+        return Ok(new ApiResponse<IReadOnlyCollection<ApplicationConflictItemResponse>>(
+            await applicationService.CheckConflictsForProjectAsync(currentUser.UserId!.Value, projectId, cancellationToken)));
+    }
+
+    /// <summary>Resolves duplicate/conflicting individual vs team application priority (Bước 18).</summary>
+    [HttpPost("applications/{applicationId:guid}/resolve-conflict")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<ApplicationResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<ApplicationResponse>>> ResolveConflict(
+        Guid applicationId, [FromBody] ResolveApplicationConflictRequest request, CancellationToken cancellationToken)
+    {
+        if (!IsStudent()) return Forbid();
+        var (outcome, application) = await applicationService.ResolveConflictAsync(currentUser.UserId!.Value, applicationId, request, cancellationToken);
+        return outcome switch
+        {
+            ApplicationActionOutcome.NotFound => NotFound(),
+            ApplicationActionOutcome.Forbidden => Forbid(),
+            ApplicationActionOutcome.Conflict => Conflict(),
+            _ => Ok(new ApiResponse<ApplicationResponse>(application!))
+        };
     }
 
     /// <summary>Returns one of the caller's own applications; other students' applications answer 404.</summary>

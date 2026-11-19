@@ -14,3 +14,22 @@ public enum LecturerAssignmentAcceptOutcome
     NotFound,
     NotOpenForAcceptance
 }
+
+public enum ProjectLecturerInviteOutcome
+{
+    Created,
+    ProjectNotFound,
+    Forbidden,
+    LecturerNotFound,
+    LecturerInactive,
+    DuplicateAssignment
+}
+
+public enum LecturerRecommendationCreateOutcome
+{
+    Created,
+    LecturerNotApproved,
+    TeamNotFound,
+    ProjectNotFound,
+    DuplicatePending
+}

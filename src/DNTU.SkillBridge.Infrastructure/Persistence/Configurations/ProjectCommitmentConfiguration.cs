@@ -12,6 +12,10 @@ public sealed class ProjectCommitmentConfiguration : IEntityTypeConfiguration<Pr
         builder.HasKey(entity => entity.Id);
         builder.Property(entity => entity.Status).HasConversion<string>().HasMaxLength(16).IsRequired();
         builder.Property(entity => entity.PolicyVersion).HasMaxLength(32).IsRequired();
+        builder.Property(entity => entity.ProposedRole).HasMaxLength(100);
+        builder.Property(entity => entity.Conditions).HasMaxLength(2000);
+        builder.Property(entity => entity.StudentSignerName).HasMaxLength(150);
+        builder.Property(entity => entity.DeclineReason).HasMaxLength(1000);
         builder.HasIndex(entity => new { entity.ProjectId, entity.StudentId }).IsUnique();
         builder.HasIndex(entity => new { entity.StudentId, entity.Status });
         builder.HasIndex(entity => new { entity.ProjectId, entity.Status });

@@ -268,8 +268,10 @@ public sealed class CompanyRepository(AppDbContext dbContext) : ICompanyReposito
                 project.ExpectedStudentCount,
                 project.AllowanceAmount,
                 project.AllowanceCurrency,
+                project.IllustrationUrlsJson,
                 CompanyName = project.Company.Name,
-                CompanySlug = project.Company.Slug
+                CompanySlug = project.Company.Slug,
+                CompanyLogoUrl = project.Company.LogoUrl
             })
             .ToListAsync(cancellationToken);
 
@@ -306,7 +308,11 @@ public sealed class CompanyRepository(AppDbContext dbContext) : ICompanyReposito
             p.AllowanceCurrency,
             p.CompanyName,
             p.CompanySlug,
-            skillNamesByProject.GetValueOrDefault(p.Id, [])))
+            skillNamesByProject.GetValueOrDefault(p.Id, []),
+            0,
+            null,
+            p.CompanyLogoUrl,
+            Project.ParseIllustrationUrls(p.IllustrationUrlsJson)))
             .ToList();
     }
 }

@@ -247,4 +247,71 @@ public sealed class StudentRepository(AppDbContext dbContext) : IStudentReposito
             skills,
             certificates);
     }
+
+    public async Task<IReadOnlyCollection<StudentSearchItemResponse>> SearchStudentsAsync(string query, int limit, CancellationToken cancellationToken)
+    {
+        var normalized = query.Trim().ToUpperInvariant();
+        var students = await (
+            from profile in dbContext.StudentProfiles.AsNoTracking()
+            join user in dbContext.Users.AsNoTracking() on profile.UserId equals user.Id
+            where user.IsActive &&
+                  ((profile.StudentCode != null && profile.StudentCode.ToUpper().Contains(normalized)) ||
+                   user.NormalizedEmail.Contains(normalized) ||
+                   user.DisplayName.ToUpper().Contains(normalized))
+            orderby profile.StudentCode == normalized ? 0 : 1, user.DisplayName
+            select new
+            {
+                profile.Id,
+                profile.UserId,
+                user.DisplayName,
+                profile.StudentCode,
+                user.Email,
+                MajorName = profile.MajorId.HasValue
+                    ? dbContext.Majors.Where(m => m.Id == profile.MajorId.Value).Select(m => m.Name).FirstOrDefault()
+                    : null,
+                FacultyName = profile.FacultyId.HasValue
+                    ? dbContext.Faculties.Where(f => f.Id == profile.FacultyId.Value).Select(f => f.Name).FirstOrDefault()
+                    : null,
+                profile.AcademicYear,
+                profile.AvatarUrl
+            })
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+
+        if (students.Count == 0)
+        {
+            return [];
+        }
+
+        var studentIds = students.Select(s => s.Id).ToList();
+
+        var skillsRows = await dbContext.StudentSkills.AsNoTracking()
+            .Where(s => studentIds.Contains(s.StudentId))
+            .Join(dbContext.Skills.AsNoTracking(), s => s.SkillId, sk => sk.Id, (s, sk) => new { s.StudentId, sk.Name })
+            .ToListAsync(cancellationToken);
+
+        var completedRows = await dbContext.ProjectMembers.AsNoTracking()
+            .Where(pm => studentIds.Contains(pm.StudentId))
+            .Join(dbContext.Projects.AsNoTracking(), pm => pm.ProjectId, p => p.Id, (pm, p) => new { pm.StudentId, p.Status })
+            .Where(x => x.Status == DNTU.SkillBridge.Domain.Projects.ProjectStatus.COMPLETED)
+            .GroupBy(x => x.StudentId)
+            .Select(g => new { StudentId = g.Key, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        var skillsByStudent = skillsRows.GroupBy(x => x.StudentId).ToDictionary(g => g.Key, g => (IReadOnlyCollection<string>)g.Select(x => x.Name).Distinct().Take(6).ToList());
+        var completedByStudent = completedRows.ToDictionary(x => x.StudentId, x => x.Count);
+
+        return students.Select(s => new StudentSearchItemResponse(
+            s.Id,
+            s.UserId,
+            s.DisplayName,
+            s.StudentCode,
+            s.Email,
+            s.MajorName,
+            s.FacultyName,
+            s.AcademicYear,
+            s.AvatarUrl,
+            skillsByStudent.GetValueOrDefault(s.Id, []),
+            completedByStudent.GetValueOrDefault(s.Id, 0))).ToList();
+    }
 }

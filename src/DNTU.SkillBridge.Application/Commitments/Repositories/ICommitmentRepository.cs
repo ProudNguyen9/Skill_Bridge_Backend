@@ -49,4 +49,37 @@ public interface ICommitmentRepository
 
     /// <summary>Reads pending past-deadline commitments as tracked entities so mutations are persisted.</summary>
     Task<List<ProjectCommitment>> FindPendingCommitmentsAsync(DateTimeOffset now, CancellationToken cancellationToken);
+
+    Task<bool> IsTeamLeaderForCommitmentAsync(Guid projectId, Guid studentId, CancellationToken cancellationToken) =>
+        Task.FromResult(false);
+
+    Task<ProjectCommitmentOverviewResponse?> GetProjectOverviewAsync(Guid projectId, CancellationToken cancellationToken) =>
+        Task.FromResult<ProjectCommitmentOverviewResponse?>(null);
+
+    Task<IReadOnlyCollection<Guid>> ListProjectCompanyUserIdsAsync(Guid projectId, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyCollection<Guid>>([]);
+
+    Task<string?> FindUserDisplayNameAsync(Guid userId, CancellationToken cancellationToken) =>
+        Task.FromResult<string?>(null);
+
+    Task<bool> HasCompanyAccessAsync(Guid userId, Guid projectId, CancellationToken cancellationToken) =>
+        Task.FromResult(false);
+
+    Task<bool> HasLecturerProjectAccessAsync(Guid userId, Guid projectId, CancellationToken cancellationToken) =>
+        Task.FromResult(false);
+
+    Task<IReadOnlyCollection<Guid>> ListProjectCommittedStudentUserIdsAsync(Guid projectId, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyCollection<Guid>>([]);
+
+    Task<Guid?> FindActiveLecturerUserIdAsync(Guid projectId, CancellationToken cancellationToken) =>
+        Task.FromResult<Guid?>(null);
+
+    Task<IReadOnlyCollection<ProjectCommitmentSummaryItemResponse>> ListProjectCommitmentSummariesForAdminAsync(CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyCollection<ProjectCommitmentSummaryItemResponse>>([]);
+
+    Task<IReadOnlyCollection<ProjectCommitmentSummaryItemResponse>> ListProjectCommitmentSummariesForCompanyAsync(Guid userId, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyCollection<ProjectCommitmentSummaryItemResponse>>([]);
+
+    Task<IReadOnlyCollection<ProjectCommitmentSummaryItemResponse>> ListProjectCommitmentSummariesForLecturerAsync(Guid userId, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyCollection<ProjectCommitmentSummaryItemResponse>>([]);
 }

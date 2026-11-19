@@ -129,3 +129,16 @@ public sealed record PublicStudentResponse(
 public sealed record PublicStudentSkillResponse(Guid SkillId, string SkillName, SkillLevel Level);
 
 public sealed record PublicStudentCertificateResponse(string Name, string Issuer, DateOnly IssueDate);
+
+public sealed record StudentSearchItemResponse(
+    Guid StudentId,
+    Guid UserId,
+    string DisplayName,
+    string? StudentCode,
+    string Email,
+    string? MajorName,
+    string? FacultyName,
+    string? AcademicYear,
+    string? AvatarUrl,
+    IReadOnlyCollection<string> Skills,
+    int CompletedProjectsCount);

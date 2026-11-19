@@ -19,10 +19,17 @@ public sealed class DashboardRepository(AppDbContext dbContext) : IDashboardRepo
     public Task<Guid?> FindStudentIdAsync(Guid userId, CancellationToken cancellationToken) =>
         dbContext.StudentProfiles.AsNoTracking().Where(x => x.UserId == userId).Select(x => (Guid?)x.Id).SingleOrDefaultAsync(cancellationToken);
 
-    public async Task<IReadOnlyCollection<DashboardProjectRow>> ListStudentProjectRowsAsync(Guid studentId, CancellationToken cancellationToken) =>
-        await dbContext.Projects.AsNoTracking()
-            .Where(p => dbContext.ProjectMembers.Any(m => m.ProjectId == p.Id && m.StudentId == studentId && m.IsActive))
-            .OrderByDescending(p => p.UpdatedAt).Select(p => new DashboardProjectRow(p.Id, p.Title, p.Status)).ToListAsync(cancellationToken);
+    public async Task<IReadOnlyCollection<DashboardProjectRow>> ListStudentProjectRowsAsync(Guid studentId, CancellationToken cancellationToken)
+    {
+        var visibleProjectIds = await StudentProjectVisibility.ListVisibleProjectIdsAsync(dbContext, studentId, cancellationToken);
+        if (visibleProjectIds.Count == 0) return [];
+
+        return await dbContext.Projects.AsNoTracking()
+            .Where(p => visibleProjectIds.Contains(p.Id))
+            .OrderByDescending(p => p.UpdatedAt)
+            .Select(p => new DashboardProjectRow(p.Id, p.Title, p.Status))
+            .ToListAsync(cancellationToken);
+    }
 
     public Task<int> CountAssignedTasksAsync(Guid studentId, CancellationToken cancellationToken) =>
         dbContext.ProjectTasks.AsNoTracking().CountAsync(t => t.AssigneeStudentId == studentId && !t.IsDeleted && t.Status != ProjectTaskStatus.DONE, cancellationToken);

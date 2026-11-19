@@ -163,7 +163,8 @@ public sealed record CurrentUserResponse(
     Guid? CompanyId,
     Guid? LecturerId,
     bool ProfileCompleted,
-    string? LecturerApprovalStatus);
+    string? LecturerApprovalStatus,
+    string? AvatarUrl = null);
 
 public sealed record SessionResponse(
     Guid Id,

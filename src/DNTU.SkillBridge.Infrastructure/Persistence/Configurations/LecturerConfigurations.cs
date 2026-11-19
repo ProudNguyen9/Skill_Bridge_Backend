@@ -17,6 +17,7 @@ public sealed class LecturerProfileConfiguration : IEntityTypeConfiguration<Lect
         builder.Property(entity => entity.WebsiteUrl).HasMaxLength(500);
         builder.Property(entity => entity.OfficeLocation).HasMaxLength(200);
         builder.Property(entity => entity.PhoneNumber).HasMaxLength(20);
+        builder.Property(entity => entity.AvatarUrl).HasMaxLength(500);
         builder.Property(entity => entity.ApprovalStatus).HasDefaultValue(LecturerApprovalStatus.PENDING);
         builder.Property(entity => entity.ReviewNote).HasMaxLength(1000);
         builder.HasIndex(entity => entity.UserId).IsUnique();
@@ -41,8 +42,16 @@ public sealed class LecturerAssignmentConfiguration : IEntityTypeConfiguration<L
         builder.Property(entity => entity.Role).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(entity => entity.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(entity => entity.Note).HasMaxLength(1000);
-        // One supervising lecturer per project until the projects module (Task 12) refines this.
-        builder.HasIndex(entity => entity.ProjectId).IsUnique();
+        builder.Property(entity => entity.ExpectedWork).HasMaxLength(2000);
+        builder.Property(entity => entity.ExpectedDuration).HasMaxLength(200);
+        builder.Property(entity => entity.CourseName).HasMaxLength(200);
+        builder.Property(entity => entity.DeclineReason).HasMaxLength(1000);
+        // One active/invited supervising lecturer per project; declined/ended assignments allow re-inviting.
+        builder.HasIndex(entity => entity.ProjectId)
+            .HasDatabaseName("IX_lecturer_assignments_ProjectId_ActiveOrInvited")
+            .IsUnique()
+            .HasFilter("[Status] IN ('INVITED', 'ACTIVE')");
         builder.HasIndex(entity => entity.LecturerId);
+        builder.HasIndex(entity => entity.TeamId);
     }
 }
