@@ -143,12 +143,14 @@ public sealed class PortfolioRepository(AppDbContext dbContext) : IPortfolioRepo
 
     private async Task<IReadOnlyCollection<VerifiedSkillResponse>> ProjectVerifiedSkillsAsync(IQueryable<VerifiedSkill> query, CancellationToken cancellationToken)
     {
-        var rows = await query
-            .Join(dbContext.Skills.AsNoTracking(), verified => verified.SkillId, skill => skill.Id, (verified, skill) => new { verified, skill.Name })
-            .Join(dbContext.Projects.AsNoTracking(), row => row.verified.ProjectId, project => project.Id, (row, project) => new { row.verified, SkillName = row.Name, ProjectTitle = project.Title })
-            .OrderBy(row => row.SkillName)
-            .ThenBy(row => row.ProjectTitle)
-            .ToListAsync(cancellationToken);
+        var rows = await (
+            from verified in query
+            join skill in dbContext.Skills.AsNoTracking() on verified.SkillId equals skill.Id
+            join proj in dbContext.Projects.AsNoTracking() on verified.ProjectId equals proj.Id into projectGroup
+            from project in projectGroup.DefaultIfEmpty()
+            orderby skill.Name
+            select new { verified, SkillName = skill.Name, ProjectTitle = project != null ? project.Title : "Hồ sơ Năng lực Thực tế" }
+        ).ToListAsync(cancellationToken);
 
         var evalIds = rows.Where(r => r.verified.EvidenceEvaluationId.HasValue).Select(r => r.verified.EvidenceEvaluationId!.Value).Distinct().ToList();
         var evaluations = evalIds.Count > 0

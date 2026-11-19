@@ -28,3 +28,21 @@ public sealed class PortfolioEntryConfiguration : IEntityTypeConfiguration<Portf
         builder.HasIndex(entity => new { entity.StudentId, entity.IsPublished });
     }
 }
+
+public sealed class SkillVerificationRequestConfiguration : IEntityTypeConfiguration<SkillVerificationRequest>
+{
+    public void Configure(EntityTypeBuilder<SkillVerificationRequest> builder)
+    {
+        builder.ToTable("skill_verification_requests");
+        builder.HasKey(entity => entity.Id);
+        builder.Property(entity => entity.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.Property(entity => entity.Level).HasMaxLength(100).IsRequired();
+        builder.Property(entity => entity.EvidenceUrl).HasMaxLength(1000);
+        builder.Property(entity => entity.EvidenceFileUrlsJson).HasMaxLength(4000);
+        builder.Property(entity => entity.StudentNote).HasMaxLength(2000);
+        builder.Property(entity => entity.LecturerFeedback).HasMaxLength(2000);
+        builder.HasIndex(entity => new { entity.StudentId, entity.Status });
+        builder.HasIndex(entity => new { entity.AssignedLecturerId, entity.Status });
+        builder.HasIndex(entity => entity.SkillId);
+    }
+}

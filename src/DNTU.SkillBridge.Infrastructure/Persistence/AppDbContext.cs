@@ -94,6 +94,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<AcademicEvaluation> AcademicEvaluations => Set<AcademicEvaluation>();
     public DbSet<AcademicCriterionScore> AcademicCriterionScores => Set<AcademicCriterionScore>();
     public DbSet<VerifiedSkill> VerifiedSkills => Set<VerifiedSkill>();
+    public DbSet<SkillVerificationRequest> SkillVerificationRequests => Set<SkillVerificationRequest>();
     public DbSet<PortfolioEntry> PortfolioEntries => Set<PortfolioEntry>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<AdminPolicySetting> AdminPolicySettings => Set<AdminPolicySetting>();

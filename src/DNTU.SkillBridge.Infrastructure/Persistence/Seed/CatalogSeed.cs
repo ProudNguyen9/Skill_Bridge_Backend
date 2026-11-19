@@ -23,20 +23,34 @@ public static class CatalogSeed
     {
         var skills = new[]
         {
-            new Skill("ASPNET_CORE", "ASP.NET Core", SkillCategory.TECHNICAL, "Xây dựng API và dịch vụ backend với .NET."),
-            new Skill("REACT", "React", SkillCategory.TECHNICAL, "Xây dựng giao diện người dùng bằng React."),
-            new Skill("POSTGRESQL", "PostgreSQL", SkillCategory.TECHNICAL, "Thiết kế và truy vấn cơ sở dữ liệu PostgreSQL."),
-            new Skill("DOCKER", "Docker", SkillCategory.TECHNICAL, "Container hóa và triển khai ứng dụng."),
-            new Skill("GIT", "Git", SkillCategory.TECHNICAL, "Quản lý mã nguồn và cộng tác nhóm."),
-            new Skill("TESTING", "Testing", SkillCategory.ENGINEERING, "Kiểm thử tự động: unit, integration, functional."),
-            new Skill("REQUIREMENT_ANALYSIS", "Requirement Analysis", SkillCategory.BUSINESS, "Thu thập và phân tích yêu cầu nghiệp vụ."),
-            new Skill("COMMUNICATION", "Communication", SkillCategory.COLLABORATION, "Giao tiếp với khách hàng và nhóm dự án."),
-            new Skill("TEAMWORK", "Teamwork", SkillCategory.COLLABORATION, "Làm việc nhóm và phối hợp công việc.")
+            new Skill("CLOUD_DEVOPS_CKA", "Certified Cloud & DevOps Specialist", SkillCategory.ENGINEERING, "Kiến trúc Docker & Kubernetes, CI/CD pipeline tự động và giám sát cloud.", "/assets/certificates/cloud-devops-cka.png"),
+            new Skill("FULLSTACK_ENTERPRISE", "Fullstack React 19 & Enterprise Services", SkillCategory.TECHNICAL, "Phát triển web fullstack hiện đại, RESTful API và Clean Architecture.", "/assets/certificates/fullstack-java-react.png"),
+            new Skill("AI_MLOPS", "AI Model Deployment & MLOps", SkillCategory.ENGINEERING, "Huấn luyện, đóng gói mô hình AI, tối ưu hóa suy luận và pipeline MLOps.", "/assets/certificates/ai-mlops.png"),
+            new Skill("DATA_PIPELINE", "Microservices Data Pipeline & Kafka", SkillCategory.ENGINEERING, "Xây dựng hạ tầng xử lý dữ liệu lớn, luồng sự kiện phân tán và ETL pipeline.", "/assets/certificates/data-pipeline.png"),
+            new Skill("CLEAN_ARCHITECTURE", "Clean Architecture & Hexagonal Design", SkillCategory.ENGINEERING, "Thiết kế kiến trúc sạch, phân tách domain logic, DDD và CQRS.", "/assets/certificates/clean-architecture.png"),
+            new Skill("DEVSECOPS_SECURITY", "OWASP Security Testing & DevSecOps", SkillCategory.TECHNICAL, "Quản trị an toàn thông tin, rà soát lỗ hổng bảo mật và bảo vệ hạ tầng CI/CD.", "/assets/certificates/security-devsecops.png"),
+            new Skill("ASPNET_CORE", "ASP.NET Core", SkillCategory.TECHNICAL, "Xây dựng API và dịch vụ backend với .NET.", "/assets/certificates/fullstack-java-react.png"),
+            new Skill("REACT", "React", SkillCategory.TECHNICAL, "Xây dựng giao diện người dùng bằng React.", "/assets/certificates/fullstack-java-react.png"),
+            new Skill("POSTGRESQL", "PostgreSQL", SkillCategory.TECHNICAL, "Thiết kế và truy vấn cơ sở dữ liệu PostgreSQL.", "/assets/certificates/data-pipeline.png"),
+            new Skill("DOCKER", "Docker", SkillCategory.TECHNICAL, "Container hóa và triển khai ứng dụng.", "/assets/certificates/cloud-devops-cka.png"),
+            new Skill("GIT", "Git", SkillCategory.TECHNICAL, "Quản lý mã nguồn và cộng tác nhóm.", "/assets/certificates/clean-architecture.png"),
+            new Skill("TESTING", "Testing", SkillCategory.ENGINEERING, "Kiểm thử tự động: unit, integration, functional.", "/assets/certificates/security-devsecops.png"),
+            new Skill("REQUIREMENT_ANALYSIS", "Requirement Analysis", SkillCategory.BUSINESS, "Thu thập và phân tích yêu cầu nghiệp vụ.", "/assets/certificates/clean-architecture.png"),
+            new Skill("COMMUNICATION", "Communication", SkillCategory.COLLABORATION, "Giao tiếp với khách hàng và nhóm dự án.", "/assets/certificates/fullstack-java-react.png"),
+            new Skill("TEAMWORK", "Teamwork", SkillCategory.COLLABORATION, "Làm việc nhóm và phối hợp công việc.", "/assets/certificates/cloud-devops-cka.png")
         };
 
-        foreach (var skill in skills.Where(skill => !dbContext.Skills.Any(existing => existing.Code == skill.Code)))
+        foreach (var skill in skills)
         {
-            dbContext.Skills.Add(skill);
+            var existing = dbContext.Skills.FirstOrDefault(s => s.Code == skill.Code);
+            if (existing is null)
+            {
+                dbContext.Skills.Add(skill);
+            }
+            else if (string.IsNullOrWhiteSpace(existing.BadgeImageUrl) && !string.IsNullOrWhiteSpace(skill.BadgeImageUrl))
+            {
+                existing.Update(existing.Name, existing.Category, existing.Description, skill.BadgeImageUrl);
+            }
         }
     }
 
