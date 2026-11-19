@@ -6,6 +6,8 @@ using System.Security.Cryptography;
 using System.Text;
 using DNTU.SkillBridge.Application.Abstractions;
 using DNTU.SkillBridge.Application.Common.Options;
+using DNTU.SkillBridge.Application.Companies;
+using DNTU.SkillBridge.Domain.Companies;
 using DNTU.SkillBridge.Domain.Identity;
 using DNTU.SkillBridge.Domain.Lecturers;
 using DNTU.SkillBridge.Domain.Students;
@@ -19,7 +21,8 @@ public sealed class AuthService(
     IAuthRepository authRepository,
     IPasswordHasher<User> passwordHasher,
     IOptions<JwtOptions> jwtOptions,
-    IUnitOfWork unitOfWork) : IAuthService
+    IUnitOfWork unitOfWork,
+    ICompanyRepository companyRepository) : IAuthService
 {
     private readonly JwtOptions _jwtOptions = jwtOptions.Value;
 
@@ -108,6 +111,32 @@ public sealed class AuthService(
             authRepository.AddLecturerProfile(lecturerProfile);
         }
 
+        if (request.AccountType == RegistrationAccountType.Company)
+        {
+            // Doanh nghiệp đăng ký: tạo hồ sơ công ty ngay từ form đăng ký (VerificationStatus = PENDING).
+            var compName = string.IsNullOrWhiteSpace(request.CompanyName) ? request.DisplayName.Trim() : request.CompanyName.Trim();
+            var company = new Company(compName);
+            var slug = company.Slug;
+            var suffix = 1;
+            while (await companyRepository.SlugExistsAsync(slug, cancellationToken))
+            {
+                slug = $"{company.Slug}-{++suffix}";
+            }
+            company.AssignSlug(slug);
+            company.UpdateProfile(
+                compName,
+                request.TaxCode?.Trim(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                request.Email.Trim(),
+                request.PhoneNumber?.Trim());
+            company.AddMember(user.Id, CompanyMemberRole.OWNER, "Đại diện pháp lý");
+            companyRepository.AddCompany(company);
+        }
+
         try
         {
             await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -173,7 +202,8 @@ public sealed class AuthService(
                 var role = await authRepository.FindRoleAsync(roleName, cancellationToken);
                 user = new User(email, identity.DisplayName, string.Empty);
                 user.LinkGoogleIdentity(subject);
-                // Giữ EmailVerified = false để yêu cầu xác thực OTP qua email trước khi đăng nhập thành công
+                // Tài khoản đăng ký bằng Google đã được Google kiểm duyệt nên đánh dấu EmailVerified = true, không gửi OTP
+                user.SetEmailVerified();
                 user.AssignRole(role.Id);
                 authRepository.AddUser(user);
 
@@ -194,6 +224,21 @@ public sealed class AuthService(
                     lecturerProfile.Update(lecturerCode, null, null, null, null, null, null, false, false);
                     authRepository.AddLecturerProfile(lecturerProfile);
                 }
+                else if (effectiveRole == RegistrationAccountType.Company)
+                {
+                    var compName = string.IsNullOrWhiteSpace(identity.DisplayName) ? "Doanh nghiệp đối tác" : identity.DisplayName.Trim();
+                    var company = new Company(compName);
+                    var slug = company.Slug;
+                    var suffix = 1;
+                    while (await companyRepository.SlugExistsAsync(slug, cancellationToken))
+                    {
+                        slug = $"{company.Slug}-{++suffix}";
+                    }
+                    company.AssignSlug(slug);
+                    company.UpdateProfile(compName, null, null, null, null, null, null, email, null);
+                    company.AddMember(user.Id, CompanyMemberRole.OWNER, "Đại diện pháp lý");
+                    companyRepository.AddCompany(company);
+                }
 
                 try
                 {
@@ -212,6 +257,7 @@ public sealed class AuthService(
                 {
                     return null;
                 }
+                user.SetEmailVerified();
                 await unitOfWork.SaveChangesAsync(cancellationToken);
             }
         }
@@ -227,30 +273,11 @@ public sealed class AuthService(
             return null;
         }
 
-        // Nếu tài khoản chưa xác thực email (bao gồm tài khoản Google mới đăng ký), gửi OTP và yêu cầu xác thực
+        // Tài khoản đăng nhập bằng Google đã được Google xác minh, đảm bảo EmailVerified = true và không yêu cầu OTP
         if (!fullUser.EmailVerified)
         {
-            var otp = await CreateAccountTokenAsync(fullUser.Email, AccountTokenPurpose.EmailVerification, cancellationToken);
-            var roleLabel = targetRole switch
-            {
-                RegistrationAccountType.Student => "Sinh viên",
-                RegistrationAccountType.Lecturer => "Giảng viên",
-                _ => (isDntuEmail ? "Sinh viên" : "Doanh nghiệp")
-            };
-
-            return new AuthResponse(
-                AccessToken: string.Empty,
-                AccessTokenExpiresAt: DateTimeOffset.MinValue,
-                RefreshToken: string.Empty,
-                RefreshTokenExpiresAt: DateTimeOffset.MinValue,
-                SessionId: Guid.Empty,
-                IsNewUser: true,
-                NeedsOnboarding: false,
-                RequiresVerification: true,
-                Email: fullUser.Email,
-                OtpCode: otp,
-                DisplayName: fullUser.DisplayName,
-                RoleName: roleLabel);
+            fullUser.SetEmailVerified();
+            await unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
         return await CreateSessionAsync(fullUser, isNewUser, cancellationToken);

@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Administration;
+using DNTU.SkillBridge.Application.Companies;
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Api.Security;
@@ -99,6 +100,18 @@ public sealed class AdminVerificationsController(IAdminVerificationService verif
         if (!IsValidStatus(status, CompanyVerificationStatus.PENDING, CompanyVerificationStatus.VERIFIED, CompanyVerificationStatus.REJECTED, CompanyVerificationStatus.SUSPENDED)) return BadRequest();
 
         return Ok(new ApiResponse<IReadOnlyCollection<AdminCompanyReviewItem>>(await verificationService.ListCompaniesAsync(status, cancellationToken)));
+    }
+
+    /// <summary>Danh sách hồ sơ, giấy tờ pháp lý của doanh nghiệp phục vụ Admin đối soát.</summary>
+    [HttpGet("companies/{companyId:guid}/documents")]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<CompanyDocumentResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ApiResponse<IReadOnlyCollection<CompanyDocumentResponse>>>> GetCompanyDocuments(
+        Guid companyId, [FromServices] ICompanyRepository companyRepository, CancellationToken cancellationToken)
+    {
+        if (!currentUser.HasPermission(PermissionNames.CompaniesVerify)) return Forbid();
+        var documents = await companyRepository.ListDocumentsAsync(companyId, cancellationToken);
+        return Ok(new ApiResponse<IReadOnlyCollection<CompanyDocumentResponse>>(documents));
     }
 
     [HttpPost("companies/{companyId:guid}/verify")]

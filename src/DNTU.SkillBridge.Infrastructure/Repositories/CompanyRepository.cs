@@ -71,7 +71,8 @@ public sealed class CompanyRepository(AppDbContext dbContext) : ICompanyReposito
             company.FoundedYear,
             company.BannerUrl,
             company.VerificationStatus.ToString(),
-            company.CanPublishProjects());
+            company.CanPublishProjects(),
+            company.VerificationNote);
     }
 
     public async Task<IReadOnlyCollection<CompanyMemberResponse>> ListMembersAsync(Guid companyId, CancellationToken cancellationToken)

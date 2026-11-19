@@ -130,24 +130,7 @@ public sealed class AuthController(
             return Unauthorized();
         }
 
-        // Nếu tài khoản mới cần xác thực OTP (bao gồm tài khoản Google mới)
-        if (result.RequiresVerification)
-        {
-            if (!string.IsNullOrWhiteSpace(result.OtpCode))
-            {
-                try
-                {
-                    await accountEmailSender.SendVerificationAsync(result.Email ?? email, result.OtpCode, cancellationToken);
-                }
-                catch
-                {
-                    // Không để lỗi gửi email làm gián đoạn flow
-                }
-            }
-
-            return Ok(new ApiResponse<AuthResponse>(result));
-        }
-
+        // Đăng nhập / Đăng ký qua Google không cần gửi OTP vì danh tính email đã được Google kiểm duyệt & xác thực
         return Ok(new ApiResponse<AuthResponse>(result));
     }
 
