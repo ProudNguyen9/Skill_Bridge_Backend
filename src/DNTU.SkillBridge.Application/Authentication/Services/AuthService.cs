@@ -111,10 +111,10 @@ public sealed class AuthService(
             authRepository.AddLecturerProfile(lecturerProfile);
         }
 
-        if (request.AccountType == RegistrationAccountType.Company)
+        if (request.AccountType == RegistrationAccountType.Company && !string.IsNullOrWhiteSpace(request.CompanyName))
         {
-            // Doanh nghiệp đăng ký: tạo hồ sơ công ty ngay từ form đăng ký (VerificationStatus = PENDING).
-            var compName = string.IsNullOrWhiteSpace(request.CompanyName) ? request.DisplayName.Trim() : request.CompanyName.Trim();
+            // Doanh nghiệp đăng ký kèm tên công ty: tạo hồ sơ công ty ngay từ form đăng ký (VerificationStatus = PENDING).
+            var compName = request.CompanyName.Trim();
             var company = new Company(compName);
             var slug = company.Slug;
             var suffix = 1;
@@ -379,7 +379,8 @@ public sealed class AuthService(
         var lecturerApprovalStatus = lecturerProfileId.HasValue
             ? await authRepository.FindLecturerApprovalStatusAsync(userId, cancellationToken)
             : null;
-        return new CurrentUserResponse(user.Id, user.Email, user.DisplayName, user.EmailVerified, user.IsActive, roles, permissions, profileType, studentProfileId, companyId, lecturerProfileId, profileCompleted, lecturerApprovalStatus?.ToString());
+        var avatarUrl = await authRepository.FindCurrentAvatarUrlAsync(studentProfileId, companyId, lecturerProfileId, cancellationToken);
+        return new CurrentUserResponse(user.Id, user.Email, user.DisplayName, user.EmailVerified, user.IsActive, roles, permissions, profileType, studentProfileId, companyId, lecturerProfileId, profileCompleted, lecturerApprovalStatus?.ToString(), avatarUrl);
     }
 
     private async Task<AuthResponse> CreateSessionAsync(User user, CancellationToken cancellationToken) =>

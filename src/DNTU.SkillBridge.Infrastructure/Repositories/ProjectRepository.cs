@@ -5,6 +5,7 @@ using DNTU.SkillBridge.Domain.Catalog;
 using DNTU.SkillBridge.Domain.Common;
 using DNTU.SkillBridge.Domain.Companies;
 using DNTU.SkillBridge.Domain.Applications;
+using DNTU.SkillBridge.Domain.Lecturers;
 using DNTU.SkillBridge.Domain.Projects;
 using DNTU.SkillBridge.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -65,25 +66,39 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
                 project.ExpectedStudentCount,
                 project.AllowanceAmount,
                 project.AllowanceCurrency,
-                project.CreatedAt
+                project.CreatedAt,
+                project.IllustrationUrlsJson,
+                CompanyLogoUrl = project.Company.LogoUrl
             })
             .ToListAsync(cancellationToken);
 
+        var projectIds = rows.Select(project => project.Id).ToList();
+        var supervisors = await LoadProjectSupervisorsAsync(projectIds, cancellationToken);
+
         var items = rows
-            .Select(project => new CompanyProjectListItemResponse(
-                project.Id,
-                project.Code,
-                project.Title,
-                project.Slug,
-                project.Status.ToString(),
-                project.Difficulty,
-                project.WorkType,
-                project.DurationWeeks,
-                project.ApplicationDeadline,
-                project.ExpectedStudentCount,
-                project.AllowanceAmount,
-                project.AllowanceCurrency,
-                project.CreatedAt))
+            .Select(project =>
+            {
+                supervisors.TryGetValue(project.Id, out var sup);
+                return new CompanyProjectListItemResponse(
+                    project.Id,
+                    project.Code,
+                    project.Title,
+                    project.Slug,
+                    project.Status.ToString(),
+                    project.Difficulty,
+                    project.WorkType,
+                    project.DurationWeeks,
+                    project.ApplicationDeadline,
+                    project.ExpectedStudentCount,
+                    project.AllowanceAmount,
+                    project.AllowanceCurrency,
+                    project.CreatedAt,
+                    Project.ParseIllustrationUrls(project.IllustrationUrlsJson),
+                    project.CompanyLogoUrl,
+                    sup?.Name,
+                    sup?.Title,
+                    sup?.Status);
+            })
             .ToList();
 
         return new PagedResponse<CompanyProjectListItemResponse>(
@@ -389,6 +404,16 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
 
         var now = DateTimeOffset.UtcNow;
         project.Cancel();
+        var boundTeams = await dbContext.Teams
+            .Where(t => t.TargetProjectId == projectId ||
+                        dbContext.Applications.Any(a => a.ProjectId == projectId &&
+                                                        a.Status == ApplicationStatus.ACCEPTED &&
+                                                        a.TeamId == t.Id))
+            .ToListAsync(cancellationToken);
+        foreach (var team in boundTeams)
+        {
+            team.ReleaseFromCompletedProject();
+        }
         dbContext.ProjectApprovals.Add(new ProjectApproval(projectId, ProjectDecision.CANCELLED, userId, now, null));
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -505,7 +530,8 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
                 row.project.Status.ToString(),
                 row.project.SubmittedAt,
                 lastDecision?.Decision.ToString(),
-                lastDecision?.DecidedAt));
+                lastDecision?.DecidedAt,
+                row.project.GetIllustrationUrls()));
         }
 
         return new PagedResponse<AdminApprovalListItemResponse>(
@@ -523,9 +549,10 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             return null;
         }
 
-        var companyName = await dbContext.Companies
+        var companyInfo = await dbContext.Companies
+            .AsNoTracking()
             .Where(company => company.Id == project.CompanyId)
-            .Select(company => company.Name)
+            .Select(company => new { company.Name, company.LogoUrl })
             .SingleOrDefaultAsync(cancellationToken);
 
         var history = (await dbContext.ProjectApprovals
@@ -563,7 +590,7 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             project.Id,
             project.Title,
             project.Slug,
-            companyName ?? "Unknown company",
+            companyInfo?.Name ?? "Unknown company",
             project.Status.ToString(),
             project.Code,
             project.Summary,
@@ -584,7 +611,9 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             project.SubmittedAt,
             project.ApprovedAt,
             project.PublishedAt,
-            history);
+            history,
+            companyInfo?.LogoUrl,
+            project.GetIllustrationUrls());
     }
 
     /// <summary>
@@ -769,8 +798,10 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
                     project.ExpectedStudentCount,
                     project.AllowanceAmount,
                     project.AllowanceCurrency,
+                    project.IllustrationUrlsJson,
                     CompanyName = company.Name,
-                    CompanySlug = company.Slug
+                    CompanySlug = company.Slug,
+                    CompanyLogoUrl = company.LogoUrl
                 })
             .ToListAsync(cancellationToken);
 
@@ -818,27 +849,37 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             );
 
         var currentCountsByProject = allProjectMembers.ToDictionary(g => g.Key, g => g.Value.Count);
+        var supervisors = await LoadProjectSupervisorsAsync(projectIds, cancellationToken);
 
         var items = rows
-            .Select(row => new PublicProjectListItemResponse(
-                row.Id,
-                row.Code,
-                row.Title,
-                row.Slug,
-                row.Summary,
-                row.Status.ToString(),
-                row.Difficulty.ToString(),
-                row.WorkType.ToString(),
-                row.DurationWeeks,
-                row.ApplicationDeadline,
-                row.ExpectedStudentCount,
-                row.AllowanceAmount,
-                row.AllowanceCurrency,
-                row.CompanyName,
-                row.CompanySlug,
-                skillNamesByProject.GetValueOrDefault(row.Id, []),
-                currentCountsByProject.GetValueOrDefault(row.Id, 0),
-                allProjectMembers.GetValueOrDefault(row.Id, [])))
+            .Select(row =>
+            {
+                supervisors.TryGetValue(row.Id, out var sup);
+                return new PublicProjectListItemResponse(
+                    row.Id,
+                    row.Code,
+                    row.Title,
+                    row.Slug,
+                    row.Summary,
+                    row.Status.ToString(),
+                    row.Difficulty.ToString(),
+                    row.WorkType.ToString(),
+                    row.DurationWeeks,
+                    row.ApplicationDeadline,
+                    row.ExpectedStudentCount,
+                    row.AllowanceAmount,
+                    row.AllowanceCurrency,
+                    row.CompanyName,
+                    row.CompanySlug,
+                    skillNamesByProject.GetValueOrDefault(row.Id, []),
+                    currentCountsByProject.GetValueOrDefault(row.Id, 0),
+                    allProjectMembers.GetValueOrDefault(row.Id, []),
+                    row.CompanyLogoUrl,
+                    Project.ParseIllustrationUrls(row.IllustrationUrlsJson),
+                    sup?.Name,
+                    sup?.Title,
+                    sup?.Status);
+            })
             .ToList();
 
         return new PagedResponse<PublicProjectListItemResponse>(
@@ -862,7 +903,7 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
         var company = await dbContext.Companies
             .AsNoTracking()
             .Where(company => company.Id == project.CompanyId)
-            .Select(company => new { company.Id, company.Name, company.Slug })
+            .Select(company => new { company.Id, company.Name, company.Slug, company.LogoUrl })
             .SingleOrDefaultAsync(cancellationToken);
         if (company is null)
         {
@@ -909,6 +950,8 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             .ToList();
 
         var currentStudentCount = distinctMembers.Count;
+        var supervisors = await LoadProjectSupervisorsAsync([project.Id], cancellationToken);
+        supervisors.TryGetValue(project.Id, out var sup);
 
         return new PublicProjectDetailResponse(
             project.Id,
@@ -939,7 +982,11 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             deliverables,
             currentStudentCount,
             distinctMembers,
-            project.GetIllustrationUrls());
+            project.GetIllustrationUrls(),
+            company.LogoUrl,
+            sup?.Name,
+            sup?.Title,
+            sup?.Status);
     }
 
     /// <summary>Skill requirements of one publicly visible project; null when the project is not publicly accessible.</summary>
@@ -1025,10 +1072,12 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
                 project.ExpectedStudentCount,
                 project.AllowanceAmount,
                 project.AllowanceCurrency,
+                project.IllustrationUrlsJson,
                 project.CreatedAt,
                 project.CompanyId,
                 CompanyName = project.Company.Name,
-                CompanySlug = project.Company.Slug
+                CompanySlug = project.Company.Slug,
+                CompanyLogoUrl = project.Company.LogoUrl
             })
             .ToListAsync(cancellationToken);
 
@@ -1084,27 +1133,37 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             );
 
         var currentCountsByRelProject = allRelProjectMembers.ToDictionary(g => g.Key, g => g.Value.Count);
+        var relSupervisors = await LoadProjectSupervisorsAsync(relProjectIds, cancellationToken);
 
         return ordered
-            .Select(row => new PublicProjectListItemResponse(
-                row.Id,
-                row.Code,
-                row.Title,
-                row.Slug,
-                row.Summary,
-                row.Status.ToString(),
-                row.Difficulty.ToString(),
-                row.WorkType.ToString(),
-                row.DurationWeeks,
-                row.ApplicationDeadline,
-                row.ExpectedStudentCount,
-                row.AllowanceAmount,
-                row.AllowanceCurrency,
-                row.CompanyName,
-                row.CompanySlug,
-                skillNamesByProject.GetValueOrDefault(row.Id, []),
-                currentCountsByRelProject.GetValueOrDefault(row.Id, 0),
-                allRelProjectMembers.GetValueOrDefault(row.Id, [])))
+            .Select(row =>
+            {
+                relSupervisors.TryGetValue(row.Id, out var sup);
+                return new PublicProjectListItemResponse(
+                    row.Id,
+                    row.Code,
+                    row.Title,
+                    row.Slug,
+                    row.Summary,
+                    row.Status.ToString(),
+                    row.Difficulty.ToString(),
+                    row.WorkType.ToString(),
+                    row.DurationWeeks,
+                    row.ApplicationDeadline,
+                    row.ExpectedStudentCount,
+                    row.AllowanceAmount,
+                    row.AllowanceCurrency,
+                    row.CompanyName,
+                    row.CompanySlug,
+                    skillNamesByProject.GetValueOrDefault(row.Id, []),
+                    currentCountsByRelProject.GetValueOrDefault(row.Id, 0),
+                    allRelProjectMembers.GetValueOrDefault(row.Id, []),
+                    row.CompanyLogoUrl,
+                    Project.ParseIllustrationUrls(row.IllustrationUrlsJson),
+                    sup?.Name,
+                    sup?.Title,
+                    sup?.Status);
+            })
             .ToList();
     }
 
@@ -1410,6 +1469,15 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             .Select(deliverable => new ProjectDeliverableResponse(deliverable.Id, deliverable.Name, deliverable.Description, deliverable.SortOrder))
             .ToList();
 
+        var companyLogoUrl = await dbContext.Companies
+            .AsNoTracking()
+            .Where(company => company.Id == project.CompanyId)
+            .Select(company => company.LogoUrl)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        var supervisors = await LoadProjectSupervisorsAsync([project.Id], cancellationToken);
+        supervisors.TryGetValue(project.Id, out var sup);
+
         return new CompanyProjectDetailResponse(
             project.Id,
             project.CompanyId,
@@ -1440,6 +1508,50 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             project.SubmittedAt,
             project.ApprovedAt,
             project.PublishedAt,
-            project.GetIllustrationUrls());
+            project.GetIllustrationUrls(),
+            companyLogoUrl,
+            sup?.Name,
+            sup?.Title,
+            sup?.Status);
+    }
+
+    private sealed record ProjectSupervisorSummary(string Name, string? Title, string Status);
+
+    private async Task<Dictionary<Guid, ProjectSupervisorSummary>> LoadProjectSupervisorsAsync(
+        IReadOnlyCollection<Guid> projectIds, CancellationToken cancellationToken)
+    {
+        if (projectIds.Count == 0) return new Dictionary<Guid, ProjectSupervisorSummary>();
+
+        var rows = await (from assignment in dbContext.LecturerAssignments.AsNoTracking()
+                          where projectIds.Contains(assignment.ProjectId)
+                                && (assignment.Status == LecturerAssignmentStatus.ACTIVE
+                                    || assignment.Status == LecturerAssignmentStatus.INVITED)
+                          join lecturer in dbContext.LecturerProfiles.AsNoTracking() on assignment.LecturerId equals lecturer.Id
+                          join user in dbContext.Users.AsNoTracking() on lecturer.UserId equals user.Id into userGroup
+                          from u in userGroup.DefaultIfEmpty()
+                          select new
+                          {
+                              assignment.ProjectId,
+                              IsActive = assignment.Status == LecturerAssignmentStatus.ACTIVE,
+                              IsPrimary = assignment.Role == LecturerAssignmentRole.PRIMARY,
+                              assignment.AssignedAt,
+                              Status = assignment.Status.ToString(),
+                              Name = u != null && !string.IsNullOrWhiteSpace(u.DisplayName) ? u.DisplayName : lecturer.LecturerCode,
+                              Title = lecturer.AcademicTitle
+                          })
+                          .ToListAsync(cancellationToken);
+
+        return rows
+            .GroupBy(r => r.ProjectId)
+            .ToDictionary(
+                g => g.Key,
+                g =>
+                {
+                    var best = g.OrderByDescending(x => x.IsActive)
+                                .ThenByDescending(x => x.IsPrimary)
+                                .ThenByDescending(x => x.AssignedAt)
+                                .First();
+                    return new ProjectSupervisorSummary(best.Name, best.Title, best.Status);
+                });
     }
 }

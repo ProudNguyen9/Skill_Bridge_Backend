@@ -169,6 +169,24 @@ public sealed class StudentsController(IStudentService studentService, ICurrentU
             : NotFound();
     }
 
+    /// <summary>Searches active DNTU students by MSSV, email, or display name for team invitations.</summary>
+    [HttpGet("search")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<StudentSearchItemResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<IReadOnlyCollection<StudentSearchItemResponse>>>> Search(
+        [FromQuery] string? q = null,
+        [FromQuery] int limit = 15,
+        CancellationToken cancellationToken = default)
+    {
+        if (!currentUser.IsAuthenticated)
+        {
+            return Forbid();
+        }
+
+        return Ok(new ApiResponse<IReadOnlyCollection<StudentSearchItemResponse>>(
+            await studentService.SearchStudentsAsync(q ?? string.Empty, limit, cancellationToken)));
+    }
+
     /// <summary>
     /// Public profile read. Answers 404 when the profile does not exist or the student keeps it private;
     /// otherwise returns the privacy-filtered projection without contact info, CV, or hidden collections.

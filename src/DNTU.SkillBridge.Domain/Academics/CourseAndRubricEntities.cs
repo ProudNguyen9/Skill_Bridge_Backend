@@ -135,6 +135,22 @@ public sealed class Rubric : AuditableEntity
         IsLocked = true;
         Version = Guid.CreateVersion7();
     }
+
+    public static Rubric CreateDefaultCapstone(Guid id, Guid lecturerId)
+    {
+        var rubric = new Rubric(lecturerId, "Rubric Chấm Điểm Đồ Án / Khóa Luận DNTU (Chuẩn ABET)")
+        {
+            Id = id
+        };
+        rubric.AddCriterion("Kiến trúc", 17m, 1);
+        rubric.AddCriterion("Mã nguồn", 17m, 2);
+        rubric.AddCriterion("Database", 17m, 3);
+        rubric.AddCriterion("Testing", 17m, 4);
+        rubric.AddCriterion("Tài liệu", 17m, 5);
+        rubric.AddCriterion("Đóng góp cá nhân", 15m, 6);
+        rubric.Lock();
+        return rubric;
+    }
 }
 
 public sealed class RubricCriterion : AuditableEntity

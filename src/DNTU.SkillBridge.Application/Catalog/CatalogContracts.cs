@@ -7,7 +7,8 @@ public sealed record SkillResponse(
     string Name,
     string Category,
     string? Description,
-    bool IsActive);
+    bool IsActive,
+    string? BadgeImageUrl = null);
 
 /// <summary>An industry entry returned by the catalog endpoints.</summary>
 public sealed record IndustryResponse(Guid Id, string Name, string Slug, bool IsActive);
@@ -53,8 +54,8 @@ public sealed class MajorListQuery
     public bool IncludeInactive { get; init; }
 }
 
-public sealed record CreateSkillRequest(string Code, string Name, string Category, string? Description);
-public sealed record UpdateSkillRequest(string Name, string Category, string? Description);
+public sealed record CreateSkillRequest(string Code, string Name, string Category, string? Description, string? BadgeImageUrl = null);
+public sealed record UpdateSkillRequest(string Name, string Category, string? Description, string? BadgeImageUrl = null);
 public sealed record CreateIndustryRequest(string Name);
 public sealed record CreateFacultyRequest(string Code, string Name);
 public sealed record CreateMajorRequest(string Code, string Name, Guid FacultyId);

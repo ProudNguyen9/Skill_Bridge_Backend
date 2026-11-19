@@ -29,7 +29,8 @@ public sealed record VerifiedSkillResponse(
     DateTimeOffset? RevokedAt,
     Guid? EvidenceSubmissionId,
     Guid? EvidenceEvaluationId,
-    string? ProofHash = null);
+    string? ProofHash = null,
+    string? BadgeImageUrl = null);
 
 public sealed record PortfolioEntryResponse(
     Guid Id,

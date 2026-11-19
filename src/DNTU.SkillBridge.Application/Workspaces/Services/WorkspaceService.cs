@@ -20,6 +20,7 @@ public sealed class WorkspaceService(IWorkspaceRepository workspaceRepository, I
         var now = DateTimeOffset.UtcNow;
         var overdueTaskCount = await workspaceRepository.CountOverdueTasksAsync(projectId, now, cancellationToken);
         var supervisor = await workspaceRepository.FindProjectSupervisorAsync(projectId, cancellationToken);
+        var team = await workspaceRepository.FindProjectTeamAsync(projectId, cancellationToken);
 
         return new WorkspaceOverviewResponse(
             project.Id,
@@ -33,7 +34,15 @@ public sealed class WorkspaceService(IWorkspaceRepository workspaceRepository, I
             supervisor?.Name,
             supervisor?.Email,
             supervisor?.Department,
-            supervisor?.Title);
+            supervisor?.Title,
+            supervisor?.AvatarUrl,
+            team?.TeamId,
+            team?.TeamName,
+            team?.TeamAvatarUrl,
+            project.CompanyName,
+            project.CompanyLogoUrl,
+            project.IllustrationUrls,
+            supervisor?.Status);
     }
 
     public async Task<IReadOnlyCollection<WorkspaceMemberResponse>?> GetTeamAsync(ICurrentUser currentUser, Guid projectId, CancellationToken cancellationToken)
@@ -85,7 +94,15 @@ public sealed class WorkspaceService(IWorkspaceRepository workspaceRepository, I
             project.SupervisorName,
             project.SupervisorEmail,
             project.SupervisorDepartment,
-            project.SupervisorTitle))
+            project.SupervisorTitle,
+            project.SupervisorAvatarUrl,
+            project.TeamId,
+            project.TeamName,
+            project.TeamAvatarUrl,
+            project.CompanyName,
+            project.CompanyLogoUrl,
+            project.IllustrationUrls,
+            project.SupervisorStatus))
             .ToList();
     }
 

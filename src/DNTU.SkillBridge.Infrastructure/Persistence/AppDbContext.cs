@@ -55,9 +55,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<ProjectCompletion> ProjectCompletions => Set<ProjectCompletion>();
     public DbSet<SavedProject> SavedProjects => Set<SavedProject>();
     public DbSet<DNTU.SkillBridge.Domain.Applications.Application> Applications => Set<DNTU.SkillBridge.Domain.Applications.Application>();
+    public DbSet<DNTU.SkillBridge.Domain.Applications.ApplicationMember> ApplicationMembers => Set<DNTU.SkillBridge.Domain.Applications.ApplicationMember>();
     public DbSet<Team> Teams => Set<Team>();
     public DbSet<TeamMember> TeamMembers => Set<TeamMember>();
     public DbSet<TeamInvitation> TeamInvitations => Set<TeamInvitation>();
+    public DbSet<TeamProjectRecommendation> TeamProjectRecommendations => Set<TeamProjectRecommendation>();
     public DbSet<ProjectCommitment> ProjectCommitments => Set<ProjectCommitment>();
     public DbSet<WithdrawalRequest> WithdrawalRequests => Set<WithdrawalRequest>();
     public DbSet<WorkspaceSettings> WorkspaceSettings => Set<WorkspaceSettings>();
@@ -92,6 +94,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<AcademicEvaluation> AcademicEvaluations => Set<AcademicEvaluation>();
     public DbSet<AcademicCriterionScore> AcademicCriterionScores => Set<AcademicCriterionScore>();
     public DbSet<VerifiedSkill> VerifiedSkills => Set<VerifiedSkill>();
+    public DbSet<SkillVerificationRequest> SkillVerificationRequests => Set<SkillVerificationRequest>();
     public DbSet<PortfolioEntry> PortfolioEntries => Set<PortfolioEntry>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<AdminPolicySetting> AdminPolicySettings => Set<AdminPolicySetting>();

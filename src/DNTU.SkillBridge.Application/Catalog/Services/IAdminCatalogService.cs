@@ -40,7 +40,7 @@ public sealed class AdminCatalogService(ICatalogRepository catalogRepository, IU
             return new AdminCatalogWriteResult<SkillResponse>(AdminCatalogWriteStatus.Duplicate, null);
         }
 
-        var skill = new Skill(code, name, ParseCategory(request.Category), request.Description);
+        var skill = new Skill(code, name, ParseCategory(request.Category), request.Description, request.BadgeImageUrl);
         catalogRepository.AddSkill(skill);
         LogAudit(catalogRepository, actorUserId, AuditActions.CatalogEntryCreated, nameof(Skill), skill.Id, skill.Name);
 await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -63,7 +63,7 @@ await unitOfWork.SaveChangesAsync(cancellationToken);
             return new AdminCatalogWriteResult<SkillResponse>(AdminCatalogWriteStatus.Duplicate, null);
         }
 
-        skill.Update(name, ParseCategory(request.Category), request.Description);
+        skill.Update(name, ParseCategory(request.Category), request.Description, request.BadgeImageUrl);
         LogAudit(catalogRepository, actorUserId, AuditActions.CatalogEntryUpdated, nameof(Skill), skill.Id, skill.Name);
 await unitOfWork.SaveChangesAsync(cancellationToken);
         return new AdminCatalogWriteResult<SkillResponse>(AdminCatalogWriteStatus.Updated, MapSkill(skill));
@@ -192,7 +192,7 @@ await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
     private static SkillResponse MapSkill(Skill skill) =>
-        new(skill.Id, skill.Code, skill.Name, skill.Category.ToString(), skill.Description, skill.IsActive);
+        new(skill.Id, skill.Code, skill.Name, skill.Category.ToString(), skill.Description, skill.IsActive, skill.BadgeImageUrl);
 
     private static void LogAudit(ICatalogRepository repository, Guid actorUserId, string action, string entityType, Guid entityId, string name)
     {

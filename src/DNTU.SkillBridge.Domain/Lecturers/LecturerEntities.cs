@@ -25,6 +25,7 @@ public sealed class LecturerProfile : Common.AuditableEntity
     public string? WebsiteUrl { get; private set; }
     public string? OfficeLocation { get; private set; }
     public string? PhoneNumber { get; private set; }
+    public string? AvatarUrl { get; private set; }
     public bool IsProfilePublic { get; private set; }
     public bool ShowContactInfo { get; private set; }
     public bool IsActive { get; private set; } = true;
@@ -50,7 +51,8 @@ public sealed class LecturerProfile : Common.AuditableEntity
         string? officeLocation,
         string? phoneNumber,
         bool isProfilePublic,
-        bool showContactInfo)
+        bool showContactInfo,
+        string? avatarUrl = null)
     {
         LecturerCode = NullIfEmpty(lecturerCode);
         Department = NullIfEmpty(department);
@@ -59,6 +61,7 @@ public sealed class LecturerProfile : Common.AuditableEntity
         WebsiteUrl = NullIfEmpty(websiteUrl);
         OfficeLocation = NullIfEmpty(officeLocation);
         PhoneNumber = NullIfEmpty(phoneNumber);
+        AvatarUrl = NullIfEmpty(avatarUrl);
         IsProfilePublic = isProfilePublic;
         ShowContactInfo = showContactInfo;
     }
@@ -117,12 +120,21 @@ public sealed class LecturerAssignment : Common.AuditableEntity
 {
     public Guid LecturerId { get; private set; }
     public Guid ProjectId { get; private set; }
+    public Guid? TeamId { get; private set; }
+    public Guid? InvitedByUserId { get; private set; }
     public LecturerAssignmentRole Role { get; private set; }
     public LecturerAssignmentStatus Status { get; private set; }
     public DateTimeOffset AssignedAt { get; private set; }
     public DateTimeOffset? AcceptedAt { get; private set; }
     public DateTimeOffset? EndedAt { get; private set; }
+    public DateTimeOffset? RespondedAt { get; private set; }
     public string? Note { get; private set; }
+    public string? ExpectedWork { get; private set; }
+    public string? ExpectedDuration { get; private set; }
+    public long? AllowanceShareAmount { get; private set; }
+    public bool IsCourseLinked { get; private set; }
+    public string? CourseName { get; private set; }
+    public string? DeclineReason { get; private set; }
 
     private LecturerAssignment() { }
 
@@ -136,6 +148,24 @@ public sealed class LecturerAssignment : Common.AuditableEntity
         Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
     }
 
+    public void SetInvitationDetails(
+        Guid? invitedByUserId,
+        Guid? teamId,
+        string? expectedWork,
+        string? expectedDuration,
+        long? allowanceShareAmount,
+        bool isCourseLinked,
+        string? courseName)
+    {
+        InvitedByUserId = invitedByUserId;
+        TeamId = teamId;
+        ExpectedWork = string.IsNullOrWhiteSpace(expectedWork) ? null : expectedWork.Trim();
+        ExpectedDuration = string.IsNullOrWhiteSpace(expectedDuration) ? null : expectedDuration.Trim();
+        AllowanceShareAmount = allowanceShareAmount;
+        IsCourseLinked = isCourseLinked;
+        CourseName = string.IsNullOrWhiteSpace(courseName) ? null : courseName.Trim();
+    }
+
     /// <summary>The assigned lecturer accepts the invitation; already handled transitions stay untouched.</summary>
     public void Accept(DateTimeOffset at)
     {
@@ -146,6 +176,20 @@ public sealed class LecturerAssignment : Common.AuditableEntity
 
         Status = LecturerAssignmentStatus.ACTIVE;
         AcceptedAt = at;
+        RespondedAt = at;
+    }
+
+    /// <summary>The invited lecturer declines the invitation with an optional reason.</summary>
+    public void Decline(DateTimeOffset at, string? reason = null)
+    {
+        if (Status != LecturerAssignmentStatus.INVITED)
+        {
+            return;
+        }
+
+        Status = LecturerAssignmentStatus.DECLINED;
+        RespondedAt = at;
+        DeclineReason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
     }
 
     /// <summary>Ends the supervision period; the note is appended for later auditability (Task 38).</summary>

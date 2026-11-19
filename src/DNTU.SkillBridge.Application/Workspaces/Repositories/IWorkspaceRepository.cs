@@ -4,7 +4,14 @@ using DNTU.SkillBridge.Domain.Workspaces;
 namespace DNTU.SkillBridge.Application.Workspaces;
 
 /// <summary>Projected project fields used to build the workspace overview payload.</summary>
-public sealed record WorkspaceProjectRow(Guid Id, string Title, string Slug, ProjectStatus Status);
+public sealed record WorkspaceProjectRow(
+    Guid Id,
+    string Title,
+    string Slug,
+    ProjectStatus Status,
+    string? CompanyName = null,
+    string? CompanyLogoUrl = null,
+    IReadOnlyCollection<string>? IllustrationUrls = null);
 
 /// <summary>Correlated project summary with member and task counts used by the student's project list.</summary>
 public sealed record WorkspaceProjectSummaryRow(
@@ -18,7 +25,15 @@ public sealed record WorkspaceProjectSummaryRow(
     string? SupervisorName = null,
     string? SupervisorEmail = null,
     string? SupervisorDepartment = null,
-    string? SupervisorTitle = null);
+    string? SupervisorTitle = null,
+    string? SupervisorAvatarUrl = null,
+    Guid? TeamId = null,
+    string? TeamName = null,
+    string? TeamAvatarUrl = null,
+    string? CompanyName = null,
+    string? CompanyLogoUrl = null,
+    IReadOnlyCollection<string>? IllustrationUrls = null,
+    string? SupervisorStatus = null);
 
 /// <summary>Read and write data operations for the workspace feature.</summary>
 public interface IWorkspaceRepository
@@ -33,7 +48,9 @@ public interface IWorkspaceRepository
 
     Task<IReadOnlyCollection<WorkspaceMemberResponse>> ListTeamAsync(Guid projectId, CancellationToken cancellationToken);
 
-    Task<(string? Name, string? Email, string? Department, string? Title)?> FindProjectSupervisorAsync(Guid projectId, CancellationToken cancellationToken);
+    Task<(string? Name, string? Email, string? Department, string? Title, string? AvatarUrl, string? Status)?> FindProjectSupervisorAsync(Guid projectId, CancellationToken cancellationToken);
+
+    Task<(Guid TeamId, string TeamName, string? TeamAvatarUrl)?> FindProjectTeamAsync(Guid projectId, CancellationToken cancellationToken);
 
     Task<bool> AssignProjectLeaderAsync(Guid projectId, Guid newLeaderStudentId, CancellationToken cancellationToken);
 

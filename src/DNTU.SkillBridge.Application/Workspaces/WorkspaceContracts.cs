@@ -15,7 +15,15 @@ public sealed record WorkspaceOverviewResponse(
     string? SupervisorName = null,
     string? SupervisorEmail = null,
     string? SupervisorDepartment = null,
-    string? SupervisorTitle = null);
+    string? SupervisorTitle = null,
+    string? SupervisorAvatarUrl = null,
+    Guid? TeamId = null,
+    string? TeamName = null,
+    string? TeamAvatarUrl = null,
+    string? CompanyName = null,
+    string? CompanyLogoUrl = null,
+    IReadOnlyCollection<string>? IllustrationUrls = null,
+    string? SupervisorStatus = null);
 
 public sealed record WorkspaceMemberResponse(
     Guid StudentId,

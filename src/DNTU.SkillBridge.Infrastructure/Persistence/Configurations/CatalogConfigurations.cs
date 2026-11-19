@@ -16,6 +16,7 @@ public sealed class SkillConfiguration : IEntityTypeConfiguration<Skill>
         builder.Property(entity => entity.Slug).HasMaxLength(220).IsRequired();
         builder.Property(entity => entity.Category).HasConversion<string>().HasMaxLength(50).IsRequired();
         builder.Property(entity => entity.Description).HasMaxLength(1000);
+        builder.Property(entity => entity.BadgeImageUrl).HasMaxLength(500);
         builder.HasIndex(entity => entity.Code).IsUnique();
         builder.HasIndex(entity => entity.NormalizedName).IsUnique();
         builder.HasIndex(entity => entity.Slug).IsUnique();

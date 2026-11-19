@@ -8,3 +8,11 @@ public enum WithdrawalOutcome
     Forbidden,
     Updated
 }
+
+public enum CommitmentSignOutcome
+{
+    Updated,
+    NotFound,
+    Forbidden,
+    Conflict
+}

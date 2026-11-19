@@ -16,7 +16,7 @@ public sealed class CatalogRepository(AppDbContext dbContext) : ICatalogReposito
             .Where(skill => includeInactive || skill.IsActive)
             .OrderBy(skill => skill.Name)
             .ThenBy(skill => skill.Code)
-            .Select(skill => new { skill.Id, skill.Code, skill.Name, skill.Category, skill.Description, skill.IsActive })
+            .Select(skill => new { skill.Id, skill.Code, skill.Name, skill.Category, skill.Description, skill.IsActive, skill.BadgeImageUrl })
             .ToListAsync(cancellationToken);
 
         return rows
@@ -26,7 +26,8 @@ public sealed class CatalogRepository(AppDbContext dbContext) : ICatalogReposito
                 skill.Name,
                 skill.Category.ToString(),
                 skill.Description,
-                skill.IsActive))
+                skill.IsActive,
+                skill.BadgeImageUrl))
             .ToList();
     }
 

@@ -410,12 +410,46 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AdjustmentProposalJson")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("ApplicationType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("INDIVIDUAL");
+
+                    b.Property<string>("Availability")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("CompanyOfferConditions")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int?>("ConfirmationDeadlineDays")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ConflictNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<string>("CoverLetter")
                         .HasMaxLength(4000)
                         .HasColumnType("nvarchar(4000)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CvFileName")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("CvUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<DateTimeOffset?>("DecidedAt")
                         .HasColumnType("datetimeoffset");
@@ -427,13 +461,47 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<string>("GithubUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("InterviewScheduleNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool?>("IsPreferredInConflict")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("JoinProposedRole")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTimeOffset?>("JoinRequestedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("JoinRequestedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("JoinTargetTeamId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PortfolioUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("PriorityOrder")
+                        .HasColumnType("int");
+
                     b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("RecommendedByLecturerId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
 
                     b.Property<Guid>("StudentId")
                         .HasColumnType("uniqueidentifier");
@@ -451,6 +519,9 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("WithdrawnAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<Guid?>("WithdrawnByUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
 
                     b.HasIndex("StudentId")
@@ -460,6 +531,8 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TeamId");
 
+                    b.HasIndex("JoinTargetTeamId", "Status");
+
                     b.HasIndex("ProjectId", "Status");
 
                     b.HasIndex("ProjectId", "StudentId")
@@ -468,6 +541,53 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.HasIndex("StudentId", "Status");
 
                     b.ToTable("applications", (string)null);
+                });
+
+            modelBuilder.Entity("DNTU.SkillBridge.Domain.Applications.ApplicationMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ApplicationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ConsentStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("IsSelectedByCompany")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ProposedRole")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTimeOffset?>("RespondedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationId", "StudentId")
+                        .IsUnique();
+
+                    b.HasIndex("StudentId", "ConsentStatus");
+
+                    b.ToTable("application_members", (string)null);
                 });
 
             modelBuilder.Entity("DNTU.SkillBridge.Domain.Catalog.Bank", b =>
@@ -659,6 +779,10 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("BadgeImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -719,6 +843,16 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<long?>("AllowanceShareAmount")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("ApplicationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Conditions")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
                     b.Property<DateTimeOffset>("ConfirmationDeadline")
                         .HasColumnType("datetimeoffset");
 
@@ -726,6 +860,13 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                         .HasColumnType("datetimeoffset");
 
                     b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("DeclineReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTimeOffset?>("DeclinedAt")
                         .HasColumnType("datetimeoffset");
 
                     b.Property<string>("PolicyVersion")
@@ -736,6 +877,10 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("ProposedRole")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -743,6 +888,13 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid>("StudentId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("StudentSignatureData")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StudentSignerName")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("datetimeoffset");
@@ -1372,14 +1524,39 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("AcceptedAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<long?>("AllowanceShareAmount")
+                        .HasColumnType("bigint");
+
                     b.Property<DateTimeOffset>("AssignedAt")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CourseName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<string>("DeclineReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<DateTimeOffset?>("EndedAt")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ExpectedDuration")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ExpectedWork")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<Guid?>("InvitedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsCourseLinked")
+                        .HasColumnType("bit");
 
                     b.Property<Guid>("LecturerId")
                         .HasColumnType("uniqueidentifier");
@@ -1391,6 +1568,9 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTimeOffset?>("RespondedAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -1401,6 +1581,9 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<Guid?>("TeamId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("datetimeoffset");
 
@@ -1409,7 +1592,11 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.HasIndex("LecturerId");
 
                     b.HasIndex("ProjectId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("IX_lecturer_assignments_ProjectId_ActiveOrInvited")
+                        .HasFilter("[Status] IN ('INVITED', 'ACTIVE')");
+
+                    b.HasIndex("TeamId");
 
                     b.ToTable("lecturer_assignments", (string)null);
                 });
@@ -1428,6 +1615,10 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(1);
+
+                    b.Property<string>("AvatarUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Bio")
                         .HasMaxLength(1000)
@@ -2550,6 +2741,76 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.ToTable("portfolio_entries", (string)null);
                 });
 
+            modelBuilder.Entity("DNTU.SkillBridge.Domain.Portfolio.SkillVerificationRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("AssignedLecturerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("EvidenceFileUrlsJson")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("EvidenceUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("LecturerFeedback")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Level")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("ReviewedByLecturerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SkillId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("StudentNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTimeOffset>("SubmittedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SkillId");
+
+                    b.HasIndex("AssignedLecturerId", "Status");
+
+                    b.HasIndex("StudentId", "Status");
+
+                    b.ToTable("skill_verification_requests", (string)null);
+                });
+
             modelBuilder.Entity("DNTU.SkillBridge.Domain.Portfolio.VerifiedSkill", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2635,6 +2896,23 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<string>("CompanyCommitmentSignatureData")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset?>("CompanyCommitmentSignedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("CompanyCommitmentSignedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CompanyCommitmentSignerName")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("CompanyCommitmentSignerTitle")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uniqueidentifier");
 
@@ -2706,6 +2984,23 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("UniversityCommitmentSignatureData")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset?>("UniversityCommitmentSignedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("UniversityCommitmentSignedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("UniversityCommitmentSignerName")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("UniversityCommitmentSignerTitle")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("datetimeoffset");
@@ -3304,11 +3599,19 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AvatarUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
 
                     b.Property<Guid>("CreatedByStudentId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<bool>("IsLocked")
                         .HasColumnType("bit");
@@ -3317,6 +3620,16 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
+
+                    b.Property<Guid?>("TargetProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TeamType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("PROJECT");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("datetimeoffset");
@@ -3340,11 +3653,19 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("ExpiresAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<string>("FunctionalRole")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<Guid>("InvitedByStudentId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("InvitedStudentId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<DateTimeOffset?>("RespondedAt")
                         .HasColumnType("datetimeoffset");
@@ -3382,6 +3703,13 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("StudentId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("FunctionalRole")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTimeOffset>("JoinedAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -3392,6 +3720,58 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.HasIndex("StudentId");
 
                     b.ToTable("team_members", (string)null);
+                });
+
+            modelBuilder.Entity("DNTU.SkillBridge.Domain.Teams.TeamProjectRecommendation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("LecturerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTimeOffset?>("RespondedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("RespondedByStudentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ResponseNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("TeamId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("LecturerId", "Status");
+
+                    b.HasIndex("TeamId", "ProjectId");
+
+                    b.ToTable("team_project_recommendations", (string)null);
                 });
 
             modelBuilder.Entity("DNTU.SkillBridge.Domain.Workspaces.ProjectActivity", b =>
@@ -3754,6 +4134,25 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.Navigation("Student");
 
                     b.Navigation("Team");
+                });
+
+            modelBuilder.Entity("DNTU.SkillBridge.Domain.Applications.ApplicationMember", b =>
+                {
+                    b.HasOne("DNTU.SkillBridge.Domain.Applications.Application", "Application")
+                        .WithMany("Members")
+                        .HasForeignKey("ApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DNTU.SkillBridge.Domain.Students.StudentProfile", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Application");
+
+                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("DNTU.SkillBridge.Domain.Catalog.Major", b =>
@@ -4295,6 +4694,33 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.Navigation("Team");
                 });
 
+            modelBuilder.Entity("DNTU.SkillBridge.Domain.Teams.TeamProjectRecommendation", b =>
+                {
+                    b.HasOne("DNTU.SkillBridge.Domain.Lecturers.LecturerProfile", "Lecturer")
+                        .WithMany()
+                        .HasForeignKey("LecturerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DNTU.SkillBridge.Domain.Projects.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DNTU.SkillBridge.Domain.Teams.Team", "Team")
+                        .WithMany()
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Lecturer");
+
+                    b.Navigation("Project");
+
+                    b.Navigation("Team");
+                });
+
             modelBuilder.Entity("DNTU.SkillBridge.Domain.Workspaces.ProjectActivity", b =>
                 {
                     b.HasOne("DNTU.SkillBridge.Domain.Projects.Project", null)
@@ -4383,6 +4809,11 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("DNTU.SkillBridge.Domain.Academics.Rubric", b =>
                 {
                     b.Navigation("Criteria");
+                });
+
+            modelBuilder.Entity("DNTU.SkillBridge.Domain.Applications.Application", b =>
+                {
+                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("DNTU.SkillBridge.Domain.Companies.Company", b =>

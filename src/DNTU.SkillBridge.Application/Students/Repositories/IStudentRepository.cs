@@ -35,4 +35,6 @@ public interface IStudentRepository
     void RemoveCertificate(StudentCertificate certificate);
 
     Task<PublicStudentResponse?> FindPublicStudentAsync(Guid studentId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<StudentSearchItemResponse>> SearchStudentsAsync(string query, int limit, CancellationToken cancellationToken);
 }

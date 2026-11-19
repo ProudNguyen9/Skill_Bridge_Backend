@@ -41,6 +41,19 @@ public sealed class Project : AuditableEntity
     /// <summary>Publication is driven purely by status (IsPubliclyVisible); this records when approval happened.</summary>
     public DateTimeOffset? PublishedAt { get; private set; }
 
+    // Three-party digital commitment (B-11) permanent signatures for Company (Side B) and University (Side C).
+    public Guid? CompanyCommitmentSignedByUserId { get; private set; }
+    public string? CompanyCommitmentSignerName { get; private set; }
+    public string? CompanyCommitmentSignerTitle { get; private set; }
+    public string? CompanyCommitmentSignatureData { get; private set; }
+    public DateTimeOffset? CompanyCommitmentSignedAt { get; private set; }
+
+    public Guid? UniversityCommitmentSignedByUserId { get; private set; }
+    public string? UniversityCommitmentSignerName { get; private set; }
+    public string? UniversityCommitmentSignerTitle { get; private set; }
+    public string? UniversityCommitmentSignatureData { get; private set; }
+    public DateTimeOffset? UniversityCommitmentSignedAt { get; private set; }
+
     public ICollection<ProjectSkill> Skills { get; } = [];
     public ICollection<ProjectDeliverable> Deliverables { get; } = [];
 
@@ -189,16 +202,19 @@ public sealed class Project : AuditableEntity
     }
 
     /// <summary>Parses stored JSON array of illustration image URLs safely.</summary>
-    public IReadOnlyList<string> GetIllustrationUrls()
+    public IReadOnlyList<string> GetIllustrationUrls() => ParseIllustrationUrls(IllustrationUrlsJson);
+
+    /// <summary>Parses a JSON array of illustration URLs safely inside query projections.</summary>
+    public static IReadOnlyList<string> ParseIllustrationUrls(string? json)
     {
-        if (string.IsNullOrWhiteSpace(IllustrationUrlsJson))
+        if (string.IsNullOrWhiteSpace(json))
         {
             return [];
         }
 
         try
         {
-            return JsonSerializer.Deserialize<List<string>>(IllustrationUrlsJson) ?? [];
+            return JsonSerializer.Deserialize<List<string>>(json) ?? [];
         }
         catch
         {
@@ -360,6 +376,46 @@ public sealed class Project : AuditableEntity
         }
 
         ApplicationDeadline = now;
+    }
+
+    /// <summary>Records immutable Company (Side B) signature on the B-11 commitment; cannot be re-signed.</summary>
+    public void SignCompanyCommitment(Guid userId, string signerName, string? signerTitle, string? signatureData, DateTimeOffset now)
+    {
+        if (Status is ProjectStatus.DRAFT or ProjectStatus.PENDING_APPROVAL or ProjectStatus.REJECTED or ProjectStatus.CANCELLED)
+        {
+            throw new InvalidOperationException("Đề tài chưa được phê duyệt để ký cam kết.");
+        }
+
+        if (CompanyCommitmentSignedAt.HasValue)
+        {
+            throw new InvalidOperationException("Doanh nghiệp đã ký xác nhận cam kết này và không thể ký lại.");
+        }
+
+        CompanyCommitmentSignedByUserId = userId;
+        CompanyCommitmentSignerName = signerName.Trim();
+        CompanyCommitmentSignerTitle = NormalizeText(signerTitle);
+        CompanyCommitmentSignatureData = NormalizeText(signatureData);
+        CompanyCommitmentSignedAt = now;
+    }
+
+    /// <summary>Records immutable University (Side C) signature on the B-11 commitment; cannot be re-signed.</summary>
+    public void SignUniversityCommitment(Guid userId, string signerName, string? signerTitle, string? signatureData, DateTimeOffset now)
+    {
+        if (Status is ProjectStatus.DRAFT or ProjectStatus.PENDING_APPROVAL or ProjectStatus.REJECTED or ProjectStatus.CANCELLED)
+        {
+            throw new InvalidOperationException("Đề tài chưa được phê duyệt để ký cam kết.");
+        }
+
+        if (UniversityCommitmentSignedAt.HasValue)
+        {
+            throw new InvalidOperationException("Nhà trường đã ký xác nhận cam kết này và không thể ký lại.");
+        }
+
+        UniversityCommitmentSignedByUserId = userId;
+        UniversityCommitmentSignerName = signerName.Trim();
+        UniversityCommitmentSignerTitle = NormalizeText(signerTitle);
+        UniversityCommitmentSignatureData = NormalizeText(signatureData);
+        UniversityCommitmentSignedAt = now;
     }
 
     /// <summary>Public visibility is enabled only for approved/published projects (13.07).</summary>

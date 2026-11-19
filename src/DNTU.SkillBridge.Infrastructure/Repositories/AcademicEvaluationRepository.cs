@@ -11,12 +11,14 @@ public sealed class AcademicEvaluationRepository(AppDbContext dbContext) : IAcad
 {
     public async Task<IReadOnlyCollection<AcademicEvaluation>> ListForLecturerAsync(Guid lecturerUserId, CancellationToken cancellationToken) =>
         await dbContext.AcademicEvaluations.AsNoTracking()
+            .Include(item => item.Scores)
             .Where(item => item.EvaluatorUserId == lecturerUserId)
             .OrderByDescending(item => item.CreatedAt)
             .ToListAsync(cancellationToken);
 
     public Task<AcademicEvaluation?> FindEvaluationAsync(Guid projectId, Guid studentId, CancellationToken cancellationToken) =>
         dbContext.AcademicEvaluations.AsNoTracking()
+            .Include(item => item.Scores)
             .SingleOrDefaultAsync(item => item.ProjectId == projectId && item.StudentId == studentId, cancellationToken);
 
     public Task<AcademicEvaluation?> FindEvaluationWithScoresAsync(Guid projectId, Guid studentId, Guid rubricId, CancellationToken cancellationToken) =>
@@ -87,6 +89,14 @@ public sealed class AcademicEvaluationRepository(AppDbContext dbContext) : IAcad
         var rubric = await dbContext.Rubrics.AsNoTracking()
             .Include(r => r.Criteria)
             .FirstOrDefaultAsync(r => r.Id == targetRubricId, cancellationToken);
+
+        if (rubric is null && targetRubricId == DefaultCapstoneRubricId)
+        {
+            var created = Rubric.CreateDefaultCapstone(DefaultCapstoneRubricId, Guid.Empty);
+            dbContext.Rubrics.Add(created);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            rubric = created;
+        }
 
         if (rubric is not null && rubric.Criteria.Count > 0)
         {

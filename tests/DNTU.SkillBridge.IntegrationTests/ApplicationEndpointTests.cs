@@ -330,6 +330,223 @@ public sealed class ApplicationEndpointTests(CatalogApiFactory factory)
     }
 
     [Fact]
+    public async Task Accept_BlocksSecondTeam_And_JoinExistingTeam_RequiresLeaderApproval()
+    {
+        var (company, admin) = await SeedAsync();
+        var projectId = await PublishProjectAsync(company, admin, $"{prefix} SingleTeamLeaderJoin", deadlineInDays: 14, expectedStudentCount: 4);
+        var leader1 = await RegisterStudentAsync();
+        var member1 = await RegisterStudentAsync();
+        var leader2 = await RegisterStudentAsync();
+        var member2 = await RegisterStudentAsync();
+        var soloCandidate = await RegisterStudentAsync();
+        var secondSoloCandidate = await RegisterStudentAsync();
+        var overflowSoloCandidate = await RegisterStudentAsync();
+
+        var leader1StudentId = await EnsureStudentProfileAsync(leader1);
+        var member1StudentId = await EnsureStudentProfileAsync(member1);
+        var leader2StudentId = await EnsureStudentProfileAsync(leader2);
+        var member2StudentId = await EnsureStudentProfileAsync(member2);
+        var soloStudentId = await EnsureStudentProfileAsync(soloCandidate);
+
+        Guid team1Id = default;
+        Guid team2Id = default;
+
+        await factory.RunWithDbContextAsync(async dbContext =>
+        {
+            var t1 = new DNTU.SkillBridge.Domain.Teams.Team("Nhóm Thực Hiện", leader1StudentId);
+            var t2 = new DNTU.SkillBridge.Domain.Teams.Team("Nhóm Thứ Hai", leader2StudentId);
+            dbContext.Teams.AddRange(t1, t2);
+            dbContext.TeamMembers.AddRange(
+                new DNTU.SkillBridge.Domain.Teams.TeamMember(
+                    t1.Id, member1StudentId, DNTU.SkillBridge.Domain.Teams.TeamMemberRole.MEMBER),
+                new DNTU.SkillBridge.Domain.Teams.TeamMember(
+                    t2.Id, member2StudentId, DNTU.SkillBridge.Domain.Teams.TeamMemberRole.MEMBER));
+            await dbContext.SaveChangesAsync();
+            team1Id = t1.Id;
+            team2Id = t2.Id;
+        });
+
+        var team1ApplyRes = await leader1.PostAsJsonAsync($"/api/v1/projects/{projectId}/applications", new { teamId = team1Id }, Json);
+        Assert.Equal(HttpStatusCode.Created, team1ApplyRes.StatusCode);
+        var team1App = (await team1ApplyRes.Content.ReadFromJsonAsync<Envelope<ApplicationDto>>(Json))!.Data;
+
+        var team2ApplyRes = await leader2.PostAsJsonAsync($"/api/v1/projects/{projectId}/applications", new { teamId = team2Id }, Json);
+        Assert.Equal(HttpStatusCode.Created, team2ApplyRes.StatusCode);
+        var team2App = (await team2ApplyRes.Content.ReadFromJsonAsync<Envelope<ApplicationDto>>(Json))!.Data;
+
+        var soloApplyRes = await soloCandidate.PostAsJsonAsync($"/api/v1/projects/{projectId}/applications", new { }, Json);
+        Assert.Equal(HttpStatusCode.Created, soloApplyRes.StatusCode);
+        var soloApp = (await soloApplyRes.Content.ReadFromJsonAsync<Envelope<ApplicationDto>>(Json))!.Data;
+
+        var secondSoloApplyRes = await secondSoloCandidate.PostAsJsonAsync($"/api/v1/projects/{projectId}/applications", new { }, Json);
+        Assert.Equal(HttpStatusCode.Created, secondSoloApplyRes.StatusCode);
+        var secondSoloApp = (await secondSoloApplyRes.Content.ReadFromJsonAsync<Envelope<ApplicationDto>>(Json))!.Data;
+
+        var overflowApplyRes = await overflowSoloCandidate.PostAsJsonAsync($"/api/v1/projects/{projectId}/applications", new { }, Json);
+        Assert.Equal(HttpStatusCode.Created, overflowApplyRes.StatusCode);
+        var overflowSoloApp = (await overflowApplyRes.Content.ReadFromJsonAsync<Envelope<ApplicationDto>>(Json))!.Data;
+
+        // 1. Accept first team (2/4 slots filled, 2 slots remaining).
+        Assert.Equal(HttpStatusCode.OK,
+            (await company.PostAsJsonAsync($"/api/v1/company/applications/{team1App.Id}/accept", new { }, Json)).StatusCode);
+
+        // 2. Second independent team (2 members) cannot be accepted even though 2 slots remain (2 + 2 <= 4).
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await company.PostAsJsonAsync($"/api/v1/company/applications/{team2App.Id}/accept", new { }, Json)).StatusCode);
+
+        // 3. Individual candidate cannot be silently accepted without team leader approval once a team is accepted.
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await company.PostAsJsonAsync($"/api/v1/company/applications/{soloApp.Id}/accept", new { }, Json)).StatusCode);
+
+        // 4. Company proposes adding 2 individual candidates into existing team1 (fills the 2 remaining reserved slots).
+        var proposeRes1 = await company.PostAsJsonAsync(
+            $"/api/v1/company/applications/{soloApp.Id}/request-join-team",
+            new { proposedRole = "QA Engineer", reason = "Bổ sung kiểm thử cho nhóm." },
+            Json);
+        Assert.Equal(HttpStatusCode.OK, proposeRes1.StatusCode);
+        Assert.Contains("WAITING_LEADER_APPROVAL", await proposeRes1.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+
+        Assert.Equal(HttpStatusCode.OK,
+            (await company.PostAsJsonAsync(
+                $"/api/v1/company/applications/{secondSoloApp.Id}/request-join-team",
+                new { proposedRole = "Frontend", reason = "Hỗ trợ UI." },
+                Json)).StatusCode);
+
+        // 5. Capacity reservation blocks proposing a 3rd individual while 2 accepted + 2 reserved = 4/4.
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await company.PostAsJsonAsync($"/api/v1/company/applications/{overflowSoloApp.Id}/request-join-team", new { }, Json)).StatusCode);
+
+        // 6. Team 1 leader sees request; non-leader cannot approve it.
+        var leaderRequests = await leader1.GetFromJsonAsync<ListEnvelope<ApplicationDto>>("/api/v1/applications/me/leader-join-requests", Json);
+        Assert.NotNull(leaderRequests);
+        Assert.Contains(leaderRequests!.Data, item => item.Id == soloApp.Id);
+
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await member1.PostAsJsonAsync($"/api/v1/applications/{soloApp.Id}/leader-join-approval", new { approve = true }, Json)).StatusCode);
+
+        // 7. Team 1 leader approves soloCandidate: joins Team 1, app becomes ACCEPTED, commitment is issued (total 3 commitments).
+        var approveRes = await leader1.PostAsJsonAsync(
+            $"/api/v1/applications/{soloApp.Id}/leader-join-approval",
+            new { approve = true, note = "Chào mừng vào nhóm!" },
+            Json);
+        Assert.Equal(HttpStatusCode.OK, approveRes.StatusCode);
+        Assert.Contains("ACCEPTED", await approveRes.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+
+        await factory.RunWithDbContextAsync(async dbContext =>
+        {
+            Assert.Equal(3, await dbContext.ProjectCommitments.CountAsync(item => item.ProjectId == projectId));
+            Assert.True(await dbContext.TeamMembers.AnyAsync(item => item.TeamId == team1Id && item.StudentId == soloStudentId));
+            var updatedSolo = await dbContext.Applications.SingleAsync(item => item.Id == soloApp.Id);
+            Assert.Equal(team1Id, updatedSolo.TeamId);
+            Assert.Equal("QA Engineer", updatedSolo.JoinProposedRole);
+        });
+    }
+
+    [Fact]
+    public async Task ThreePartyCommitment_SignsOncePerSide_PersistsToDatabase_AndBlocksResign()
+    {
+        var (company, admin) = await SeedAsync();
+        var foreignCompany = await CreateVerifiedCompanyAsync();
+        var projectId = await PublishProjectAsync(company, admin, $"{prefix} Tripartite Sign", deadlineInDays: 14);
+        var student = await RegisterStudentAsync();
+        var (assignedLecturer, lecturerId) = await CreateLecturerClientAsync();
+        var unassignedLecturer = (await CreateLecturerClientAsync()).Client;
+
+        Assert.Equal(HttpStatusCode.Created, (await admin.PostAsJsonAsync($"/api/v1/lecturers/{lecturerId}/assignments", new
+        {
+            projectId,
+            role = "SUPERVISOR"
+        }, Json)).StatusCode);
+        var lecturerAssignments = await assignedLecturer.GetFromJsonAsync<ListEnvelope<LecturerAssignmentDto>>("/api/v1/lecturers/me/assignments", Json);
+        Assert.Equal(HttpStatusCode.OK, (await assignedLecturer.PutAsync($"/api/v1/lecturers/me/assignments/{lecturerAssignments!.Data.Single().Id}/accept", null)).StatusCode);
+
+        var app = (await (await student.PostAsJsonAsync($"/api/v1/projects/{projectId}/applications", new { }, Json))
+            .Content.ReadFromJsonAsync<Envelope<ApplicationDto>>(Json))!.Data;
+        Assert.Equal(HttpStatusCode.OK, (await company.PostAsJsonAsync($"/api/v1/company/applications/{app.Id}/accept", new { }, Json)).StatusCode);
+
+        const string sampleSig = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
+        // 1. Student (Side A) signs once with real signature payload; cannot re-sign.
+        var studentSignRes = await student.PostAsJsonAsync($"/api/v1/projects/{projectId}/commitment/confirm", new
+        {
+            signerName = "Nguyễn Sinh Viên",
+            signatureDataUrl = sampleSig
+        }, Json);
+        Assert.Equal(HttpStatusCode.OK, studentSignRes.StatusCode);
+        var studentBody = await studentSignRes.Content.ReadAsStringAsync();
+        Assert.Contains("CONFIRMED", studentBody, StringComparison.Ordinal);
+        Assert.Contains("Nguyễn Sinh Viên", studentBody, StringComparison.Ordinal);
+
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await student.PostAsJsonAsync($"/api/v1/projects/{projectId}/commitment/confirm", new
+            {
+                signerName = "Ký lại",
+                signatureDataUrl = sampleSig
+            }, Json)).StatusCode);
+
+        // 2. Role isolation & Company (Side B) signs once; cannot re-sign.
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await student.PostAsJsonAsync($"/api/v1/company/projects/{projectId}/commitment/sign", new { signerName = "Fake" }, Json)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await foreignCompany.PostAsJsonAsync($"/api/v1/company/projects/{projectId}/commitment/sign", new { signerName = "Foreign" }, Json)).StatusCode);
+
+        var companySignRes = await company.PostAsJsonAsync($"/api/v1/company/projects/{projectId}/commitment/sign", new
+        {
+            signerName = "Trần Doanh Nghiệp",
+            signerTitle = "Giám đốc Kỹ thuật",
+            signatureDataUrl = sampleSig
+        }, Json);
+        Assert.Equal(HttpStatusCode.OK, companySignRes.StatusCode);
+        Assert.Contains("Trần Doanh Nghiệp", await companySignRes.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await company.PostAsJsonAsync($"/api/v1/company/projects/{projectId}/commitment/sign", new
+            {
+                signerName = "Ký lại DN"
+            }, Json)).StatusCode);
+
+        // 3. University (Side C) blocks student & unassigned lecturer, signs once, locks both Admin & Assigned Lecturer forever.
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await student.PostAsJsonAsync($"/api/v1/university/projects/{projectId}/commitment/sign", new { }, Json)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await unassignedLecturer.PostAsJsonAsync($"/api/v1/university/projects/{projectId}/commitment/sign", new { }, Json)).StatusCode);
+
+        var uniSignRes = await assignedLecturer.PostAsJsonAsync($"/api/v1/university/projects/{projectId}/commitment/sign", new
+        {
+            signerName = "TS. Lê Giảng Viên",
+            signerTitle = "Giảng viên hướng dẫn DNTU",
+            signatureDataUrl = sampleSig
+        }, Json);
+        Assert.Equal(HttpStatusCode.OK, uniSignRes.StatusCode);
+        Assert.Contains("TS. Lê Giảng Viên", await uniSignRes.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await assignedLecturer.PostAsJsonAsync($"/api/v1/university/projects/{projectId}/commitment/sign", new { signerName = "Ký lại GV" }, Json)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await admin.PostAsJsonAsync($"/api/v1/university/projects/{projectId}/commitment/sign", new { signerName = "Admin ký đè" }, Json)).StatusCode);
+
+        // 4. Verify real DB persistence and summary listing across parties.
+        var summaryList = await (await admin.GetAsync("/api/v1/commitments/projects")).Content.ReadAsStringAsync();
+        Assert.Contains(projectId.ToString(), summaryList, StringComparison.OrdinalIgnoreCase);
+
+        await factory.RunWithDbContextAsync(async dbContext =>
+        {
+            var projectEntity = await dbContext.Projects.SingleAsync(p => p.Id == projectId);
+            Assert.NotNull(projectEntity.CompanyCommitmentSignedAt);
+            Assert.Equal("Trần Doanh Nghiệp", projectEntity.CompanyCommitmentSignerName);
+            Assert.Equal(sampleSig, projectEntity.CompanyCommitmentSignatureData);
+            Assert.NotNull(projectEntity.UniversityCommitmentSignedAt);
+            Assert.Equal("TS. Lê Giảng Viên", projectEntity.UniversityCommitmentSignerName);
+            Assert.Equal(sampleSig, projectEntity.UniversityCommitmentSignatureData);
+
+            var commitmentEntity = await dbContext.ProjectCommitments.SingleAsync(c => c.ProjectId == projectId);
+            Assert.Equal("Nguyễn Sinh Viên", commitmentEntity.StudentSignerName);
+            Assert.Equal(sampleSig, commitmentEntity.StudentSignatureData);
+            Assert.NotNull(commitmentEntity.ConfirmedAt);
+        });
+    }
+
+    [Fact]
     public async Task Withdrawal_Workflow_EnforcesLecturerScope_AdminDecision_AndExpiryProcessing()
     {
         var (company, admin) = await SeedAsync();
@@ -960,7 +1177,7 @@ public sealed class ApplicationEndpointTests(CatalogApiFactory factory)
         return (company, admin);
     }
 
-    private async Task<Guid> PublishProjectAsync(HttpClient company, HttpClient admin, string title, int deadlineInDays)
+    private async Task<Guid> PublishProjectAsync(HttpClient company, HttpClient admin, string title, int deadlineInDays, int expectedStudentCount = 3)
     {
         var skillIds = await GetActiveSkillIdsAsync(1);
         var projectId = await CreateProjectAsync(company, title, skillIds);
@@ -975,7 +1192,7 @@ public sealed class ApplicationEndpointTests(CatalogApiFactory factory)
             workType = "ONSITE",
             durationWeeks = 4,
             applicationDeadline = DateTimeOffset.UtcNow.AddDays(deadlineInDays),
-            expectedStudentCount = 3,
+            expectedStudentCount,
             minTeamSize = 2,
             maxTeamSize = 4,
             allowanceAmount = 2_000_000,

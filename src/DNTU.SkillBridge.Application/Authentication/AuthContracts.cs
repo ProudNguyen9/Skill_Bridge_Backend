@@ -74,7 +74,7 @@ public sealed class RegisterRequest : IValidatableObject
         }
         else if (AccountType == RegistrationAccountType.Company)
         {
-            if (string.IsNullOrWhiteSpace(CompanyName))
+            if (string.IsNullOrWhiteSpace(CompanyName) && string.IsNullOrWhiteSpace(DisplayName))
             {
                 yield return new ValidationResult(
                     "Tên doanh nghiệp là bắt buộc.",
@@ -192,7 +192,8 @@ public sealed record CurrentUserResponse(
     Guid? CompanyId,
     Guid? LecturerId,
     bool ProfileCompleted,
-    string? LecturerApprovalStatus);
+    string? LecturerApprovalStatus,
+    string? AvatarUrl = null);
 
 public sealed record SessionResponse(
     Guid Id,

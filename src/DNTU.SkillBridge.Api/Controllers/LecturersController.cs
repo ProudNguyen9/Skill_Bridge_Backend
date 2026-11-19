@@ -2,6 +2,7 @@ using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Application.Lecturers;
 using DNTU.SkillBridge.Application.Common.Security;
+using DNTU.SkillBridge.Application.Teams;
 using DNTU.SkillBridge.Domain.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -83,6 +84,146 @@ public sealed class LecturersController(ILecturerService lecturerService, ICurre
             LecturerAssignmentAcceptOutcome.NotOpenForAcceptance => Conflict(),
             _ => Ok(new ApiResponse<LecturerAssignmentResponse>(assignment!))
         };
+    }
+
+    /// <summary>Declines an invited supervision assignment with an optional reason.</summary>
+    [HttpPut("me/assignments/{assignmentId:guid}/decline")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<LecturerAssignmentResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ApiResponse<LecturerAssignmentResponse>>> DeclineAssignment(
+        Guid assignmentId, [FromBody] DeclineLecturerAssignmentRequest? request, CancellationToken cancellationToken)
+    {
+        if (!IsLecturer())
+        {
+            return Forbid();
+        }
+
+        var (outcome, assignment) = await lecturerService.DeclineMyAssignmentAsync(currentUser.UserId!.Value, assignmentId, request?.Reason, cancellationToken);
+        return outcome switch
+        {
+            LecturerAssignmentAcceptOutcome.NotFound => NotFound(),
+            LecturerAssignmentAcceptOutcome.NotOpenForAcceptance => Conflict(),
+            _ => Ok(new ApiResponse<LecturerAssignmentResponse>(assignment!))
+        };
+    }
+
+    /// <summary>Searches active, admin-approved lecturers so teams and companies can invite a technical advisor.</summary>
+    [HttpGet("directory")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<LecturerDirectoryItemResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<IReadOnlyCollection<LecturerDirectoryItemResponse>>>> SearchDirectory(
+        [FromQuery] string? q = null, [FromQuery] int limit = 20, CancellationToken cancellationToken = default)
+    {
+        return Ok(new ApiResponse<IReadOnlyCollection<LecturerDirectoryItemResponse>>(
+            await lecturerService.SearchDirectoryAsync(q, limit, cancellationToken)));
+    }
+
+    /// <summary>Team/student/company/admin invites an approved lecturer to provide technical supervision on a project (Bước 27).</summary>
+    [HttpPost("/api/v1/projects/{projectId:guid}/lecturer-invitations")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<LecturerAssignmentResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ApiResponse<LecturerAssignmentResponse>>> InviteToProject(
+        Guid projectId, [FromBody] InviteProjectLecturerRequest request, CancellationToken cancellationToken)
+    {
+        var (outcome, assignment) = await lecturerService.InviteLecturerToProjectAsync(
+            currentUser.UserId!.Value, IsAdmin(), projectId, request, cancellationToken);
+        return outcome switch
+        {
+            ProjectLecturerInviteOutcome.ProjectNotFound or ProjectLecturerInviteOutcome.LecturerNotFound => NotFound(),
+            ProjectLecturerInviteOutcome.Forbidden => Forbid(),
+            ProjectLecturerInviteOutcome.LecturerInactive => Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "Giảng viên chưa sẵn sàng nhận hướng dẫn",
+                detail: "Hồ sơ giảng viên hiện tạm ngưng hoạt động nên chưa thể nhận lời mời."),
+            ProjectLecturerInviteOutcome.DuplicateAssignment => Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "Dự án đã có lời mời hoặc giảng viên hướng dẫn",
+                detail: "Dự án này đang có lời mời chờ giảng viên xác nhận hoặc đã có giảng viên phụ trách. Vui lòng huỷ lời mời đang chờ trước khi mời giảng viên khác."),
+            _ => Created(string.Empty, new ApiResponse<LecturerAssignmentResponse>(assignment!))
+        };
+    }
+
+    /// <summary>Lists all lecturer invitations across projects accessible to the authenticated user (student/company).</summary>
+    [HttpGet("/api/v1/lecturers/invitations/sent")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<LecturerAssignmentResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<IReadOnlyCollection<LecturerAssignmentResponse>>>> ListSentInvitations(
+        CancellationToken cancellationToken)
+    {
+        return Ok(new ApiResponse<IReadOnlyCollection<LecturerAssignmentResponse>>(
+            await lecturerService.ListSentProjectInvitationsAsync(currentUser.UserId!.Value, cancellationToken)));
+    }
+
+    /// <summary>Lists lecturer supervision invitations/assignments for a project.</summary>
+    [HttpGet("/api/v1/projects/{projectId:guid}/lecturer-invitations")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<LecturerAssignmentResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<IReadOnlyCollection<LecturerAssignmentResponse>>>> ListProjectAssignments(
+        Guid projectId, CancellationToken cancellationToken)
+    {
+        return Ok(new ApiResponse<IReadOnlyCollection<LecturerAssignmentResponse>>(
+            await lecturerService.ListProjectAssignmentsAsync(projectId, cancellationToken)));
+    }
+
+    /// <summary>Cancels a pending lecturer invitation on a project.</summary>
+    [HttpDelete("/api/v1/projects/{projectId:guid}/lecturer-invitations/{assignmentId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CancelProjectInvitation(Guid projectId, Guid assignmentId, CancellationToken cancellationToken)
+    {
+        return await lecturerService.CancelProjectInvitationAsync(currentUser.UserId!.Value, IsAdmin(), projectId, assignmentId, cancellationToken)
+            ? NoContent()
+            : NotFound();
+    }
+
+    /// <summary>Lecturer: lists unlocked student teams available for project recommendation (Bước 23).</summary>
+    [HttpGet("teams")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<LecturerTeamItemResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<IReadOnlyCollection<LecturerTeamItemResponse>>>> ListTeams(
+        [FromQuery] string? q = null, CancellationToken cancellationToken = default)
+    {
+        if (!IsLecturer()) return Forbid();
+        return Ok(new ApiResponse<IReadOnlyCollection<LecturerTeamItemResponse>>(
+            await lecturerService.ListTeamsForLecturerAsync(q, cancellationToken)));
+    }
+
+    /// <summary>Lecturer: recommends a student team to a marketplace project (Bước 24).</summary>
+    [HttpPost("recommendations")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<TeamProjectRecommendationResponse>), StatusCodes.Status201Created)]
+    public async Task<ActionResult<ApiResponse<TeamProjectRecommendationResponse>>> RecommendTeam(
+        [FromBody] CreateTeamRecommendationRequest request, CancellationToken cancellationToken)
+    {
+        if (!IsLecturer()) return Forbid();
+        var (outcome, recommendation) = await lecturerService.RecommendTeamToProjectAsync(currentUser.UserId!.Value, request, cancellationToken);
+        return outcome switch
+        {
+            LecturerRecommendationCreateOutcome.LecturerNotApproved => Forbid(),
+            LecturerRecommendationCreateOutcome.TeamNotFound or LecturerRecommendationCreateOutcome.ProjectNotFound => NotFound(),
+            LecturerRecommendationCreateOutcome.DuplicatePending => Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "Không thể gửi đề xuất cho nhóm này",
+                detail: "Nhóm hiện đang tham gia/ứng tuyển một dự án khác hoặc đã có đề xuất tương tự đang chờ xử lý."),
+            _ => Created(string.Empty, new ApiResponse<TeamProjectRecommendationResponse>(recommendation!))
+        };
+    }
+
+    /// <summary>Lecturer: lists team recommendations sent by the current lecturer.</summary>
+    [HttpGet("me/recommendations")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<TeamProjectRecommendationResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<IReadOnlyCollection<TeamProjectRecommendationResponse>>>> ListMyRecommendations(CancellationToken cancellationToken)
+    {
+        if (!IsLecturer()) return Forbid();
+        return Ok(new ApiResponse<IReadOnlyCollection<TeamProjectRecommendationResponse>>(
+            await lecturerService.ListMyRecommendationsAsync(currentUser.UserId!.Value, cancellationToken)));
     }
 
     /// <summary>Admin: lists a lecturer's project supervision assignments.</summary>

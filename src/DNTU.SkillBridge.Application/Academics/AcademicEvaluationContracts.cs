@@ -19,6 +19,11 @@ public sealed class UpsertAcademicEvaluationRequest
     public IReadOnlyCollection<CriterionScoreRequest> Scores { get; init; } = [];
 }
 
+public sealed record AcademicCriterionScoreResponse(
+    Guid RubricCriterionId,
+    decimal Score,
+    decimal Weight);
+
 public sealed record AcademicEvaluationResponse(
     Guid Id,
     Guid ProjectId,
@@ -29,4 +34,5 @@ public sealed record AcademicEvaluationResponse(
     string Status,
     Guid Version,
     DateTimeOffset? FinalizedAt,
-    string? ProofHash = null);
+    string? ProofHash = null,
+    IReadOnlyCollection<AcademicCriterionScoreResponse>? Scores = null);

@@ -148,15 +148,6 @@ public static class DevelopmentTestAccountSeed
             {
                 lecturerProfile.Approve(DateTimeOffset.UtcNow);
             }
-
-            // Clear stale assignments
-            var staleAssignments = await dbContext.LecturerAssignments
-                .Where(la => la.LecturerId == lecturerProfile.Id)
-                .ToListAsync(cancellationToken);
-            if (staleAssignments.Count > 0)
-            {
-                dbContext.LecturerAssignments.RemoveRange(staleAssignments);
-            }
         }
 
         foreach (var companyAccount in Companies)

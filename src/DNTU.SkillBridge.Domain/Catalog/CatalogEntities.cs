@@ -10,11 +10,12 @@ public sealed class Skill : AuditableEntity
     public string Slug { get; private set; } = string.Empty;
     public SkillCategory Category { get; private set; }
     public string? Description { get; private set; }
+    public string? BadgeImageUrl { get; private set; }
     public bool IsActive { get; private set; } = true;
 
     private Skill() { }
 
-    public Skill(string code, string name, SkillCategory category, string? description = null)
+    public Skill(string code, string name, SkillCategory category, string? description = null, string? badgeImageUrl = null)
     {
         Code = code.Trim().ToUpperInvariant();
         Name = name.Trim();
@@ -22,14 +23,15 @@ public sealed class Skill : AuditableEntity
         Slug = SlugBuilder.Create(Name);
         Category = category;
         Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        BadgeImageUrl = string.IsNullOrWhiteSpace(badgeImageUrl) ? null : badgeImageUrl.Trim();
     }
 
     public void Deactivate() => IsActive = false;
 
     public void Activate() => IsActive = true;
 
-    /// <summary>Admin catalog maintenance: renames the skill (slug follows the name) and updates category/description.</summary>
-    public void Update(string name, SkillCategory category, string? description)
+    /// <summary>Admin catalog maintenance: renames the skill (slug follows the name) and updates category/description/badge.</summary>
+    public void Update(string name, SkillCategory category, string? description, string? badgeImageUrl = null)
     {
         if (!string.IsNullOrWhiteSpace(name))
         {
@@ -40,6 +42,10 @@ public sealed class Skill : AuditableEntity
 
         Category = category;
         Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        if (badgeImageUrl is not null)
+        {
+            BadgeImageUrl = string.IsNullOrWhiteSpace(badgeImageUrl) ? null : badgeImageUrl.Trim();
+        }
     }
 }
 

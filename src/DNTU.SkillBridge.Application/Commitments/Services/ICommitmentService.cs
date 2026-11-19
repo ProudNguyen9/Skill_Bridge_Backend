@@ -13,6 +13,23 @@ public interface ICommitmentService
 
     Task<CommitmentResponse?> ConfirmAsync(Guid userId, Guid projectId, CancellationToken cancellationToken);
 
+    Task<CommitmentResponse?> ConfirmAsync(Guid userId, Guid projectId, SignCommitmentRequest? request, CancellationToken cancellationToken);
+
+    Task<CommitmentResponse?> DeclineAsync(Guid userId, Guid projectId, string? reason, CancellationToken cancellationToken);
+
+    Task<ProjectCommitmentOverviewResponse?> GetProjectOverviewAsync(Guid userId, Guid projectId, CancellationToken cancellationToken);
+
+    Task<ProjectCommitmentOverviewResponse?> GetProjectOverviewForActorAsync(Guid userId, IReadOnlyCollection<string> roles, Guid projectId, CancellationToken cancellationToken);
+
+    Task<(CommitmentSignOutcome Outcome, ProjectCommitmentOverviewResponse? Overview)> SignCompanyCommitmentAsync(
+        Guid userId, Guid projectId, SignCommitmentRequest? request, CancellationToken cancellationToken);
+
+    Task<(CommitmentSignOutcome Outcome, ProjectCommitmentOverviewResponse? Overview)> SignUniversityCommitmentAsync(
+        Guid userId, IReadOnlyCollection<string> roles, Guid projectId, SignCommitmentRequest? request, CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<ProjectCommitmentSummaryItemResponse>> ListProjectCommitmentSummariesAsync(
+        Guid userId, IReadOnlyCollection<string> roles, CancellationToken cancellationToken);
+
     Task<(WithdrawalOutcome Outcome, WithdrawalResponse? Withdrawal)> CreateWithdrawalAsync(Guid userId, CreateWithdrawalRequest request, CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<WithdrawalResponse>> ListMyWithdrawalsAsync(Guid userId, CancellationToken cancellationToken);
