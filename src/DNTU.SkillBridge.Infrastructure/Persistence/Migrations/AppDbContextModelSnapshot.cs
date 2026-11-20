@@ -1515,6 +1515,39 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.ToTable("user_sessions", (string)null);
                 });
 
+            modelBuilder.Entity("DNTU.SkillBridge.Domain.Integrations.GoogleCalendarIntegration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ConnectedEmail")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("RefreshToken")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("google_calendar_integrations", (string)null);
+                });
+
             modelBuilder.Entity("DNTU.SkillBridge.Domain.Lecturers.LecturerAssignment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1828,6 +1861,9 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("ApplicationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
 
@@ -1846,6 +1882,13 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.Property<string>("ExternalUrl")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("MeetingType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)")
+                        .HasDefaultValue("PROJECT");
 
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
@@ -1867,6 +1910,10 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                         .HasColumnType("datetimeoffset");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ApplicationId")
+                        .IsUnique()
+                        .HasFilter("[ApplicationId] IS NOT NULL");
 
                     b.HasIndex("ProjectId", "StartAt");
 
@@ -4318,6 +4365,15 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("DNTU.SkillBridge.Domain.Integrations.GoogleCalendarIntegration", b =>
+                {
+                    b.HasOne("DNTU.SkillBridge.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("DNTU.SkillBridge.Domain.Lecturers.LecturerAssignment", b =>
                 {
                     b.HasOne("DNTU.SkillBridge.Domain.Lecturers.LecturerProfile", null)
@@ -4385,11 +4441,18 @@ namespace DNTU.SkillBridge.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("DNTU.SkillBridge.Domain.Meetings.ProjectMeeting", b =>
                 {
+                    b.HasOne("DNTU.SkillBridge.Domain.Applications.Application", "Application")
+                        .WithMany()
+                        .HasForeignKey("ApplicationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("DNTU.SkillBridge.Domain.Projects.Project", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Application");
                 });
 
             modelBuilder.Entity("DNTU.SkillBridge.Domain.Milestones.MilestoneApprovalHistory", b =>

@@ -12,12 +12,26 @@ public sealed class ProjectMeeting : AuditableEntity
     public string? ExternalUrl { get; private set; }
     public MeetingExternalLinkType ExternalLinkType { get; private set; }
     public MeetingReminderState ReminderState { get; private set; }
+    public MeetingType MeetingType { get; private set; } = MeetingType.PROJECT;
+
+    /// <summary>Set only for INTERVIEW meetings: the application this interview belongs to (one interview per application).</summary>
+    public Guid? ApplicationId { get; private set; }
+    public DNTU.SkillBridge.Domain.Applications.Application? Application { get; private set; }
 
     private ProjectMeeting() { }
 
     public ProjectMeeting(Guid projectId, string title, string? description, DateTimeOffset startAt, DateTimeOffset endAt, string? externalUrl)
     {
         ProjectId = projectId;
+        Update(title, description, startAt, endAt, externalUrl);
+        ReminderState = MeetingReminderState.SCHEDULED;
+    }
+
+    public ProjectMeeting(Guid projectId, Guid applicationId, string title, string? description, DateTimeOffset startAt, DateTimeOffset endAt, string? externalUrl)
+    {
+        ProjectId = projectId;
+        ApplicationId = applicationId;
+        MeetingType = MeetingType.INTERVIEW;
         Update(title, description, startAt, endAt, externalUrl);
         ReminderState = MeetingReminderState.SCHEDULED;
     }

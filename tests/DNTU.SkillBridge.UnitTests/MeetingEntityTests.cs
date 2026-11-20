@@ -35,4 +35,26 @@ public sealed class MeetingEntityTests
 
         Assert.Throws<ArgumentException>(() => new ProjectMeeting(Guid.NewGuid(), "Planning", null, localStart, localStart.AddHours(1), null));
     }
+
+    [Fact]
+    public void InterviewConstructor_MarksMeetingTypeAndLinksApplication()
+    {
+        var startAt = DateTimeOffset.UtcNow.AddDays(1);
+        var meeting = new ProjectMeeting(Guid.NewGuid(), Guid.NewGuid(), "Phỏng vấn: Đề tài X", null, startAt, startAt.AddMinutes(30), "https://meet.google.com/abc-defg-hij");
+
+        Assert.Equal(MeetingType.INTERVIEW, meeting.MeetingType);
+        Assert.NotNull(meeting.ApplicationId);
+        Assert.Equal(MeetingExternalLinkType.GOOGLE_MEET, meeting.ExternalLinkType);
+        Assert.Equal(MeetingReminderState.SCHEDULED, meeting.ReminderState);
+    }
+
+    [Fact]
+    public void ProjectConstructor_DefaultsToProjectMeetingType()
+    {
+        var startAt = DateTimeOffset.UtcNow.AddDays(1);
+        var meeting = new ProjectMeeting(Guid.NewGuid(), "Sprint planning", null, startAt, startAt.AddHours(1), null);
+
+        Assert.Equal(MeetingType.PROJECT, meeting.MeetingType);
+        Assert.Null(meeting.ApplicationId);
+    }
 }

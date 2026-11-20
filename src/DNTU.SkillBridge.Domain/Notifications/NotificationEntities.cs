@@ -45,11 +45,11 @@ public sealed class OutboxMessage : AuditableEntity
     public string? LastError { get; private set; }
 
     private OutboxMessage() { }
-    public OutboxMessage(string type, string payloadJson)
+    public OutboxMessage(string type, string payloadJson, DateTimeOffset? availableAt = null)
     {
         Type = string.IsNullOrWhiteSpace(type) ? throw new ArgumentException("An outbox type is required.", nameof(type)) : type.Trim();
         PayloadJson = string.IsNullOrWhiteSpace(payloadJson) ? throw new ArgumentException("An outbox payload is required.", nameof(payloadJson)) : payloadJson;
-        AvailableAt = DateTimeOffset.UtcNow;
+        AvailableAt = availableAt ?? DateTimeOffset.UtcNow;
     }
     public void MarkProcessed() => ProcessedAt = DateTimeOffset.UtcNow;
     public void Retry(string safeError)

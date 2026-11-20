@@ -5,6 +5,9 @@ public sealed class MeetingService(IMeetingRepository meetingRepository) : IMeet
     public Task<MeetingResponse?> CreateAsync(Guid userId, Guid projectId, CreateMeetingRequest request, CancellationToken cancellationToken) =>
         meetingRepository.CreateAsync(userId, projectId, request, cancellationToken);
 
+    public Task<(MeetingOutcome Outcome, MeetingResponse? Meeting)> CreateOrRescheduleInterviewAsync(Guid companyUserId, Guid companyId, Guid applicationId, CreateInterviewMeetingRequest request, CancellationToken cancellationToken) =>
+        meetingRepository.CreateOrRescheduleInterviewAsync(companyUserId, companyId, applicationId, request, cancellationToken);
+
     public Task<IReadOnlyCollection<MeetingResponse>?> ListAsync(Guid userId, Guid projectId, CancellationToken cancellationToken) =>
         meetingRepository.ListAsync(userId, projectId, cancellationToken);
 
@@ -28,6 +31,9 @@ public sealed class MeetingService(IMeetingRepository meetingRepository) : IMeet
 
     public Task<(MeetingOutcome Outcome, MeetingMinutesResponse? Minutes)> UpsertMinutesAsync(Guid userId, Guid meetingId, UpsertMeetingMinutesRequest request, CancellationToken cancellationToken) =>
         meetingRepository.UpsertMinutesAsync(userId, meetingId, request, cancellationToken);
+
+    public Task<(MeetingOutcome Outcome, IReadOnlyCollection<MeetingActionItemResponse>? Items)> ListActionItemsAsync(Guid userId, Guid meetingId, CancellationToken cancellationToken) =>
+        meetingRepository.ListActionItemsAsync(userId, meetingId, cancellationToken);
 
     public Task<(MeetingOutcome Outcome, MeetingActionItemResponse? ActionItem)> CreateActionItemAsync(Guid userId, Guid meetingId, CreateMeetingActionItemRequest request, CancellationToken cancellationToken) =>
         meetingRepository.CreateActionItemAsync(userId, meetingId, request, cancellationToken);

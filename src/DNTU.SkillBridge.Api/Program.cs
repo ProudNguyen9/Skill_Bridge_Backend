@@ -150,6 +150,11 @@ builder.Services
     .ValidateOnStart();
 
 builder.Services
+    .AddOptions<GoogleCalendarOptions>()
+    .BindConfiguration(GoogleCalendarOptions.SectionName)
+    .ValidateOnStart();
+
+builder.Services
     .AddOptions<PaymentOptions>()
     .BindConfiguration(PaymentOptions.SectionName)
     .ValidateDataAnnotations()
@@ -250,6 +255,8 @@ else
     builder.Services.AddSingleton<DNTU.SkillBridge.Application.Files.IFileStorage, DNTU.SkillBridge.Infrastructure.Files.LocalStorageFileStorage>();
 }
 builder.Services.AddHttpClient<IAccountEmailSender, ResendAccountEmailSender>();
+builder.Services.AddHttpClient<DNTU.SkillBridge.Application.Notifications.IMeetingReminderEmailSender, ResendMeetingEmailSender>();
+builder.Services.AddHttpClient<DNTU.SkillBridge.Application.Integrations.IGoogleMeetLinkService, DNTU.SkillBridge.Infrastructure.Integrations.GoogleCalendarService>();
 builder.Services.AddScoped<Microsoft.AspNetCore.Identity.IPasswordHasher<DNTU.SkillBridge.Domain.Identity.User>, Microsoft.AspNetCore.Identity.PasswordHasher<DNTU.SkillBridge.Domain.Identity.User>>();
 
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()

@@ -75,6 +75,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<DNTU.SkillBridge.Domain.Integrations.GoogleCalendarIntegration> GoogleCalendarIntegrations => Set<DNTU.SkillBridge.Domain.Integrations.GoogleCalendarIntegration>();
     public DbSet<ProjectMeeting> ProjectMeetings => Set<ProjectMeeting>();
     public DbSet<MeetingParticipant> MeetingParticipants => Set<MeetingParticipant>();
     public DbSet<MeetingMinute> MeetingMinutes => Set<MeetingMinute>();

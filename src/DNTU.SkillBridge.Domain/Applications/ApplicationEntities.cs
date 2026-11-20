@@ -134,6 +134,17 @@ public sealed class Application : AuditableEntity
         SetCompanyDecision(ApplicationStatus.SHORTLISTED, decidedByUserId, decidedAt, reason);
     }
 
+    /// <summary>Updates the interview schedule note independently of the shortlist decision (e.g. rescheduling an interview for a SHORTLISTED application).</summary>
+    public void SetInterviewScheduleNote(string? interviewScheduleNote)
+    {
+        if (Status is not (ApplicationStatus.PENDING or ApplicationStatus.SHORTLISTED))
+        {
+            throw new InvalidOperationException("Only PENDING or SHORTLISTED applications can have their interview schedule updated.");
+        }
+
+        InterviewScheduleNote = Normalize(interviewScheduleNote) ?? InterviewScheduleNote;
+    }
+
     public void RequestAdjustment(Guid decidedByUserId, DateTimeOffset decidedAt, string? reason, string? adjustmentProposalJson)
     {
         if (Status is not (ApplicationStatus.PENDING or ApplicationStatus.SHORTLISTED))

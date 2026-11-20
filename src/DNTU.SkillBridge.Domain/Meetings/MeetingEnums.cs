@@ -8,6 +8,12 @@ public enum MeetingAttendanceStatus
     EXCUSED = 4
 }
 
+public enum MeetingType
+{
+    PROJECT = 1,
+    INTERVIEW = 2
+}
+
 public enum MeetingExternalLinkType
 {
     NONE = 1,

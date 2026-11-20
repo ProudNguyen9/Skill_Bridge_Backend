@@ -14,4 +14,5 @@ public interface IProjectRealtimeNotifier
     Task NotifyChecklistUpdatedAsync(Guid projectId, TaskChecklistItemResponse item, CancellationToken cancellationToken = default);
     Task NotifyMilestoneUpdatedAsync(Guid projectId, MilestoneResponse milestone, CancellationToken cancellationToken = default);
     Task NotifyProjectStatusChangedAsync(Guid projectId, string status, CancellationToken cancellationToken = default);
+    Task NotifyMeetingUpdatedAsync(Guid projectId, Guid meetingId, CancellationToken cancellationToken = default);
 }

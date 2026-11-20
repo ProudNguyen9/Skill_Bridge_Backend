@@ -3,6 +3,7 @@ using DNTU.SkillBridge.Application.Applications;
 using DNTU.SkillBridge.Application.Companies;
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Application.Common.Security;
+using DNTU.SkillBridge.Application.Meetings;
 using DNTU.SkillBridge.Domain.Applications;
 using DNTU.SkillBridge.Domain.Identity;
 using Microsoft.AspNetCore.Authorization;
@@ -15,7 +16,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v1/company/applications")]
 [Authorize]
 [Produces("application/json")]
-public sealed class CompanyApplicationsController(IApplicationService applicationService, ICompanyService companyService, ICurrentUser currentUser) : ControllerBase
+public sealed class CompanyApplicationsController(IApplicationService applicationService, ICompanyService companyService, IMeetingService meetingService, ICurrentUser currentUser) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<PagedResponse<CompanyApplicationResponse>>> List([FromQuery] CompanyApplicationListQuery query, CancellationToken cancellationToken)
@@ -47,6 +48,31 @@ public sealed class CompanyApplicationsController(IApplicationService applicatio
     [ProducesResponseType(typeof(ApiResponse<CompanyApplicationResponse>), StatusCodes.Status200OK)]
     public Task<ActionResult<ApiResponse<CompanyApplicationResponse>>> Shortlist(Guid applicationId, [FromBody] ApplicationDecisionRequest? request, CancellationToken cancellationToken) =>
         Decide(applicationId, ApplicationStatus.SHORTLISTED, request, cancellationToken);
+
+    /// <summary>Schedules (or reschedules) the online interview meeting for an application — the candidate joins without being a project member.</summary>
+    [HttpPost("{applicationId:guid}/interview-meeting")]
+    [ProducesResponseType(typeof(ApiResponse<MeetingResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<MeetingResponse>>> CreateInterviewMeeting(Guid applicationId, [FromBody] CreateInterviewMeetingRequest request, CancellationToken cancellationToken)
+    {
+        var companyId = await CompanyIdAsync(cancellationToken);
+        if (companyId is null) return Forbid();
+        var (outcome, meeting) = await meetingService.CreateOrRescheduleInterviewAsync(currentUser.UserId!.Value, companyId.Value, applicationId, request, cancellationToken);
+        return outcome switch
+        {
+            MeetingOutcome.NotFound => NotFound(),
+            MeetingOutcome.Forbidden => Forbid(),
+            MeetingOutcome.Invalid => Conflict(new ProblemDetails
+            {
+                Title = "Không thể đặt lịch phỏng vấn",
+                Detail = "Đơn ứng tuyển không còn ở trạng thái chờ/phỏng vấn, giờ phỏng vấn phải trong tương lai, hoặc link họp không hợp lệ (chỉ nhận Google Meet, Microsoft Teams, Zoom).",
+                Status = StatusCodes.Status409Conflict
+            }),
+            _ => Created($"meetings/{meeting!.Id}", new ApiResponse<MeetingResponse>(meeting))
+        };
+    }
 
     /// <summary>Requests adjustment on team composition/roles or additional info (Bước 20 &amp; 21).</summary>
     [HttpPost("{applicationId:guid}/request-adjustment")]

@@ -15,8 +15,11 @@ public sealed class ProjectMeetingConfiguration : IEntityTypeConfiguration<Proje
         builder.Property(entity => entity.ExternalUrl).HasMaxLength(1000);
         builder.Property(entity => entity.ExternalLinkType).HasConversion<string>().HasMaxLength(32).IsRequired();
         builder.Property(entity => entity.ReminderState).HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.Property(entity => entity.MeetingType).HasConversion<string>().HasMaxLength(16).IsRequired().HasDefaultValue(MeetingType.PROJECT);
         builder.HasIndex(entity => new { entity.ProjectId, entity.StartAt });
         builder.HasOne<DNTU.SkillBridge.Domain.Projects.Project>().WithMany().HasForeignKey(entity => entity.ProjectId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(entity => entity.Application).WithMany().HasForeignKey(entity => entity.ApplicationId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(entity => entity.ApplicationId).IsUnique().HasFilter("[ApplicationId] IS NOT NULL");
     }
 }
 

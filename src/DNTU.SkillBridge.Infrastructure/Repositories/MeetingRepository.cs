@@ -1,7 +1,10 @@
 using System.Collections.Concurrent;
 using System.Data;
+using System.Globalization;
 using System.Text.Json;
 using DNTU.SkillBridge.Application.Meetings;
+using DNTU.SkillBridge.Application.Notifications;
+using DNTU.SkillBridge.Domain.Applications;
 using DNTU.SkillBridge.Domain.Companies;
 using DNTU.SkillBridge.Domain.Identity;
 using DNTU.SkillBridge.Domain.Lecturers;
@@ -14,9 +17,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DNTU.SkillBridge.Infrastructure.Repositories;
 
-public sealed class MeetingRepository(AppDbContext dbContext) : IMeetingRepository
+public sealed class MeetingRepository(AppDbContext dbContext, INotificationWriter? notificationWriter = null) : IMeetingRepository
 {
     private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> ConversionLocks = new();
+
     public async Task<MeetingResponse?> CreateAsync(Guid userId, Guid projectId, CreateMeetingRequest request, CancellationToken cancellationToken)
     {
         var startAt = request.ResolvedStartAt;
@@ -27,12 +31,14 @@ public sealed class MeetingRepository(AppDbContext dbContext) : IMeetingReposito
         var participantIds = request.ParticipantStudentIds?.Distinct().ToArray() ?? [];
         if (participantIds.Length == 0)
         {
+            // Default participants to the active members; a project that has none yet (company
+            // scheduling ahead of student onboarding) still gets the meeting with an empty roster.
             participantIds = await dbContext.ProjectMembers
                 .Where(m => m.ProjectId == projectId && m.IsActive)
                 .Select(m => m.StudentId)
                 .ToArrayAsync(cancellationToken);
         }
-        if (participantIds.Length == 0 || !await AreActiveMembersAsync(projectId, participantIds, cancellationToken)) return null;
+        if (participantIds.Length > 0 && !await AreActiveMembersAsync(projectId, participantIds, cancellationToken)) return null;
 
         try
         {
@@ -49,18 +55,95 @@ public sealed class MeetingRepository(AppDbContext dbContext) : IMeetingReposito
         }
     }
 
+    /// <summary>
+    /// Schedules the online interview for an application (candidate is NOT a project member yet),
+    /// or reschedules the existing interview meeting. One interview meeting per application.
+    /// </summary>
+    public async Task<(MeetingOutcome Outcome, MeetingResponse? Meeting)> CreateOrRescheduleInterviewAsync(Guid companyUserId, Guid companyId, Guid applicationId, CreateInterviewMeetingRequest request, CancellationToken cancellationToken)
+    {
+        var application = await dbContext.Applications.AsNoTracking()
+            .Include(item => item.Project)
+            .SingleOrDefaultAsync(item => item.Id == applicationId && item.Project.CompanyId == companyId, cancellationToken);
+        if (application is null) return (MeetingOutcome.NotFound, null);
+        if (application.Status is not (ApplicationStatus.PENDING or ApplicationStatus.SHORTLISTED)) return (MeetingOutcome.Invalid, null);
+
+        var startAt = request.ResolvedStartAt;
+        var endAt = startAt.AddMinutes(request.ResolvedDurationMinutes);
+        var externalUrl = request.ResolvedUrl;
+        if (!IsFutureUtcRange(startAt, endAt)) return (MeetingOutcome.Invalid, null);
+
+        try
+        {
+            var existingMeeting = await dbContext.ProjectMeetings.SingleOrDefaultAsync(item => item.ApplicationId == applicationId, cancellationToken);
+            var isReschedule = existingMeeting is not null;
+            var meeting = existingMeeting ?? new ProjectMeeting(application.ProjectId, application.Id, BuildInterviewMeetingTitle(application), $"Lịch phỏng vấn ứng viên cho đề tài {application.Project.Title}.", startAt, endAt, externalUrl);
+
+            if (isReschedule)
+            {
+                meeting!.Update(meeting.Title, meeting.Description, startAt, endAt, externalUrl);
+                application = await dbContext.Applications.SingleAsync(item => item.Id == applicationId, cancellationToken);
+            }
+            else
+            {
+                application = await dbContext.Applications.SingleAsync(item => item.Id == applicationId, cancellationToken);
+                dbContext.ProjectMeetings.Add(meeting);
+                dbContext.MeetingParticipants.Add(new MeetingParticipant(meeting.Id, application.StudentId));
+            }
+
+            application.SetInterviewScheduleNote(BuildInterviewScheduleNote(startAt, request.ResolvedDurationMinutes, externalUrl, request.Note));
+            AddEvent(meeting, [application.StudentId], isReschedule ? "MEETING_UPDATED" : "MEETING_CREATED", companyUserId);
+
+            var candidateUserId = await dbContext.StudentProfiles.Where(student => student.Id == application.StudentId).Select(student => student.UserId).SingleOrDefaultAsync(cancellationToken);
+            if (candidateUserId != Guid.Empty)
+            {
+                notificationWriter?.Add(new NotificationMessage(candidateUserId, isReschedule ? "APPLICATION_INTERVIEW_RESCHEDULED" : "APPLICATION_INTERVIEW_SCHEDULED",
+                    isReschedule ? "Lịch phỏng vấn đã được thay đổi" : "Bạn có lịch phỏng vấn online",
+                    JsonSerializer.Serialize(new
+                    {
+                        applicationId = application.Id,
+                        meetingId = meeting.Id,
+                        projectId = application.ProjectId,
+                        startAt,
+                        meetingUrl = meeting.ExternalUrl,
+                        note = application.InterviewScheduleNote
+                    })));
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return (MeetingOutcome.Success, Map(meeting));
+        }
+        catch (InvalidOperationException)
+        {
+            return (MeetingOutcome.Invalid, null);
+        }
+        catch (ArgumentException)
+        {
+            return (MeetingOutcome.Invalid, null);
+        }
+    }
+
+    private static string BuildInterviewMeetingTitle(DNTU.SkillBridge.Domain.Applications.Application application) => $"Phỏng vấn: {application.Project.Title}";
+
+    private static string BuildInterviewScheduleNote(DateTimeOffset startAt, int durationMinutes, string? externalUrl, string? note)
+    {
+        var utc = startAt.ToUniversalTime();
+        var schedule = $"Phỏng vấn online lúc {utc.ToString("HH:mm", CultureInfo.InvariantCulture)} ngày {utc.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)} (giờ hệ thống), thời lượng {durationMinutes} phút";
+        if (!string.IsNullOrWhiteSpace(externalUrl)) schedule += $" — link: {externalUrl}";
+        return string.IsNullOrWhiteSpace(note) ? schedule : $"{note} ({schedule})";
+    }
+
     public async Task<IReadOnlyCollection<MeetingResponse>?> ListAsync(Guid userId, Guid projectId, CancellationToken cancellationToken)
     {
         if (!await CanReadAsync(userId, projectId, cancellationToken)) return null;
         return await dbContext.ProjectMeetings.AsNoTracking().Where(meeting => meeting.ProjectId == projectId).OrderBy(meeting => meeting.StartAt).ThenBy(meeting => meeting.Id)
-            .Select(meeting => new MeetingResponse(meeting.Id, meeting.ProjectId, meeting.Title, meeting.Description, meeting.StartAt, meeting.EndAt, meeting.ExternalUrl, meeting.ExternalLinkType, meeting.ReminderState, meeting.CreatedAt))
+            .Select(meeting => new MeetingResponse(meeting.Id, meeting.ProjectId, meeting.Title, meeting.Description, meeting.StartAt, meeting.EndAt, meeting.ExternalUrl, meeting.ExternalLinkType, meeting.ReminderState, meeting.CreatedAt, meeting.MeetingType, meeting.ApplicationId))
             .ToListAsync(cancellationToken);
     }
 
     public async Task<MeetingResponse?> GetAsync(Guid userId, Guid meetingId, CancellationToken cancellationToken)
     {
         var meeting = await dbContext.ProjectMeetings.AsNoTracking().SingleOrDefaultAsync(item => item.Id == meetingId, cancellationToken);
-        return meeting is not null && await CanReadAsync(userId, meeting.ProjectId, cancellationToken) ? Map(meeting) : null;
+        return meeting is not null && await CanReadMeetingAsync(userId, meeting, cancellationToken) ? Map(meeting) : null;
     }
 
     public async Task<MeetingResponse?> UpdateAsync(Guid userId, Guid meetingId, UpdateMeetingRequest request, CancellationToken cancellationToken)
@@ -101,7 +184,7 @@ public sealed class MeetingRepository(AppDbContext dbContext) : IMeetingReposito
     public async Task<IReadOnlyCollection<MeetingParticipantResponse>?> GetParticipantsAsync(Guid userId, Guid meetingId, CancellationToken cancellationToken)
     {
         var meeting = await dbContext.ProjectMeetings.AsNoTracking().SingleOrDefaultAsync(item => item.Id == meetingId, cancellationToken);
-        if (meeting is null || !await CanReadAsync(userId, meeting.ProjectId, cancellationToken)) return null;
+        if (meeting is null || !await CanReadMeetingAsync(userId, meeting, cancellationToken)) return null;
         return await dbContext.MeetingParticipants.AsNoTracking().Where(item => item.MeetingId == meetingId).OrderBy(item => item.StudentId)
             .Select(item => new MeetingParticipantResponse(item.StudentId, item.AttendanceStatus, item.UpdatedAt)).ToListAsync(cancellationToken);
     }
@@ -116,7 +199,6 @@ public sealed class MeetingRepository(AppDbContext dbContext) : IMeetingReposito
         participant.SetAttendance(request.AttendanceStatus);
         dbContext.ProjectActivities.Add(new ProjectActivity(meeting.ProjectId, "MEETING_ATTENDANCE_UPDATED", userId,
             JsonSerializer.Serialize(new { meetingId, studentId = request.StudentId, attendanceStatus = request.AttendanceStatus })));
-        dbContext.OutboxMessages.Add(new OutboxMessage("meeting.attendance.updated", JsonSerializer.Serialize(new { meetingId, meeting.ProjectId, studentId = request.StudentId, attendanceStatus = request.AttendanceStatus, actorUserId = userId })));
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
     }
@@ -125,7 +207,7 @@ public sealed class MeetingRepository(AppDbContext dbContext) : IMeetingReposito
     {
         var meeting = await dbContext.ProjectMeetings.AsNoTracking().SingleOrDefaultAsync(item => item.Id == meetingId, cancellationToken);
         if (meeting is null) return (MeetingOutcome.NotFound, null);
-        if (!await CanReadAsync(userId, meeting.ProjectId, cancellationToken)) return (MeetingOutcome.Forbidden, null);
+        if (!await CanReadMeetingAsync(userId, meeting, cancellationToken)) return (MeetingOutcome.Forbidden, null);
         var minute = await dbContext.MeetingMinutes.AsNoTracking().SingleOrDefaultAsync(item => item.MeetingId == meetingId, cancellationToken);
         return minute is null ? (MeetingOutcome.NotFound, null) : (MeetingOutcome.Success, Map(minute));
     }
@@ -150,7 +232,7 @@ public sealed class MeetingRepository(AppDbContext dbContext) : IMeetingReposito
                 minute.Update(request.Content, userId);
             }
 
-            AddActivityAndOutbox(meeting.ProjectId, "MEETING_MINUTES_UPDATED", userId, new { meetingId, minuteId = minute.Id });
+            AddActivity(meeting.ProjectId, "MEETING_MINUTES_UPDATED", userId, new { meetingId, minuteId = minute.Id });
             await dbContext.SaveChangesAsync(cancellationToken);
             return (MeetingOutcome.Success, Map(minute));
         }
@@ -158,6 +240,15 @@ public sealed class MeetingRepository(AppDbContext dbContext) : IMeetingReposito
         {
             return (MeetingOutcome.Invalid, null);
         }
+    }
+
+    public async Task<(MeetingOutcome Outcome, IReadOnlyCollection<MeetingActionItemResponse>? Items)> ListActionItemsAsync(Guid userId, Guid meetingId, CancellationToken cancellationToken)
+    {
+        var meeting = await dbContext.ProjectMeetings.AsNoTracking().SingleOrDefaultAsync(item => item.Id == meetingId, cancellationToken);
+        if (meeting is null) return (MeetingOutcome.NotFound, null);
+        if (!await CanReadMeetingAsync(userId, meeting, cancellationToken)) return (MeetingOutcome.Forbidden, null);
+        var items = await dbContext.MeetingActionItems.AsNoTracking().Where(item => item.MeetingId == meetingId).OrderBy(item => item.CreatedAt).ThenBy(item => item.Id).ToListAsync(cancellationToken);
+        return (MeetingOutcome.Success, items.Select(Map).ToList());
     }
 
     public async Task<(MeetingOutcome Outcome, MeetingActionItemResponse? ActionItem)> CreateActionItemAsync(Guid userId, Guid meetingId, CreateMeetingActionItemRequest request, CancellationToken cancellationToken)
@@ -172,7 +263,7 @@ public sealed class MeetingRepository(AppDbContext dbContext) : IMeetingReposito
         {
             var actionItem = new MeetingActionItem(meetingId, request.Description, request.ResponsibleStudentId, request.DueAt);
             dbContext.MeetingActionItems.Add(actionItem);
-            AddActivityAndOutbox(meeting.ProjectId, "MEETING_ACTION_ITEM_CREATED", userId, new { meetingId, actionItemId = actionItem.Id });
+            AddActivity(meeting.ProjectId, "MEETING_ACTION_ITEM_CREATED", userId, new { meetingId, actionItemId = actionItem.Id });
             await dbContext.SaveChangesAsync(cancellationToken);
             return (MeetingOutcome.Success, Map(actionItem));
         }
@@ -198,7 +289,7 @@ public sealed class MeetingRepository(AppDbContext dbContext) : IMeetingReposito
         {
             actionItem.Update(request.Description, request.ResponsibleStudentId, request.DueAt, request.Version);
             actionItem.SetCompleted(request.IsCompleted, actionItem.Version);
-            AddActivityAndOutbox(projectId.Value, "MEETING_ACTION_ITEM_UPDATED", userId, new { meetingId = actionItem.MeetingId, actionItemId });
+            AddActivity(projectId.Value, "MEETING_ACTION_ITEM_UPDATED", userId, new { meetingId = actionItem.MeetingId, actionItemId });
             await dbContext.SaveChangesAsync(cancellationToken);
             return (MeetingOutcome.Success, Map(actionItem));
         }
@@ -222,7 +313,7 @@ public sealed class MeetingRepository(AppDbContext dbContext) : IMeetingReposito
         if (actionItem.Version != version || actionItem.ProjectTaskId.HasValue) return MeetingOutcome.Conflict;
 
         dbContext.MeetingActionItems.Remove(actionItem);
-        AddActivityAndOutbox(projectId.Value, "MEETING_ACTION_ITEM_DELETED", userId, new { meetingId = actionItem.MeetingId, actionItemId });
+        AddActivity(projectId.Value, "MEETING_ACTION_ITEM_DELETED", userId, new { meetingId = actionItem.MeetingId, actionItemId });
         try
         {
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -279,7 +370,7 @@ public sealed class MeetingRepository(AppDbContext dbContext) : IMeetingReposito
                     return await ExistingConversionAsync(actionItemId, cancellationToken);
                 }
 
-                AddActivityAndOutbox(meeting.ProjectId, "MEETING_ACTION_ITEM_CONVERTED", userId, new { meetingId = meeting.Id, actionItemId, taskId = task.Id });
+                AddActivity(meeting.ProjectId, "MEETING_ACTION_ITEM_CONVERTED", userId, new { meetingId = meeting.Id, actionItemId, taskId = task.Id });
                 dbContext.ProjectActivities.Add(new ProjectActivity(meeting.ProjectId, "TASK_CREATED_FROM_MEETING_ACTION_ITEM", userId, JsonSerializer.Serialize(new { meetingId = meeting.Id, actionItemId, taskId = task.Id })));
                 await dbContext.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
@@ -336,17 +427,19 @@ public sealed class MeetingRepository(AppDbContext dbContext) : IMeetingReposito
     }
 
     public async Task<IReadOnlyCollection<MeetingResponse>> ListStudentMeetingsAsync(Guid userId, CancellationToken cancellationToken) =>
-        await dbContext.ProjectMeetings.AsNoTracking().Where(meeting => dbContext.ProjectMembers.Any(member => member.ProjectId == meeting.ProjectId && member.IsActive && member.Student.UserId == userId))
-            .OrderBy(meeting => meeting.StartAt).ThenBy(meeting => meeting.Id).Select(meeting => new MeetingResponse(meeting.Id, meeting.ProjectId, meeting.Title, meeting.Description, meeting.StartAt, meeting.EndAt, meeting.ExternalUrl, meeting.ExternalLinkType, meeting.ReminderState, meeting.CreatedAt)).ToListAsync(cancellationToken);
+        await dbContext.ProjectMeetings.AsNoTracking().Where(meeting =>
+                dbContext.ProjectMembers.Any(member => member.ProjectId == meeting.ProjectId && member.IsActive && member.Student.UserId == userId) ||
+                (meeting.MeetingType == MeetingType.INTERVIEW && meeting.Application!.Student.UserId == userId))
+            .OrderBy(meeting => meeting.StartAt).ThenBy(meeting => meeting.Id).Select(meeting => new MeetingResponse(meeting.Id, meeting.ProjectId, meeting.Title, meeting.Description, meeting.StartAt, meeting.EndAt, meeting.ExternalUrl, meeting.ExternalLinkType, meeting.ReminderState, meeting.CreatedAt, meeting.MeetingType, meeting.ApplicationId)).ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyCollection<MeetingResponse>> ListCompanyMeetingsAsync(Guid userId, CancellationToken cancellationToken) =>
         await dbContext.ProjectMeetings.AsNoTracking().Where(meeting => dbContext.Projects.Any(project => project.Id == meeting.ProjectId && project.Company.Members.Any(member => member.UserId == userId && member.Role == CompanyMemberRole.OWNER)))
-            .OrderBy(meeting => meeting.StartAt).ThenBy(meeting => meeting.Id).Select(meeting => new MeetingResponse(meeting.Id, meeting.ProjectId, meeting.Title, meeting.Description, meeting.StartAt, meeting.EndAt, meeting.ExternalUrl, meeting.ExternalLinkType, meeting.ReminderState, meeting.CreatedAt)).ToListAsync(cancellationToken);
+            .OrderBy(meeting => meeting.StartAt).ThenBy(meeting => meeting.Id).Select(meeting => new MeetingResponse(meeting.Id, meeting.ProjectId, meeting.Title, meeting.Description, meeting.StartAt, meeting.EndAt, meeting.ExternalUrl, meeting.ExternalLinkType, meeting.ReminderState, meeting.CreatedAt, meeting.MeetingType, meeting.ApplicationId)).ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyCollection<MeetingResponse>> ListLecturerMeetingsAsync(Guid userId, CancellationToken cancellationToken) =>
         await dbContext.ProjectMeetings.AsNoTracking().Where(meeting => dbContext.LecturerAssignments.Join(dbContext.LecturerProfiles, assignment => assignment.LecturerId, lecturer => lecturer.Id, (assignment, lecturer) => new { assignment, lecturer })
             .Any(row => row.assignment.ProjectId == meeting.ProjectId && row.assignment.Status == LecturerAssignmentStatus.ACTIVE && row.lecturer.IsActive && row.lecturer.UserId == userId))
-            .OrderBy(meeting => meeting.StartAt).ThenBy(meeting => meeting.Id).Select(meeting => new MeetingResponse(meeting.Id, meeting.ProjectId, meeting.Title, meeting.Description, meeting.StartAt, meeting.EndAt, meeting.ExternalUrl, meeting.ExternalLinkType, meeting.ReminderState, meeting.CreatedAt)).ToListAsync(cancellationToken);
+            .OrderBy(meeting => meeting.StartAt).ThenBy(meeting => meeting.Id).Select(meeting => new MeetingResponse(meeting.Id, meeting.ProjectId, meeting.Title, meeting.Description, meeting.StartAt, meeting.EndAt, meeting.ExternalUrl, meeting.ExternalLinkType, meeting.ReminderState, meeting.CreatedAt, meeting.MeetingType, meeting.ApplicationId)).ToListAsync(cancellationToken);
 
     private static bool IsFutureUtcRange(DateTimeOffset startAt, DateTimeOffset endAt) => startAt.Offset == TimeSpan.Zero && endAt.Offset == TimeSpan.Zero && startAt > DateTimeOffset.UtcNow && endAt > startAt;
     private static bool IsActionItemDueDateValid(ProjectMeeting meeting, DateTimeOffset? dueAt) =>
@@ -365,6 +458,12 @@ public sealed class MeetingRepository(AppDbContext dbContext) : IMeetingReposito
         await IsAdminAsync(userId, cancellationToken) ||
         await dbContext.ProjectMembers.AnyAsync(member => member.ProjectId == projectId && member.IsActive && member.Student.UserId == userId, cancellationToken) ||
         await IsCompanyOwnerAsync(userId, projectId, cancellationToken) || await IsAssignedLecturerAsync(userId, projectId, cancellationToken);
+
+    /// <summary>Read access for one meeting: interview meetings are also readable by the interviewed candidate (not a project member).</summary>
+    private async Task<bool> CanReadMeetingAsync(Guid userId, ProjectMeeting meeting, CancellationToken cancellationToken) =>
+        meeting.MeetingType == MeetingType.INTERVIEW && meeting.ApplicationId.HasValue &&
+            await dbContext.Applications.AnyAsync(item => item.Id == meeting.ApplicationId && item.Student.UserId == userId, cancellationToken)
+        || await CanReadAsync(userId, meeting.ProjectId, cancellationToken);
 
     private async Task<bool> CanScheduleAsync(Guid userId, Guid projectId, CancellationToken cancellationToken)
     {
@@ -389,17 +488,17 @@ public sealed class MeetingRepository(AppDbContext dbContext) : IMeetingReposito
     private void AddEvent(ProjectMeeting meeting, IReadOnlyCollection<Guid> participantIds, string eventType, Guid actorUserId)
     {
         dbContext.ProjectActivities.Add(new ProjectActivity(meeting.ProjectId, eventType, actorUserId, JsonSerializer.Serialize(new { meetingId = meeting.Id })));
-        dbContext.OutboxMessages.Add(new OutboxMessage("meeting.reminder.schedule", JsonSerializer.Serialize(new MeetingReminderJob(meeting.Id, meeting.ProjectId, meeting.StartAt, participantIds))));
+        // The reminder becomes available 30 minutes before the scheduled start; the OutboxProcessor
+        // re-validates against the live meeting so reschedules/cancellations invalidate stale jobs.
+        dbContext.OutboxMessages.Add(new OutboxMessage("meeting.reminder.schedule", JsonSerializer.Serialize(new MeetingReminderJob(meeting.Id, meeting.ProjectId, meeting.StartAt, participantIds)), meeting.StartAt.AddMinutes(-30)));
     }
 
-    private void AddActivityAndOutbox(Guid projectId, string eventType, Guid actorUserId, object payload)
+    private void AddActivity(Guid projectId, string eventType, Guid actorUserId, object payload)
     {
-        var payloadJson = JsonSerializer.Serialize(payload);
-        dbContext.ProjectActivities.Add(new ProjectActivity(projectId, eventType, actorUserId, payloadJson));
-        dbContext.OutboxMessages.Add(new OutboxMessage("meeting.action-item.changed", JsonSerializer.Serialize(new { projectId, eventType, actorUserId, payload })));
+        dbContext.ProjectActivities.Add(new ProjectActivity(projectId, eventType, actorUserId, JsonSerializer.Serialize(payload)));
     }
 
-    private static MeetingResponse Map(ProjectMeeting meeting) => new(meeting.Id, meeting.ProjectId, meeting.Title, meeting.Description, meeting.StartAt, meeting.EndAt, meeting.ExternalUrl, meeting.ExternalLinkType, meeting.ReminderState, meeting.CreatedAt);
+    private static MeetingResponse Map(ProjectMeeting meeting) => new(meeting.Id, meeting.ProjectId, meeting.Title, meeting.Description, meeting.StartAt, meeting.EndAt, meeting.ExternalUrl, meeting.ExternalLinkType, meeting.ReminderState, meeting.CreatedAt, meeting.MeetingType, meeting.ApplicationId);
     private static MeetingMinutesResponse Map(MeetingMinute minute) => new(minute.MeetingId, minute.Content, minute.UpdatedByUserId, minute.CreatedAt, minute.UpdatedAt);
     private static MeetingActionItemResponse Map(MeetingActionItem item) => new(item.Id, item.MeetingId, item.Description, item.ResponsibleStudentId, item.DueAt, item.IsCompleted, item.ProjectTaskId, item.Version, item.CreatedAt, item.UpdatedAt);
     private static ProjectTaskResponse Map(ProjectTask task) => new(task.Id, task.ProjectId, task.Title, task.Description, task.Status, task.Priority, task.AssigneeStudentId, task.DueAt, task.SortOrder, task.Version, task.CreatedAt);
