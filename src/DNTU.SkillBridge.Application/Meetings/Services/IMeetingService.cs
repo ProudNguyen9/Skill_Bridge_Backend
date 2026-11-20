@@ -3,6 +3,7 @@ namespace DNTU.SkillBridge.Application.Meetings;
 public interface IMeetingService
 {
     Task<MeetingResponse?> CreateAsync(Guid userId, Guid projectId, CreateMeetingRequest request, CancellationToken cancellationToken);
+    Task<(MeetingOutcome Outcome, MeetingResponse? Meeting)> CreateOrRescheduleInterviewAsync(Guid companyUserId, Guid companyId, Guid applicationId, CreateInterviewMeetingRequest request, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<MeetingResponse>?> ListAsync(Guid userId, Guid projectId, CancellationToken cancellationToken);
     Task<MeetingResponse?> GetAsync(Guid userId, Guid meetingId, CancellationToken cancellationToken);
     Task<MeetingResponse?> UpdateAsync(Guid userId, Guid meetingId, UpdateMeetingRequest request, CancellationToken cancellationToken);
@@ -11,6 +12,7 @@ public interface IMeetingService
     Task<bool> UpdateAttendanceAsync(Guid userId, Guid meetingId, UpdateAttendanceRequest request, CancellationToken cancellationToken);
     Task<(MeetingOutcome Outcome, MeetingMinutesResponse? Minutes)> GetMinutesAsync(Guid userId, Guid meetingId, CancellationToken cancellationToken);
     Task<(MeetingOutcome Outcome, MeetingMinutesResponse? Minutes)> UpsertMinutesAsync(Guid userId, Guid meetingId, UpsertMeetingMinutesRequest request, CancellationToken cancellationToken);
+    Task<(MeetingOutcome Outcome, IReadOnlyCollection<MeetingActionItemResponse>? Items)> ListActionItemsAsync(Guid userId, Guid meetingId, CancellationToken cancellationToken);
     Task<(MeetingOutcome Outcome, MeetingActionItemResponse? ActionItem)> CreateActionItemAsync(Guid userId, Guid meetingId, CreateMeetingActionItemRequest request, CancellationToken cancellationToken);
     Task<(MeetingOutcome Outcome, MeetingActionItemResponse? ActionItem)> UpdateActionItemAsync(Guid userId, Guid actionItemId, UpdateMeetingActionItemRequest request, CancellationToken cancellationToken);
     Task<MeetingOutcome> DeleteActionItemAsync(Guid userId, Guid actionItemId, Guid version, CancellationToken cancellationToken);

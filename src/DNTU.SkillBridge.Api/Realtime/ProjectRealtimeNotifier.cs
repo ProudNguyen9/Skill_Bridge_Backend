@@ -54,4 +54,11 @@ public sealed class ProjectRealtimeNotifier(IHubContext<ProjectHub> hubContext) 
             projectId = projectId.ToString(),
             status
         }, cancellationToken);
+
+    public Task NotifyMeetingUpdatedAsync(Guid projectId, Guid meetingId, CancellationToken cancellationToken = default) =>
+        hubContext.Clients.Group(ProjectHub.ProjectGroup(projectId)).SendAsync("MeetingUpdated", new
+        {
+            projectId = projectId.ToString(),
+            meetingId = meetingId.ToString()
+        }, cancellationToken);
 }

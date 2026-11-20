@@ -519,6 +519,8 @@ public sealed class M3RealtimeAndCommitmentLifecycleAdversarialTests
             StatusChangedBroadcasts.Add((projectId, status));
             return Task.CompletedTask;
         }
+
+        public Task NotifyMeetingUpdatedAsync(Guid projectId, Guid meetingId, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     private sealed class RecordingHubClients : IHubClients

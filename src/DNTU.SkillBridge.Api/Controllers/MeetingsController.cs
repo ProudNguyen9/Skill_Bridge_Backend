@@ -2,6 +2,7 @@ using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Application.Common.Security;
 using DNTU.SkillBridge.Application.Meetings;
+using DNTU.SkillBridge.Application.Workspaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,7 +13,7 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Route("api/v1")]
 [Authorize]
 [Produces("application/json")]
-public sealed class MeetingsController(IMeetingService meetingService, ICurrentUser currentUser) : ControllerBase
+public sealed class MeetingsController(IMeetingService meetingService, IProjectRealtimeNotifier realtimeNotifier, ICurrentUser currentUser) : ControllerBase
 {
     /// <summary>Schedules a UTC project meeting. Project members may schedule only when workspace settings allow it; owners, active lecturers, and admins may always schedule.</summary>
     [HttpPost("projects/{projectId:guid}/meetings")]
@@ -22,7 +23,17 @@ public sealed class MeetingsController(IMeetingService meetingService, ICurrentU
     public async Task<ActionResult<ApiResponse<MeetingResponse>>> Create(Guid projectId, [FromBody] CreateMeetingRequest request, CancellationToken cancellationToken)
     {
         var meeting = await meetingService.CreateAsync(UserId, projectId, request, cancellationToken);
-        return meeting is null ? BadRequest() : Created($"meetings/{meeting.Id}", new ApiResponse<MeetingResponse>(meeting));
+        if (meeting is null)
+        {
+            return BadRequest(new Microsoft.AspNetCore.Mvc.ProblemDetails
+            {
+                Title = "MEETING_INVALID",
+                Detail = "Không thể tạo lịch họp — kiểm tra: giờ họp phải trong tương lai, link phải là HTTPS Meet/Teams/Zoom, và bạn phải có quyền đặt lịch cho đề tài này.",
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+        await realtimeNotifier.NotifyMeetingUpdatedAsync(projectId, meeting.Id, cancellationToken);
+        return Created($"meetings/{meeting.Id}", new ApiResponse<MeetingResponse>(meeting));
     }
 
     /// <summary>Lists meetings visible to a scoped project participant, company owner, assigned lecturer, or administrator.</summary>
@@ -51,20 +62,26 @@ public sealed class MeetingsController(IMeetingService meetingService, ICurrentU
     public async Task<ActionResult<ApiResponse<MeetingResponse>>> Update(Guid meetingId, [FromBody] UpdateMeetingRequest request, CancellationToken cancellationToken)
     {
         var meeting = await meetingService.UpdateAsync(UserId, meetingId, request, cancellationToken);
-        return meeting is null ? BadRequest() : Ok(new ApiResponse<MeetingResponse>(meeting));
+        if (meeting is null) return BadRequest();
+        await realtimeNotifier.NotifyMeetingUpdatedAsync(meeting.ProjectId, meeting.Id, cancellationToken);
+        return Ok(new ApiResponse<MeetingResponse>(meeting));
     }
 
     [HttpDelete("meetings/{meetingId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Delete(Guid meetingId, CancellationToken cancellationToken) =>
-        await meetingService.DeleteAsync(UserId, meetingId, cancellationToken) ? NoContent() : NotFound();
+    public async Task<IActionResult> Delete(Guid meetingId, CancellationToken cancellationToken)
+    {
+        var meeting = await meetingService.GetAsync(UserId, meetingId, cancellationToken);
+        if (meeting is null || !await meetingService.DeleteAsync(UserId, meetingId, cancellationToken)) return NotFound();
+        await realtimeNotifier.NotifyMeetingUpdatedAsync(meeting.ProjectId, meetingId, cancellationToken);
+        return NoContent();
+    }
 
     [HttpPost("meetings/{meetingId:guid}/cancel")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Cancel(Guid meetingId, CancellationToken cancellationToken) =>
-        await meetingService.DeleteAsync(UserId, meetingId, cancellationToken) ? NoContent() : NotFound();
+    public async Task<IActionResult> Cancel(Guid meetingId, CancellationToken cancellationToken) => await Delete(meetingId, cancellationToken);
 
     [HttpGet("meetings/{meetingId:guid}/participants")]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<MeetingParticipantResponse>>), StatusCodes.Status200OK)]
@@ -79,8 +96,14 @@ public sealed class MeetingsController(IMeetingService meetingService, ICurrentU
     [HttpPut("meetings/{meetingId:guid}/attendance")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> Attendance(Guid meetingId, [FromBody] UpdateAttendanceRequest request, CancellationToken cancellationToken) =>
-        await meetingService.UpdateAttendanceAsync(UserId, meetingId, request, cancellationToken) ? NoContent() : Forbid();
+    public async Task<IActionResult> Attendance(Guid meetingId, [FromBody] UpdateAttendanceRequest request, CancellationToken cancellationToken)
+    {
+        var meeting = await meetingService.GetAsync(UserId, meetingId, cancellationToken);
+        if (meeting is null) return NotFound();
+        if (!await meetingService.UpdateAttendanceAsync(UserId, meetingId, request, cancellationToken)) return Forbid();
+        await realtimeNotifier.NotifyMeetingUpdatedAsync(meeting.ProjectId, meetingId, cancellationToken);
+        return NoContent();
+    }
 
     /// <summary>Reads minutes only for a scoped workspace participant, company owner, assigned lecturer, or administrator.</summary>
     [HttpGet("meetings/{meetingId:guid}/minutes")]
@@ -97,6 +120,21 @@ public sealed class MeetingsController(IMeetingService meetingService, ICurrentU
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ApiResponse<MeetingMinutesResponse>>> PutMinutes(Guid meetingId, UpsertMeetingMinutesRequest request, CancellationToken cancellationToken) =>
         ToResult(await meetingService.UpsertMinutesAsync(UserId, meetingId, request, cancellationToken));
+
+    [HttpGet("meetings/{meetingId:guid}/action-items")]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyCollection<MeetingActionItemResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<IReadOnlyCollection<MeetingActionItemResponse>>>> ListActionItems(Guid meetingId, CancellationToken cancellationToken)
+    {
+        var (outcome, items) = await meetingService.ListActionItemsAsync(UserId, meetingId, cancellationToken);
+        return outcome switch
+        {
+            MeetingOutcome.NotFound => NotFound(),
+            MeetingOutcome.Forbidden => Forbid(),
+            _ => Ok(new ApiResponse<IReadOnlyCollection<MeetingActionItemResponse>>(items ?? []))
+        };
+    }
 
     [HttpPost("meetings/{meetingId:guid}/action-items")]
     [ProducesResponseType(typeof(ApiResponse<MeetingActionItemResponse>), StatusCodes.Status201Created)]

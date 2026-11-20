@@ -928,6 +928,70 @@ public sealed class ApplicationEndpointTests(CatalogApiFactory factory)
     }
 
     [Fact]
+    public async Task InterviewMeeting_SchedulesNotifiesCandidate_AndReschedulesWithoutMembership()
+    {
+        var (company, admin) = await SeedAsync();
+        var projectId = await PublishProjectAsync(company, admin, $"{prefix} Interview", deadlineInDays: 14);
+        var candidate = await RegisterStudentAsync();
+        var candidateUserId = GetUserId(candidate);
+        var application = (await (await candidate.PostAsJsonAsync($"/api/v1/projects/{projectId}/applications", new { }, Json))
+            .Content.ReadFromJsonAsync<Envelope<ApplicationDto>>(Json))!.Data;
+
+        var startAt = DateTimeOffset.UtcNow.AddHours(3);
+        var created = await company.PostAsJsonAsync($"/api/v1/company/applications/{application.Id}/interview-meeting", new
+        {
+            scheduledAt = startAt,
+            durationMinutes = 30,
+            meetingUrl = "https://meet.google.com/abc-defg-hij",
+            note = "Phỏng vấn vị trí thực tập backend"
+        }, Json);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var meeting = (await created.Content.ReadFromJsonAsync<Envelope<MeetingDto>>(Json))!.Data;
+        Assert.Equal("INTERVIEW", meeting.MeetingType);
+        Assert.Equal(application.Id, meeting.ApplicationId);
+        Assert.Equal("GOOGLE_MEET", meeting.ExternalLinkType);
+        Assert.Equal("SCHEDULED", meeting.ReminderState);
+
+        // The candidate is not a project member yet but can still see and join the interview.
+        var studentMeetings = (await (await candidate.GetAsync("/api/v1/students/me/meetings")).Content
+            .ReadFromJsonAsync<ListEnvelope<MeetingDto>>(Json))!.Data;
+        Assert.Contains(studentMeetings, row => row.Id == meeting.Id && row.MeetingType == "INTERVIEW");
+        Assert.Equal(HttpStatusCode.OK, (await candidate.GetAsync($"/api/v1/meetings/{meeting.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await candidate.PostAsJsonAsync($"/api/v1/company/applications/{application.Id}/interview-meeting", new { scheduledAt = startAt }, Json)).StatusCode);
+
+        // A project member who never applied sees nothing.
+        var outsider = await RegisterStudentAsync();
+        var outsiderMeetings = (await (await outsider.GetAsync("/api/v1/students/me/meetings")).Content
+            .ReadFromJsonAsync<ListEnvelope<MeetingDto>>(Json))!.Data;
+        Assert.DoesNotContain(outsiderMeetings, row => row.Id == meeting.Id);
+
+        // Rescheduling keeps the same meeting (one interview per application) and updates the reminder.
+        var newStartAt = DateTimeOffset.UtcNow.AddHours(5);
+        var rescheduled = await company.PostAsJsonAsync($"/api/v1/company/applications/{application.Id}/interview-meeting", new
+        {
+            scheduledAt = newStartAt,
+            durationMinutes = 45,
+            meetingUrl = "https://meet.google.com/abc-defg-hij"
+        }, Json);
+        Assert.Equal(HttpStatusCode.Created, rescheduled.StatusCode);
+        var rescheduledMeeting = (await rescheduled.Content.ReadFromJsonAsync<Envelope<MeetingDto>>(Json))!.Data;
+        Assert.Equal(meeting.Id, rescheduledMeeting.Id);
+        Assert.Equal(newStartAt, rescheduledMeeting.StartAt);
+
+        var companyMeetings = (await company.GetFromJsonAsync<ListEnvelope<MeetingDto>>("/api/v1/company/meetings", Json))!.Data;
+        Assert.Contains(companyMeetings, row => row.Id == meeting.Id && row.MeetingType == "INTERVIEW");
+
+        await factory.RunWithDbContextAsync(async dbContext =>
+        {
+            var reminders = await dbContext.OutboxMessages.Where(item => item.Type == "meeting.reminder.schedule").ToListAsync();
+            var interviewReminders = reminders.Where(item => item.PayloadJson.Contains(meeting.Id.ToString())).ToList();
+            Assert.Equal(2, interviewReminders.Count); // one on schedule + one on reschedule
+            Assert.All(interviewReminders, item => Assert.True(item.AvailableAt <= newStartAt.AddMinutes(-30)));
+            Assert.True(await dbContext.Notifications.AnyAsync(item => item.UserId == candidateUserId && item.Type == "APPLICATION_INTERVIEW_SCHEDULED"));
+        });
+    }
+
+    [Fact]
     public async Task MeetingMinutes_ActionItems_EnforceScope_AreAudited_AndConvertIdempotently()
     {
         var (company, admin) = await SeedAsync();
@@ -1007,7 +1071,9 @@ public sealed class ApplicationEndpointTests(CatalogApiFactory factory)
             Assert.Equal(1, await dbContext.ProjectTasks.CountAsync(task => task.Id == persistedActionItem.ProjectTaskId));
             Assert.Equal(1, await dbContext.MeetingMinuteRevisions.CountAsync(revision => revision.MeetingMinuteId == dbContext.MeetingMinutes.Where(minute => minute.MeetingId == meeting.Id).Select(minute => minute.Id).Single()));
             Assert.True(await dbContext.ProjectActivities.AnyAsync(activity => activity.ProjectId == projectId && activity.EventType == "MEETING_ACTION_ITEM_CONVERTED"));
-            Assert.True(await dbContext.OutboxMessages.AnyAsync(message => message.Type == "meeting.action-item.changed"));
+            // The former "meeting.action-item.changed" outbox write had no consumer and was removed;
+            // realtime updates now flow through the project hub instead.
+            Assert.DoesNotContain(await dbContext.OutboxMessages.Select(message => message.Type).ToListAsync(), type => type == "meeting.action-item.changed");
         });
     }
 
@@ -1375,7 +1441,7 @@ public sealed class ApplicationEndpointTests(CatalogApiFactory factory)
     private sealed record FileDto(Guid Id, Guid? ProjectId, string FileName, string ContentType, long ExpectedSizeBytes, string Status, DateTimeOffset ExpiresAt, DateTimeOffset? CompletedAt);
     private sealed record FileUploadResponseDto(FileDto File, Uri UploadUrl);
 
-    private sealed record MeetingDto(Guid Id, Guid ProjectId, string Title, string? Description, DateTimeOffset StartAt, DateTimeOffset EndAt, string? ExternalUrl, string ExternalLinkType, string ReminderState, DateTimeOffset CreatedAt);
+    private sealed record MeetingDto(Guid Id, Guid ProjectId, string Title, string? Description, DateTimeOffset StartAt, DateTimeOffset EndAt, string? ExternalUrl, string ExternalLinkType, string ReminderState, DateTimeOffset CreatedAt, string? MeetingType = null, Guid? ApplicationId = null);
     private sealed record MeetingActionItemDto(Guid Id, Guid MeetingId, string Description, Guid? ResponsibleStudentId, DateTimeOffset? DueAt, bool IsCompleted, Guid? ProjectTaskId, Guid Version, DateTimeOffset CreatedAt, DateTimeOffset? UpdatedAt);
     private sealed record MeetingActionItemConversionDto(MeetingActionItemDto ActionItem, ProjectTaskDto Task, bool AlreadyConverted);
 

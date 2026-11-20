@@ -102,6 +102,23 @@ public sealed class EmailOptions
     public string? FromName { get; init; }
 }
 
+public sealed class GoogleCalendarOptions
+{
+    public const string SectionName = "GoogleCalendar";
+
+    public string? ClientId { get; init; }
+
+    public string? ClientSecret { get; init; }
+
+    /// <summary>Must be registered verbatim in the Google Cloud OAuth client. Defaults to the local API callback.</summary>
+    public string? RedirectUri { get; init; }
+
+    /// <summary>Signing material for the OAuth anti-CSRF state value; falls back to the JWT signing key when empty.</summary>
+    public string? StateSigningKey { get; init; }
+
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(ClientId) && !string.IsNullOrWhiteSpace(ClientSecret);
+}
+
 public sealed class PaymentOptions
 {
     public const string SectionName = "Payments";

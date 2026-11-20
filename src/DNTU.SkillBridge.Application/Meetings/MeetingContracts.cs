@@ -46,6 +46,24 @@ public sealed class UpdateAttendanceRequest
     [Required] public MeetingAttendanceStatus AttendanceStatus { get; init; }
 }
 
+/// <summary>
+/// Schedules (or reschedules) the online interview meeting for a job application.
+/// Exactly one interview meeting exists per application — sending this again updates it.
+/// </summary>
+public sealed class CreateInterviewMeetingRequest
+{
+    public DateTimeOffset StartAt { get; init; }
+    public int? DurationMinutes { get; init; }
+    [StringLength(1000)] public string? ExternalUrl { get; init; }
+    public string? MeetingUrl { get; init; }
+    public DateTimeOffset? ScheduledAt { get; init; }
+    [StringLength(1000)] public string? Note { get; init; }
+
+    public DateTimeOffset ResolvedStartAt => (ScheduledAt ?? (StartAt != default ? StartAt : DateTimeOffset.UtcNow.AddHours(1))).ToUniversalTime();
+    public int ResolvedDurationMinutes => DurationMinutes ?? 30;
+    public string? ResolvedUrl => !string.IsNullOrWhiteSpace(ExternalUrl) ? ExternalUrl : MeetingUrl;
+}
+
 public sealed record MeetingResponse(
     Guid Id,
     Guid ProjectId,
@@ -56,7 +74,9 @@ public sealed record MeetingResponse(
     string? ExternalUrl,
     MeetingExternalLinkType ExternalLinkType,
     MeetingReminderState ReminderState,
-    DateTimeOffset CreatedAt)
+    DateTimeOffset CreatedAt,
+    MeetingType MeetingType = MeetingType.PROJECT,
+    Guid? ApplicationId = null)
 {
     public string? MeetingUrl => ExternalUrl;
     public DateTimeOffset ScheduledAt => StartAt;
