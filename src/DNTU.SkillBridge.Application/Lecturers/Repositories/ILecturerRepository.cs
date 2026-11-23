@@ -14,6 +14,8 @@ public interface ILecturerRepository
     Task<LecturerProfile?> FindProfileForUpdateAsync(Guid lecturerId, CancellationToken cancellationToken);
 
     Task UpdateUserDisplayNameAsync(Guid userId, string displayName, CancellationToken cancellationToken);
+    Task<string?> GetLecturerDisplayNameAsync(Guid userId, CancellationToken cancellationToken);
+    Task<string?> GetProjectTitleAsync(Guid projectId, CancellationToken cancellationToken);
 
     void AddProfile(LecturerProfile profile);
 

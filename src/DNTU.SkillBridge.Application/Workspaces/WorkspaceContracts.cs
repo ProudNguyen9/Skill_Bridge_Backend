@@ -33,7 +33,8 @@ public sealed record WorkspaceMemberResponse(
     string? Email = null,
     string Role = "STUDENT",
     bool IsLeader = false,
-    string? AvatarUrl = null);
+    string? AvatarUrl = null,
+    Guid? UserId = null);
 
 public sealed class AssignProjectLeaderRequest
 {

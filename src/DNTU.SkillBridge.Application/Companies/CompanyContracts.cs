@@ -111,4 +111,5 @@ public sealed record PublicCompanyResponse(
     int? FoundedYear = null,
     string? BannerUrl = null,
     string? VerificationStatus = null,
-    int OpenProjectsCount = 0);
+    int OpenProjectsCount = 0,
+    Guid? OwnerUserId = null);

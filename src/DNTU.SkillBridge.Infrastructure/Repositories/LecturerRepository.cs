@@ -22,6 +22,18 @@ public sealed class LecturerRepository(AppDbContext dbContext) : ILecturerReposi
             .AsTracking()
             .SingleOrDefaultAsync(item => item.Id == lecturerId, cancellationToken);
 
+    public Task<string?> GetLecturerDisplayNameAsync(Guid userId, CancellationToken cancellationToken) =>
+        dbContext.Users.AsNoTracking()
+            .Where(user => user.Id == userId)
+            .Select(user => user.DisplayName)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public Task<string?> GetProjectTitleAsync(Guid projectId, CancellationToken cancellationToken) =>
+        dbContext.Projects.AsNoTracking()
+            .Where(project => project.Id == projectId)
+            .Select(project => project.Title)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public async Task UpdateUserDisplayNameAsync(Guid userId, string displayName, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(displayName)) return;
@@ -462,7 +474,7 @@ public sealed class LecturerRepository(AppDbContext dbContext) : ILecturerReposi
             from lp in dbContext.LecturerProfiles.AsNoTracking()
             join u in dbContext.Users.AsNoTracking() on lp.UserId equals u.Id
             where lecturerIds.Contains(lp.Id)
-            select new { lp.Id, u.DisplayName, u.Email, lp.Department, lp.AcademicTitle, lp.AvatarUrl })
+            select new { lp.Id, u.DisplayName, u.Email, lp.Department, lp.AcademicTitle, lp.AvatarUrl, UserId = (Guid?)u.Id })
             .ToDictionaryAsync(x => x.Id, cancellationToken);
 
         var teams = teamIds.Count == 0
@@ -518,7 +530,8 @@ public sealed class LecturerRepository(AppDbContext dbContext) : ILecturerReposi
                 hasTeam ? teamInfo.AvatarUrl : null,
                 lec?.AvatarUrl,
                 proj?.CompanyLogoUrl,
-                Project.ParseIllustrationUrls(proj?.IllustrationUrlsJson));
+                Project.ParseIllustrationUrls(proj?.IllustrationUrlsJson),
+                lec?.UserId);
         }).ToList();
     }
 }

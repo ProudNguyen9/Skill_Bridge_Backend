@@ -48,6 +48,26 @@ public sealed class User : AuditableEntity
     public void Deactivate() => IsActive = false;
 
     public void Reactivate() => IsActive = true;
+
+    /// <summary>Quản trị viên khóa quyền chat tài khoản spam. Null nghĩa là bị khóa vĩnh viễn.</summary>
+    public DateTimeOffset? ChatBannedUntil { get; private set; }
+
+    public string? ChatBanReason { get; private set; }
+
+    public bool IsChatBanned(DateTimeOffset now) =>
+        ChatBanReason is not null && (ChatBannedUntil is null || ChatBannedUntil.Value > now);
+
+    public void BanChat(string? reason, DateTimeOffset? until)
+    {
+        ChatBannedUntil = until;
+        ChatBanReason = reason;
+    }
+
+    public void UnbanChat()
+    {
+        ChatBannedUntil = null;
+        ChatBanReason = null;
+    }
 }
 
 public sealed class Role : AuditableEntity

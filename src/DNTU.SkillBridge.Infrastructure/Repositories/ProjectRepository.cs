@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Application.Projects;
+using DNTU.SkillBridge.Application.Social;
 using DNTU.SkillBridge.Domain.Catalog;
 using DNTU.SkillBridge.Domain.Common;
 using DNTU.SkillBridge.Domain.Companies;
@@ -18,7 +19,8 @@ namespace DNTU.SkillBridge.Infrastructure.Repositories;
 /// Submit/approve/publication transitions belong to Task 13 — this service only ever
 /// touches DRAFT projects.
 /// </summary>
-public sealed class ProjectRepository(AppDbContext dbContext) : IProjectRepository
+public sealed class ProjectRepository(AppDbContext dbContext, DNTU.SkillBridge.Application.Social.ISocialActivityWriter socialActivityWriter,
+    DNTU.SkillBridge.Application.Notifications.INotificationWriter? notificationWriter = null) : IProjectRepository
 {
     private static readonly string[] AllowedSorts = ["newest", "oldest", "deadline", "title"];
 
@@ -640,6 +642,7 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             {
                 case ProjectDecision.APPROVED:
                     project.Approve(adminUserId, now);
+                    RecordProjectPublishedActivity(project, now);
                     break;
                 case ProjectDecision.CHANGES_REQUESTED:
                     project.RequestChanges();
@@ -668,6 +671,43 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
         }
 
         return (AdminDecisionOutcome.Applied, await GetApprovalDetailAsync(projectId, cancellationToken));
+    }
+
+    /// <summary>Ghi hoạt động PROJECT_PUBLISHED vào Bảng tin của người theo dõi công ty.</summary>
+    private void RecordProjectPublishedActivity(DNTU.SkillBridge.Domain.Projects.Project project, DateTimeOffset now)
+    {
+        var ownerUserId = dbContext.CompanyMembers
+            .Where(member => member.CompanyId == project.CompanyId)
+            .OrderBy(member => member.Role)
+            .Select(member => (Guid?)member.UserId)
+            .FirstOrDefault();
+        if (ownerUserId is null) return;
+
+        // Company nav khong duoc Include trong DecideAsync -> truy van rieng.
+        var companyName = dbContext.Companies
+            .Where(company => company.Id == project.CompanyId)
+            .Select(company => company.Name)
+            .FirstOrDefault();
+
+        socialActivityWriter.Add(new SocialActivityMessage(
+            ownerUserId.Value,
+            DNTU.SkillBridge.Domain.Social.SocialActivityType.PROJECT_PUBLISHED,
+            $"{companyName} vừa đăng đề tài mới",
+            project.Title,
+            $"/projects/{project.Id}",
+            project.Id));
+
+        // Thông báo cho chính chủ doanh nghiệp: đề tài đã được duyệt, sẵn sàng nhận hồ sơ.
+        notificationWriter?.Add(new DNTU.SkillBridge.Application.Notifications.NotificationMessage(
+            ownerUserId.Value,
+            "PROJECT_APPROVED",
+            $"Đề tài “{project.Title}” đã được duyệt — có thể mở nhận hồ sơ",
+            System.Text.Json.JsonSerializer.Serialize(new
+            {
+                projectId = project.Id,
+                projectTitle = project.Title,
+                url = $"/company/projects/{project.Id}",
+            })));
     }
 
     /// <summary>Statuses that make a project publicly browsable (Project.IsPubliclyVisible).</summary>
@@ -910,6 +950,14 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             return null;
         }
 
+        // Owner (user) đại diện doanh nghiệp cho nút Theo dõi / Nhắn tin ở trang chi tiết đề tài.
+        var companyOwnerUserId = await dbContext.CompanyMembers
+            .AsNoTracking()
+            .Where(member => member.CompanyId == project.CompanyId)
+            .OrderBy(member => member.Role)
+            .Select(member => (Guid?)member.UserId)
+            .FirstOrDefaultAsync(cancellationToken);
+
         string? industryName = null;
         if (project.IndustryId.HasValue)
         {
@@ -986,7 +1034,8 @@ public sealed class ProjectRepository(AppDbContext dbContext) : IProjectReposito
             company.LogoUrl,
             sup?.Name,
             sup?.Title,
-            sup?.Status);
+            sup?.Status,
+            companyOwnerUserId);
     }
 
     /// <summary>Skill requirements of one publicly visible project; null when the project is not publicly accessible.</summary>

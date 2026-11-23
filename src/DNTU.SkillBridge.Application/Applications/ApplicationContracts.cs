@@ -109,7 +109,8 @@ public sealed record ApplicationResponse(
     string? JoinTargetTeamName = null,
     string? JoinProposedRole = null,
     string? TeamAvatarUrl = null,
-    string? JoinTargetTeamAvatarUrl = null);
+    string? JoinTargetTeamAvatarUrl = null,
+    Guid CompanyId = default);
 
 public sealed class ApplicationListQuery : PageQuery
 {

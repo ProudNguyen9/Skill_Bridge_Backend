@@ -102,6 +102,18 @@ public sealed class CompanyRepository(AppDbContext dbContext) : ICompanyReposito
                 (member, user) => new { member, user })
             .AnyAsync(item => item.member.CompanyId == companyId && item.user.NormalizedEmail == normalizedEmail, cancellationToken);
 
+    public Task<Guid?> FindUserIdByNormalizedEmailAsync(string normalizedEmail, CancellationToken cancellationToken) =>
+        dbContext.Users.AsNoTracking()
+            .Where(user => user.NormalizedEmail == normalizedEmail)
+            .Select(user => (Guid?)user.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public Task<string?> GetCompanyNameAsync(Guid companyId, CancellationToken cancellationToken) =>
+        dbContext.Companies.AsNoTracking()
+            .Where(company => company.Id == companyId)
+            .Select(company => company.Name)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public void AddInvitation(CompanyInvitation invitation) => dbContext.CompanyInvitations.Add(invitation);
 
     public Task<CompanyMember?> FindMemberForUpdateAsync(Guid companyId, Guid userId, CancellationToken cancellationToken) =>
@@ -211,6 +223,13 @@ public sealed class CompanyRepository(AppDbContext dbContext) : ICompanyReposito
                 p.IsActive &&
                 (p.Status == ProjectStatus.APPROVED || p.Status == ProjectStatus.RECRUITING), cancellationToken);
 
+        var ownerUserId = await dbContext.CompanyMembers
+            .AsNoTracking()
+            .Where(member => member.CompanyId == company.Id)
+            .OrderBy(member => member.Role)
+            .Select(member => (Guid?)member.UserId)
+            .FirstOrDefaultAsync(cancellationToken);
+
         return new PublicCompanyResponse(
             company.Id,
             company.Name,
@@ -226,7 +245,8 @@ public sealed class CompanyRepository(AppDbContext dbContext) : ICompanyReposito
             company.FoundedYear,
             company.BannerUrl,
             company.VerificationStatus.ToString(),
-            openProjectsCount);
+            openProjectsCount,
+            ownerUserId);
     }
 
     private async Task<Dictionary<Guid, string>> ResolveIndustryNamesAsync(IEnumerable<Guid?> industryIds, CancellationToken cancellationToken)

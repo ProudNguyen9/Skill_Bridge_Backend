@@ -1481,7 +1481,8 @@ public sealed class ApplicationRepository(
                 hasJoinTeam ? joinTeamInfo.Name : null,
                 a.JoinProposedRole,
                 a.Team?.AvatarUrl,
-                hasJoinTeam ? joinTeamInfo.AvatarUrl : null);
+                hasJoinTeam ? joinTeamInfo.AvatarUrl : null,
+                a.Project.CompanyId);
         }).ToList();
     }
 
@@ -1610,7 +1611,8 @@ public sealed class ApplicationRepository(
                 hasJoinTeam ? joinTeamInfo.Name : null,
                 a.JoinProposedRole,
                 a.Team?.AvatarUrl,
-                hasJoinTeam ? joinTeamInfo.AvatarUrl : null);
+                hasJoinTeam ? joinTeamInfo.AvatarUrl : null,
+                a.Student.UserId);
         }).ToList();
     }
 

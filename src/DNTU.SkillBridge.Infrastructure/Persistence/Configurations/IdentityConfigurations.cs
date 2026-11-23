@@ -15,6 +15,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(entity => entity.DisplayName).HasMaxLength(200).IsRequired();
         builder.Property(entity => entity.PasswordHash).HasMaxLength(1024).IsRequired();
         builder.Property(entity => entity.GoogleSubjectId).HasMaxLength(255);
+        builder.Property(entity => entity.ChatBanReason).HasMaxLength(400);
         builder.HasIndex(entity => entity.NormalizedEmail).IsUnique();
         builder.HasIndex(entity => entity.GoogleSubjectId).IsUnique().HasFilter("[GoogleSubjectId] IS NOT NULL");
         builder.HasMany(entity => entity.UserRoles).WithOne(entity => entity.User).HasForeignKey(entity => entity.UserId);

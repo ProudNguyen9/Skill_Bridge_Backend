@@ -10,7 +10,7 @@ namespace DNTU.SkillBridge.Application.Lecturers;
 public sealed class LecturerService(
     ILecturerRepository lecturerRepository,
     IUnitOfWork unitOfWork,
-    INotificationWriter? notificationWriter = null) : ILecturerService
+    INotificationWriter? notificationWriter = null, DNTU.SkillBridge.Application.Social.ISocialActivityWriter? socialActivityWriter = null) : ILecturerService
 {
     /// <summary>Returns the caller's own profile, lazily creating it (active, private) on first access.</summary>
     public async Task<LecturerProfileResponse> GetMyProfileAsync(Guid userId, CancellationToken cancellationToken)
@@ -81,6 +81,17 @@ public sealed class LecturerService(
                 "Giảng viên đã chấp nhận lời mời hướng dẫn kỹ thuật",
                 JsonSerializer.Serialize(new { assignmentId = assignment.Id, projectId = assignment.ProjectId, lecturerId = profile.Id })));
         }
+
+        // Ghi hoạt động LECTURER_OPENED cho Bảng tin (giảng viên nhận hướng dẫn mới).
+        var lecturerName = await lecturerRepository.GetLecturerDisplayNameAsync(userId, cancellationToken);
+        var projectTitle = await lecturerRepository.GetProjectTitleAsync(assignment.ProjectId, cancellationToken);
+        socialActivityWriter?.Add(new DNTU.SkillBridge.Application.Social.SocialActivityMessage(
+            userId,
+            DNTU.SkillBridge.Domain.Social.SocialActivityType.LECTURER_OPENED,
+            $"{lecturerName ?? "Giảng viên"} vừa mở nhận hướng dẫn mới",
+            string.IsNullOrWhiteSpace(projectTitle) ? "Giảng viên đã chấp nhận hướng dẫn một đề tài." : $"Giảng viên bắt đầu hướng dẫn đề tài {projectTitle}.",
+            $"/projects/{assignment.ProjectId}",
+            assignment.ProjectId));
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return (LecturerAssignmentAcceptOutcome.Accepted, await lecturerRepository.ProjectAssignmentAsync(assignment.Id, cancellationToken) ?? ProjectAssignment(assignment));
