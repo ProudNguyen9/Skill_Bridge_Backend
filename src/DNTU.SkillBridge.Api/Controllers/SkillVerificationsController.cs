@@ -2,6 +2,7 @@ using System.Text.Json;
 using Asp.Versioning;
 using DNTU.SkillBridge.Application.Common;
 using DNTU.SkillBridge.Application.Common.Security;
+using DNTU.SkillBridge.Application.Social;
 using DNTU.SkillBridge.Application.Students;
 using DNTU.SkillBridge.Domain.Identity;
 using DNTU.SkillBridge.Domain.Portfolio;
@@ -20,7 +21,9 @@ namespace DNTU.SkillBridge.Api.Controllers;
 [Produces("application/json")]
 public sealed class SkillVerificationsController(
     AppDbContext dbContext,
-    ICurrentUser currentUser) : ControllerBase
+    ICurrentUser currentUser,
+    ISocialActivityWriter socialActivityWriter,
+    DNTU.SkillBridge.Application.Notifications.INotificationWriter? notificationWriter = null) : ControllerBase
 {
     /// <summary>Sinh viên xem danh sách các yêu cầu xác thực kỹ năng của bản thân.</summary>
     [HttpGet("students/skills/requests")]
@@ -192,6 +195,43 @@ public sealed class SkillVerificationsController(
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Ghi hoạt động SKILL_VERIFIED cho Bảng tin của người theo dõi sinh viên.
+        var studentUser = await dbContext.StudentProfiles.AsNoTracking()
+            .Where(sp => sp.Id == entity.StudentId)
+            .Select(sp => new { sp.UserId })
+            .FirstOrDefaultAsync(cancellationToken);
+        var skillName = await dbContext.Skills.AsNoTracking()
+            .Where(sk => sk.Id == entity.SkillId)
+            .Select(sk => sk.Name)
+            .FirstOrDefaultAsync(cancellationToken);
+        var lecturerName = await dbContext.Users.AsNoTracking()
+            .Where(u => u.Id == lecturerUserId)
+            .Select(u => u.DisplayName)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (studentUser is not null)
+        {
+            socialActivityWriter.Add(new SocialActivityMessage(
+                studentUser.UserId,
+                DNTU.SkillBridge.Domain.Social.SocialActivityType.SKILL_VERIFIED,
+                $"Kỹ năng {skillName} đã được xác thực",
+                $"{lecturerName} vừa xác nhận kỹ năng {skillName} của sinh viên.",
+                "/student/portfolio",
+                entity.SkillId));
+
+            // Thông báo cho sinh viên: chứng chỉ kỹ năng đã được giảng viên xác thực.
+            notificationWriter?.Add(new DNTU.SkillBridge.Application.Notifications.NotificationMessage(
+                studentUser.UserId,
+                "SKILL_VERIFIED",
+                $"Kỹ năng {skillName} đã được xác thực bởi {lecturerName}",
+                System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    skillId = entity.SkillId,
+                    skillName,
+                    url = "/student/portfolio",
+                })));
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
 
         var responses = await MapRequestsAsync([entity], cancellationToken);
         return Ok(new ApiResponse<SkillVerificationRequestResponse>(responses.First()));

@@ -53,7 +53,8 @@ public sealed record CompanyApplicationResponse(
     string? JoinTargetTeamName = null,
     string? JoinProposedRole = null,
     string? TeamAvatarUrl = null,
-    string? JoinTargetTeamAvatarUrl = null);
+    string? JoinTargetTeamAvatarUrl = null,
+    Guid? ApplicantUserId = null);
 
 public sealed record CompanyProjectApplicationSummaryResponse(
     Guid ProjectId,

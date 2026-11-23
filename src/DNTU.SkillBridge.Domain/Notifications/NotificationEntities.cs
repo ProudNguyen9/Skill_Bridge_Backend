@@ -21,6 +21,13 @@ public sealed class Notification : AuditableEntity
     }
 
     public void MarkRead() => ReadAt ??= DateTimeOffset.UtcNow;
+
+    /// <summary>Cập nhật nội dung thông báo chưa đọc (dùng cho upsert thông báo chat theo hội thoại).</summary>
+    public void Refresh(string title, string? payloadJson)
+    {
+        Title = Required(title, nameof(title), 300);
+        PayloadJson = string.IsNullOrWhiteSpace(payloadJson) ? null : payloadJson.Trim();
+    }
     private static string Required(string value, string name, int maxLength) => !string.IsNullOrWhiteSpace(value) && value.Trim().Length <= maxLength ? value.Trim() : throw new ArgumentException($"{name} is required and must be at most {maxLength} characters.", name);
 }
 

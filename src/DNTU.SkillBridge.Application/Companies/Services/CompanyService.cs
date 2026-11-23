@@ -1,9 +1,11 @@
+using System.Text.Json;
 using DNTU.SkillBridge.Application.Abstractions;
 using DNTU.SkillBridge.Domain.Companies;
 
 namespace DNTU.SkillBridge.Application.Companies;
 
-public sealed class CompanyService(ICompanyRepository companyRepository, IUnitOfWork unitOfWork) : ICompanyService
+public sealed class CompanyService(ICompanyRepository companyRepository, IUnitOfWork unitOfWork,
+    DNTU.SkillBridge.Application.Notifications.INotificationWriter? notificationWriter = null) : ICompanyService
 {
     /// <summary>Returns the caller's own company, or null when the account is not linked to one yet.</summary>
     public async Task<CompanyProfileResponse?> GetMyCompanyAsync(Guid userId, CancellationToken cancellationToken)
@@ -92,6 +94,25 @@ public sealed class CompanyService(ICompanyRepository companyRepository, IUnitOf
         var invitation = new CompanyInvitation(companyId.Value, request.Email, request.Role, userId);
         companyRepository.AddInvitation(invitation);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Email đã đăng ký tài khoản → đẩy thông báo lời mời vào công ty ngay.
+        var inviteeUserId = await companyRepository.FindUserIdByNormalizedEmailAsync(normalizedEmail, cancellationToken);
+        if (inviteeUserId.HasValue)
+        {
+            var companyName = await companyRepository.GetCompanyNameAsync(companyId.Value, cancellationToken) ?? "Doanh nghiệp DNTU";
+            notificationWriter?.Add(new DNTU.SkillBridge.Application.Notifications.NotificationMessage(
+                inviteeUserId.Value,
+                "COMPANY_MEMBER_INVITED",
+                $"Bạn được mời tham gia “{companyName}” với vai trò {request.Role}",
+                System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    invitationId = invitation.Id,
+                    companyName,
+                    role = request.Role.ToString(),
+                })));
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
         return new CompanyInvitationResponse(invitation.Id, invitation.Email, invitation.Role.ToString(), invitation.Status.ToString());
     }
 

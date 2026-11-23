@@ -3,7 +3,10 @@ using DNTU.SkillBridge.Domain.Portfolio;
 
 namespace DNTU.SkillBridge.Application.Students;
 
-public sealed class PortfolioService(IPortfolioRepository portfolioRepository, IUnitOfWork unitOfWork) : IPortfolioService
+public sealed class PortfolioService(
+    IPortfolioRepository portfolioRepository,
+    IUnitOfWork unitOfWork,
+    DNTU.SkillBridge.Application.Social.ISocialActivityWriter? socialActivityWriter = null) : IPortfolioService
 {
     public Task<IReadOnlyCollection<VerifiedSkillResponse>> ListVerifiedSkillsAsync(Guid studentId, bool includeRevoked, CancellationToken cancellationToken) =>
         portfolioRepository.ListVerifiedSkillsAsync(studentId, includeRevoked, cancellationToken);
@@ -79,6 +82,19 @@ public sealed class PortfolioService(IPortfolioRepository portfolioRepository, I
         var entry = await portfolioRepository.FindPortfolioEntryForUpdateAsync(studentId.Value, projectId, cancellationToken);
         if (entry is null) return null;
         if (published) entry.Publish(); else entry.Unpublish();
+
+        if (published)
+        {
+            var projectTitle = await portfolioRepository.GetProjectTitleAsync(projectId, cancellationToken);
+            socialActivityWriter?.Add(new DNTU.SkillBridge.Application.Social.SocialActivityMessage(
+                userId,
+                DNTU.SkillBridge.Domain.Social.SocialActivityType.PORTFOLIO_UPDATED,
+                "Cập nhật Portfolio mới",
+                string.IsNullOrWhiteSpace(projectTitle) ? "Sinh viên vừa cập nhật portfolio dự án." : $"Cập nhật minh chứng dự án {projectTitle}.",
+                "/student/portfolio",
+                entry.Id));
+        }
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return await portfolioRepository.FindPortfolioEntryResponseAsync(entry.Id, cancellationToken);
     }

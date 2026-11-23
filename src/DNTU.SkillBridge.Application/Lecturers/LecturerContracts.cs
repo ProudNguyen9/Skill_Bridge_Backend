@@ -86,7 +86,8 @@ public sealed record LecturerAssignmentResponse(
     string? TeamAvatarUrl = null,
     string? LecturerAvatarUrl = null,
     string? CompanyLogoUrl = null,
-    IReadOnlyCollection<string>? ProjectIllustrationUrls = null);
+    IReadOnlyCollection<string>? ProjectIllustrationUrls = null,
+    Guid? LecturerUserId = null);
 
 public sealed class CreateLecturerAssignmentRequest
 {

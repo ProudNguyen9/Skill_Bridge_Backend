@@ -147,7 +147,8 @@ public sealed record CompanyProjectListItemResponse(
     string? CompanyLogoUrl = null,
     string? SupervisorName = null,
     string? SupervisorTitle = null,
-    string? SupervisorStatus = null);
+    string? SupervisorStatus = null,
+    Guid? CompanyOwnerUserId = null);
 
 public sealed record CompanyProjectDetailResponse(
     Guid Id,
@@ -382,7 +383,8 @@ public sealed record PublicProjectDetailResponse(
     string? CompanyLogoUrl = null,
     string? SupervisorName = null,
     string? SupervisorTitle = null,
-    string? SupervisorStatus = null);
+    string? SupervisorStatus = null,
+    Guid? CompanyOwnerUserId = null);
 
 public sealed record PublicProjectSkillResponse(
     Guid SkillId,

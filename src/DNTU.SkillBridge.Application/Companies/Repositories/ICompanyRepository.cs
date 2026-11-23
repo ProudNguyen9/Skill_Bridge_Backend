@@ -13,6 +13,8 @@ public interface ICompanyRepository
     Task<CompanyProfileResponse> ProjectCompanyAsync(Guid companyId, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<CompanyMemberResponse>> ListMembersAsync(Guid companyId, CancellationToken cancellationToken);
     Task<bool> HasMemberWithEmailAsync(Guid companyId, string normalizedEmail, CancellationToken cancellationToken);
+    Task<Guid?> FindUserIdByNormalizedEmailAsync(string normalizedEmail, CancellationToken cancellationToken);
+    Task<string?> GetCompanyNameAsync(Guid companyId, CancellationToken cancellationToken);
     void AddInvitation(CompanyInvitation invitation);
     Task<CompanyMember?> FindMemberForUpdateAsync(Guid companyId, Guid userId, CancellationToken cancellationToken);
     Task<int> CountOwnersAsync(Guid companyId, CancellationToken cancellationToken);

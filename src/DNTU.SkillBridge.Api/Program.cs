@@ -240,6 +240,11 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<NotificationWriter>();
 builder.Services.AddScoped<INotificationWriter>(provider => provider.GetRequiredService<NotificationWriter>());
 builder.Services.AddScoped<IOutboxEnqueuer>(provider => provider.GetRequiredService<NotificationWriter>());
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Chat.IChatService, DNTU.SkillBridge.Application.Chat.Services.ChatService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Chat.IChatModerationService, DNTU.SkillBridge.Application.Chat.Services.ChatModerationService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Social.ISocialService, DNTU.SkillBridge.Application.Social.Services.SocialService>();
+builder.Services.AddScoped<DNTU.SkillBridge.Application.Chat.IChatRealtimeNotifier, DNTU.SkillBridge.Api.Realtime.ChatRealtimeNotifier>();
+builder.Services.AddSingleton<DNTU.SkillBridge.Application.Chat.IChatPresenceTracker, DNTU.SkillBridge.Api.Realtime.ChatPresenceTracker>();
 builder.Services.AddHostedService<OutboxProcessor>();
 builder.Services.AddHostedService<DNTU.SkillBridge.Infrastructure.Files.FileCleanupService>();
 builder.Services.AddSignalR();
@@ -320,6 +325,10 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("password-recovery", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    // Chat: tối đa 30 tin nhắn/phút cho mỗi người dùng (chống spam tự động).
+    options.AddPolicy("chat-send", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 
 builder.Services.AddCors(options =>
@@ -436,6 +445,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapHub<ProjectHub>("/hubs/projects");
+app.MapHub<DNTU.SkillBridge.Api.Realtime.ChatHub>("/hubs/chat");
 
 app.MapOpenApi();
 app.UseSwagger();

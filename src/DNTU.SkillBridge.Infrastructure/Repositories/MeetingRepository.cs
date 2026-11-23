@@ -27,7 +27,13 @@ public sealed class MeetingRepository(AppDbContext dbContext, INotificationWrite
         var endAt = request.ResolvedEndAt;
         var externalUrl = request.ResolvedUrl;
 
-        if (!await CanScheduleAsync(userId, projectId, cancellationToken) || !IsFutureUtcRange(startAt, endAt)) return null;
+        var canSchedule = await CanScheduleAsync(userId, projectId, cancellationToken);
+        var futureRange = IsFutureUtcRange(startAt, endAt);
+        if (!canSchedule || !futureRange)
+        {
+            Console.Error.WriteLine($"[MeetingRepository] Create blocked: canSchedule={canSchedule}, futureRange={futureRange}, startAt={startAt:O} (offset={startAt.Offset}), endAt={endAt:O}, user={userId}, project={projectId}");
+            return null;
+        }
         var participantIds = request.ParticipantStudentIds?.Distinct().ToArray() ?? [];
         if (participantIds.Length == 0)
         {
@@ -46,6 +52,16 @@ public sealed class MeetingRepository(AppDbContext dbContext, INotificationWrite
             dbContext.ProjectMeetings.Add(meeting);
             foreach (var studentId in participantIds) dbContext.MeetingParticipants.Add(new MeetingParticipant(meeting.Id, studentId));
             AddEvent(meeting, participantIds, "MEETING_CREATED", userId);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            // Thông báo ngay cho sinh viên được mời họp (nhắc hẹn tức thì, ngoài reminder 30 phút).
+            await NotifyStudentParticipantsAsync(
+                meeting.Id,
+                participantIds,
+                "MEETING_SCHEDULED",
+                $"Cuộc họp “{request.Title}” đã được lên lịch — {startAt.ToLocalTime():HH:mm dd/MM}",
+                $"/student/meetings?focus={meeting.Id}",
+                cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
             return Map(meeting);
         }
@@ -154,12 +170,26 @@ public sealed class MeetingRepository(AppDbContext dbContext, INotificationWrite
         var externalUrl = request.ResolvedUrl;
         if (meeting is null || !await CanManageAsync(userId, meeting.ProjectId, cancellationToken) || !IsFutureUtcRange(startAt, endAt)) return null;
 
+        var originalStartAt = meeting.StartAt;
         try
         {
             meeting.Update(request.Title, request.Description, startAt, endAt, externalUrl);
             var participantIds = await dbContext.MeetingParticipants.Where(item => item.MeetingId == meeting.Id).Select(item => item.StudentId).ToArrayAsync(cancellationToken);
             AddEvent(meeting, participantIds, "MEETING_UPDATED", userId);
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            // Dời lịch họp → nhắc người tham gia ngay.
+            if (originalStartAt != startAt)
+            {
+                await NotifyStudentParticipantsAsync(
+                    meeting.Id,
+                    participantIds,
+                    "MEETING_RESCHEDULED",
+                    $"Cuộc họp “{request.Title}” đã dời sang {startAt.ToLocalTime():HH:mm dd/MM}",
+                    $"/student/meetings?focus={meeting.Id}",
+                    cancellationToken);
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
             return Map(meeting);
         }
         catch (ArgumentException)
@@ -177,6 +207,16 @@ public sealed class MeetingRepository(AppDbContext dbContext, INotificationWrite
         var participantIds = await dbContext.MeetingParticipants.Where(item => item.MeetingId == meeting.Id).Select(item => item.StudentId).ToArrayAsync(cancellationToken);
         AddEvent(meeting, participantIds, "MEETING_CANCELLED", userId);
         dbContext.ProjectMeetings.Remove(meeting);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Hủy họp → nhắc ngay người tham gia để không đứng chờ phòng trống.
+        await NotifyStudentParticipantsAsync(
+            meeting.Id,
+            participantIds,
+            "MEETING_CANCELLED",
+            $"Cuộc họp “{meeting.Title}” đã bị hủy",
+            "/student/meetings",
+            cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
     }
@@ -497,6 +537,54 @@ public sealed class MeetingRepository(AppDbContext dbContext, INotificationWrite
     {
         dbContext.ProjectActivities.Add(new ProjectActivity(projectId, eventType, actorUserId, JsonSerializer.Serialize(payload)));
     }
+
+
+    /// <summary>
+    /// Gửi thông báo in-app cho sinh viên trong danh sách participant (StudentProfile ids).
+    /// URL đích là trang họp của portal sinh viên; payload kèm meetingId để FE mở chi tiết.
+    /// </summary>
+    private async Task NotifyStudentParticipantsAsync(
+        Guid meetingId, IReadOnlyCollection<Guid> participantStudentIds, string type, string title, string url, CancellationToken cancellationToken)
+    {
+        if (notificationWriter is null || participantStudentIds.Count == 0) return;
+
+        // Thông báo là side effect — lỗi không được làm hỏng thao tác chính (tạo/dời/hủy họp).
+        try
+        {
+
+        var userIds = await dbContext.StudentProfiles.AsNoTracking()
+            .Where(sp => participantStudentIds.Contains(sp.Id))
+            .Select(sp => sp.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        foreach (var userId in userIds)
+        {
+            try
+            {
+                notificationWriter.Add(new DNTU.SkillBridge.Application.Notifications.NotificationMessage(
+                    userId,
+                    type,
+                    title,
+                    System.Text.Json.JsonSerializer.Serialize(new { meetingId, url })));
+            }
+            catch (ArgumentException exception)
+            {
+                Console.Error.WriteLine($"[MeetingRepository] Notify '{type}' failed for user {userId}: {exception.Message}");
+            }
+        }
+        }
+        catch (ArgumentException exception)
+        {
+            Console.Error.WriteLine($"[MeetingRepository] Notify '{type}' failed: {exception.Message}");
+        }
+    }
+
+    private async Task<List<Guid>> GetMeetingParticipantStudentIdsAsync(Guid meetingId, CancellationToken cancellationToken) =>
+        await dbContext.MeetingParticipants.AsNoTracking()
+            .Where(mp => mp.MeetingId == meetingId)
+            .Select(mp => mp.StudentId)
+            .ToListAsync(cancellationToken);
 
     private static MeetingResponse Map(ProjectMeeting meeting) => new(meeting.Id, meeting.ProjectId, meeting.Title, meeting.Description, meeting.StartAt, meeting.EndAt, meeting.ExternalUrl, meeting.ExternalLinkType, meeting.ReminderState, meeting.CreatedAt, meeting.MeetingType, meeting.ApplicationId);
     private static MeetingMinutesResponse Map(MeetingMinute minute) => new(minute.MeetingId, minute.Content, minute.UpdatedByUserId, minute.CreatedAt, minute.UpdatedAt);

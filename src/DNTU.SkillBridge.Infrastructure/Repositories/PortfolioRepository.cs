@@ -93,6 +93,12 @@ public sealed class PortfolioRepository(AppDbContext dbContext) : IPortfolioRepo
     }
 
     /// <summary>Reads a portfolio entry as a tracked entity so mutations are persisted.</summary>
+    public Task<string?> GetProjectTitleAsync(Guid projectId, CancellationToken cancellationToken) =>
+        dbContext.Projects.AsNoTracking()
+            .Where(project => project.Id == projectId)
+            .Select(project => project.Title)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public Task<PortfolioEntry?> FindPortfolioEntryForUpdateAsync(Guid studentId, Guid projectId, CancellationToken cancellationToken) =>
         dbContext.PortfolioEntries.AsTracking()
             .SingleOrDefaultAsync(item => item.StudentId == studentId && item.ProjectId == projectId, cancellationToken);

@@ -89,6 +89,9 @@ public static class PersistenceServiceCollectionExtensions
         services.AddScoped<IBusinessReviewRepository, BusinessReviewRepository>();
         services.AddScoped<IPortfolioRepository, PortfolioRepository>();
         services.AddScoped<INewsRepository, NewsRepository>();
+        services.AddScoped<DNTU.SkillBridge.Application.Chat.Repositories.IChatRepository, DNTU.SkillBridge.Infrastructure.Repositories.ChatRepository>();
+        services.AddScoped<DNTU.SkillBridge.Application.Social.Repositories.ISocialRepository, DNTU.SkillBridge.Infrastructure.Repositories.SocialRepository>();
+        services.AddScoped<DNTU.SkillBridge.Application.Social.ISocialActivityWriter, DNTU.SkillBridge.Infrastructure.Repositories.SocialActivityWriter>();
 
         return services;
     }

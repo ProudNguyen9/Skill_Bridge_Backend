@@ -35,6 +35,7 @@ public interface IPortfolioRepository
 
     /// <summary>Reads a portfolio entry as a tracked entity so mutations are persisted.</summary>
     Task<PortfolioEntry?> FindPortfolioEntryForUpdateAsync(Guid studentId, Guid projectId, CancellationToken cancellationToken);
+    Task<string?> GetProjectTitleAsync(Guid projectId, CancellationToken cancellationToken);
 
     void AddPortfolioEntry(PortfolioEntry entry);
 
