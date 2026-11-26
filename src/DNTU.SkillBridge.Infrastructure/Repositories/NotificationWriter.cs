@@ -41,5 +41,26 @@ public sealed class NotificationWriter(AppDbContext dbContext) : INotificationWr
         Enqueue(NotificationOutboxEvent.TypeName, JsonSerializer.Serialize(new NotificationOutboxEvent(notification.Id, userId)));
     }
 
+    /// <inheritdoc />
+    public async Task MarkChatNotificationsReadAsync(Guid userId, string conversationId, CancellationToken cancellationToken = default)
+    {
+        var unreadList = await dbContext.Notifications
+            .Where(n => n.UserId == userId
+                && n.Type == ChatMessageNotificationType
+                && n.ReadAt == null
+                && n.PayloadJson != null
+                && n.PayloadJson.Contains(conversationId))
+            .ToListAsync(cancellationToken);
+
+        if (unreadList.Count == 0) return;
+
+        foreach (var item in unreadList)
+        {
+            item.MarkRead();
+        }
+
+        Enqueue(NotificationOutboxEvent.TypeName, JsonSerializer.Serialize(new NotificationOutboxEvent(unreadList[0].Id, userId)));
+    }
+
     public void Enqueue(string type, string payloadJson) => dbContext.OutboxMessages.Add(new OutboxMessage(type, payloadJson));
 }

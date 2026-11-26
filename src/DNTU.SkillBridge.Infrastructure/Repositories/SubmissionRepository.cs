@@ -124,4 +124,32 @@ public sealed class SubmissionRepository(AppDbContext dbContext) : ISubmissionRe
                 item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.VideoUrl).FirstOrDefault(),
                 item.Versions.Where(v => v.VersionNumber == item.CurrentVersionNumber).Select(v => v.FileId).FirstOrDefault()))
             .ToListAsync(cancellationToken);
+
+    public async Task<(string ProjectTitle, IReadOnlyCollection<Guid> LecturerUserIds, IReadOnlyCollection<Guid> CompanyUserIds)?> GetNotificationScopeAsync(
+        Guid projectId, CancellationToken cancellationToken)
+    {
+        var project = await dbContext.Projects.AsNoTracking()
+            .Where(p => p.Id == projectId)
+            .Select(p => new { p.Title, p.CompanyId })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (project is null) return null;
+
+        var lecturerUserIds = await dbContext.LecturerAssignments.AsNoTracking()
+            .Join(dbContext.LecturerProfiles.AsNoTracking(),
+                assignment => assignment.LecturerId,
+                lecturer => lecturer.Id,
+                (assignment, lecturer) => new { assignment, lecturer })
+            .Where(row => row.assignment.ProjectId == projectId && row.assignment.Status == LecturerAssignmentStatus.ACTIVE && row.lecturer.IsActive)
+            .Select(row => row.lecturer.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var companyUserIds = await dbContext.CompanyMembers.AsNoTracking()
+            .Where(m => m.CompanyId == project.CompanyId)
+            .Select(m => m.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return (project.Title, lecturerUserIds, companyUserIds);
+    }
 }

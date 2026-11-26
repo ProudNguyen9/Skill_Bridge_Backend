@@ -382,6 +382,31 @@ public sealed class ProjectRepository(AppDbContext dbContext, DNTU.SkillBridge.A
         var now = DateTimeOffset.UtcNow;
         project.SubmitForApproval(userId, now);
         dbContext.ProjectApprovals.Add(new ProjectApproval(projectId, ProjectDecision.SUBMITTED, userId, now, null));
+
+        if (notificationWriter is not null)
+        {
+            var adminUserIds = await dbContext.Users.AsNoTracking()
+                .Where(u => u.IsActive && u.UserRoles.Any(ur => ur.Role.NormalizedName == "ADMIN" || ur.Role.NormalizedName == "SUPER_ADMIN"))
+                .Select(u => u.Id)
+                .Distinct()
+                .ToListAsync(cancellationToken);
+            var payload = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                projectId = project.Id,
+                projectTitle = project.Title,
+                companyName = company.Name,
+                url = $"/admin/approvals/projects/{project.Id}",
+            });
+            foreach (var adminUserId in adminUserIds)
+            {
+                notificationWriter.Add(new DNTU.SkillBridge.Application.Notifications.NotificationMessage(
+                    adminUserId,
+                    "PROJECT_SUBMITTED",
+                    $"Đề tài mới cần duyệt: “{project.Title}” ({company.Name})",
+                    payload));
+            }
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return (ProjectSubmitOutcome.Submitted, await ProjectDetailAsync(companyId, projectId, cancellationToken));
@@ -646,15 +671,19 @@ public sealed class ProjectRepository(AppDbContext dbContext, DNTU.SkillBridge.A
                     break;
                 case ProjectDecision.CHANGES_REQUESTED:
                     project.RequestChanges();
+                    NotifyCompanyProjectDecision(project, "PROJECT_CHANGES_REQUESTED", $"Đề tài “{project.Title}” cần chỉnh sửa theo góp ý của Khoa/Admin", note);
                     break;
                 case ProjectDecision.REJECTED:
                     project.Reject();
+                    NotifyCompanyProjectDecision(project, "PROJECT_REJECTED", $"Đề tài “{project.Title}” chưa được phê duyệt", note);
                     break;
                 case ProjectDecision.SUSPENDED:
                     project.Suspend();
+                    NotifyCompanyProjectDecision(project, "PROJECT_SUSPENDED", $"Đề tài “{project.Title}” đã tạm ngưng hoạt động", note);
                     break;
                 case ProjectDecision.RESUMED:
                     project.Resume();
+                    NotifyCompanyProjectDecision(project, "PROJECT_RESUMED", $"Đề tài “{project.Title}” đã được mở lại", note);
                     break;
                 default:
                     // SUBMITTED/CANCELLED/REOPENED are company-side records, never admin decisions.
@@ -708,6 +737,27 @@ public sealed class ProjectRepository(AppDbContext dbContext, DNTU.SkillBridge.A
                 projectTitle = project.Title,
                 url = $"/company/projects/{project.Id}",
             })));
+    }
+
+    private void NotifyCompanyProjectDecision(DNTU.SkillBridge.Domain.Projects.Project project, string type, string title, string? note)
+    {
+        if (notificationWriter is null) return;
+        var memberUserIds = dbContext.CompanyMembers
+            .Where(member => member.CompanyId == project.CompanyId)
+            .Select(member => member.UserId)
+            .Distinct()
+            .ToList();
+        var payload = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            projectId = project.Id,
+            projectTitle = project.Title,
+            note,
+            url = $"/company/projects/{project.Id}",
+        });
+        foreach (var memberUserId in memberUserIds)
+        {
+            notificationWriter.Add(new DNTU.SkillBridge.Application.Notifications.NotificationMessage(memberUserId, type, title, payload));
+        }
     }
 
     /// <summary>Statuses that make a project publicly browsable (Project.IsPubliclyVisible).</summary>

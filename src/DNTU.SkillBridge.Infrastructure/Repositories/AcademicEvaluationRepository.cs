@@ -129,4 +129,19 @@ public sealed class AcademicEvaluationRepository(AppDbContext dbContext) : IAcad
             return false;
         }
     }
+
+    public async Task<(Guid StudentUserId, string ProjectTitle)?> GetEvaluationNotificationInfoAsync(
+        Guid projectId, Guid studentId, CancellationToken cancellationToken)
+    {
+        var studentUserId = await dbContext.StudentProfiles.AsNoTracking()
+            .Where(s => s.Id == studentId)
+            .Select(s => (Guid?)s.UserId)
+            .SingleOrDefaultAsync(cancellationToken);
+        var projectTitle = await dbContext.Projects.AsNoTracking()
+            .Where(p => p.Id == projectId)
+            .Select(p => p.Title)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (!studentUserId.HasValue || projectTitle is null) return null;
+        return (studentUserId.Value, projectTitle);
+    }
 }

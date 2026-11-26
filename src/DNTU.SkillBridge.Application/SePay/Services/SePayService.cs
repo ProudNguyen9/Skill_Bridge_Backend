@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using DNTU.SkillBridge.Application.Abstractions;
 using DNTU.SkillBridge.Application.Common.Options;
 using DNTU.SkillBridge.Application.Notifications;
@@ -9,7 +10,12 @@ using Microsoft.Extensions.Options;
 namespace DNTU.SkillBridge.Application.SePay;
 
 /// <summary>Handles verified SePay callbacks; browser navigation is never payment proof.</summary>
-public sealed class SePayService(ISePayRepository sePayRepository, IOutboxEnqueuer outboxEnqueuer, IUnitOfWork unitOfWork, IOptions<SePayOptions> options) : ISePayService
+public sealed class SePayService(
+    ISePayRepository sePayRepository,
+    IOutboxEnqueuer outboxEnqueuer,
+    IUnitOfWork unitOfWork,
+    IOptions<SePayOptions> options,
+    INotificationWriter? notificationWriter = null) : ISePayService
 {
     public async Task<SePayCheckoutResponse?> CreateCheckoutAsync(Guid companyUserId, Guid fundingOrderId, CancellationToken cancellationToken)
     {
@@ -73,6 +79,32 @@ public sealed class SePayService(ISePayRepository sePayRepository, IOutboxEnqueu
             sePayRepository.AddSePayIpnEvent(ipnEvent);
             sePayRepository.AddPaymentTransaction(new PaymentTransaction(order.Id, "SePay", request.TransactionId, request.Amount, request.Currency, PaymentTransactionStatus.SUCCEEDED, request.OccurredAt));
             outboxEnqueuer.Enqueue("payment.funding.succeeded", $"{{\"projectId\":\"{order.ProjectId}\",\"orderId\":\"{order.Id}\"}}");
+
+            if (notificationWriter is not null)
+            {
+                var scope = await sePayRepository.GetProjectFundingNotificationScopeAsync(order.ProjectId, cancellationToken);
+                if (scope is not null)
+                {
+                    var payload = JsonSerializer.Serialize(new
+                    {
+                        projectId = order.ProjectId,
+                        projectTitle = scope.Value.ProjectTitle,
+                        amount = order.Amount,
+                        currency = order.Currency,
+                        invoiceCode = order.InvoiceCode,
+                        url = $"/company/projects/{order.ProjectId}/allowance",
+                    });
+                    foreach (var companyUserId in scope.Value.CompanyUserIds)
+                    {
+                        notificationWriter.Add(new NotificationMessage(
+                            companyUserId,
+                            "FUNDING_ORDER_PAID",
+                            $"Đã xác nhận nạp quỹ {order.Amount:N0} {order.Currency} cho dự án “{scope.Value.ProjectTitle}”",
+                            payload));
+                    }
+                }
+            }
+
             ipnEvent.MarkApplied();
             await unitOfWork.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);

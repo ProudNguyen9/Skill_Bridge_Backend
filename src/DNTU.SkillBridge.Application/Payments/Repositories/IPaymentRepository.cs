@@ -18,4 +18,7 @@ public interface IPaymentRepository
     Task<PagedResponse<AdminFundingOrderListItemResponse>> ListFundingOrdersAdminAsync(AdminFundingOrderListQuery query, CancellationToken cancellationToken);
 
     Task<PagedResponse<AdminDisbursementListItemResponse>> ListDisbursementsAdminAsync(AdminDisbursementListQuery query, CancellationToken cancellationToken);
+
+    Task<(Guid StudentUserId, string ProjectTitle)?> GetDisbursementNotificationScopeAsync(
+        Guid disbursementId, CancellationToken cancellationToken) => Task.FromResult<(Guid, string)?>(null);
 }

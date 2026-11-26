@@ -28,4 +28,22 @@ public sealed class SePayRepository(AppDbContext dbContext) : ISePayRepository
     public void AddSePayIpnEvent(SePayIpnEvent ipnEvent) => dbContext.SePayIpnEvents.Add(ipnEvent);
 
     public void AddPaymentTransaction(PaymentTransaction transaction) => dbContext.PaymentTransactions.Add(transaction);
+
+    public async Task<(string ProjectTitle, IReadOnlyCollection<Guid> CompanyUserIds)?> GetProjectFundingNotificationScopeAsync(
+        Guid projectId, CancellationToken cancellationToken)
+    {
+        var project = await dbContext.Projects.AsNoTracking()
+            .Where(p => p.Id == projectId)
+            .Select(p => new { p.Title, p.CompanyId })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (project is null) return null;
+
+        var companyUserIds = await dbContext.CompanyMembers.AsNoTracking()
+            .Where(m => m.CompanyId == project.CompanyId)
+            .Select(m => m.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return (project.Title, companyUserIds);
+    }
 }

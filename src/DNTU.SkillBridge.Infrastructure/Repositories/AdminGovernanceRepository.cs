@@ -220,4 +220,11 @@ public sealed class AdminGovernanceRepository(AppDbContext dbContext) : IAdminis
             .SingleOrDefaultAsync(cancellationToken);
         return detail;
     }
+
+    public async Task<IReadOnlyCollection<Guid>> ListCompanyMemberUserIdsAsync(Guid companyId, CancellationToken cancellationToken) =>
+        await dbContext.CompanyMembers.AsNoTracking()
+            .Where(member => member.CompanyId == companyId)
+            .Select(member => member.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
 }

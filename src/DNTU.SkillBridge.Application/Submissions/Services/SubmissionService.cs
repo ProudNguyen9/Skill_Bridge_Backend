@@ -1,11 +1,17 @@
+using System.Text.Json;
 using DNTU.SkillBridge.Application.Abstractions;
+using DNTU.SkillBridge.Application.Notifications;
 using DNTU.SkillBridge.Application.Workspaces;
 using DNTU.SkillBridge.Domain.Submissions;
 
 namespace DNTU.SkillBridge.Application.Submissions;
 
 /// <summary>Creates immutable evidence snapshots and provides role-scoped submission projections.</summary>
-public sealed class SubmissionService(ISubmissionRepository submissionRepository, IProjectActivityWriter activityWriter, IUnitOfWork unitOfWork) : ISubmissionService
+public sealed class SubmissionService(
+    ISubmissionRepository submissionRepository,
+    IProjectActivityWriter activityWriter,
+    IUnitOfWork unitOfWork,
+    INotificationWriter? notificationWriter = null) : ISubmissionService
 {
     public async Task<(SubmissionOutcome Outcome, SubmissionResponse? Submission)> CreateAsync(Guid userId, Guid projectId, CreateSubmissionRequest request, CancellationToken cancellationToken)
     {
@@ -21,6 +27,7 @@ public sealed class SubmissionService(ISubmissionRepository submissionRepository
             submissionRepository.AddSubmission(submission);
             submissionRepository.AddStatusHistory(new SubmissionStatusHistory(submission.Id, SubmissionStatus.SUBMITTED, SubmissionStatus.SUBMITTED, userId));
             AddEvent(projectId, "SUBMISSION_CREATED", userId, submission.Id, 1);
+            await NotifySubmissionAsync(projectId, submission.Id, 1, isResubmit: false, cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
             return (SubmissionOutcome.Success, Map(submission));
         }
@@ -55,6 +62,7 @@ public sealed class SubmissionService(ISubmissionRepository submissionRepository
 
         submissionRepository.AddStatusHistory(new SubmissionStatusHistory(submission.Id, previousStatus, submission.Status, userId));
         AddEvent(submission.ProjectId, "SUBMISSION_NEW_VERSION", userId, submission.Id, submission.CurrentVersionNumber);
+        await NotifySubmissionAsync(submission.ProjectId, submission.Id, submission.CurrentVersionNumber, isResubmit: true, cancellationToken);
         if (!await submissionRepository.TrySaveChangesAsync(cancellationToken)) return (SubmissionOutcome.Conflict, null);
 
         return (SubmissionOutcome.Success, Map(submission));
@@ -99,6 +107,36 @@ public sealed class SubmissionService(ISubmissionRepository submissionRepository
 
     private void AddEvent(Guid projectId, string eventType, Guid userId, Guid submissionId, int versionNumber) =>
         activityWriter.Append(projectId, eventType, userId, new { submissionId, versionNumber });
+
+    private async Task NotifySubmissionAsync(Guid projectId, Guid submissionId, int versionNumber, bool isResubmit, CancellationToken cancellationToken)
+    {
+        if (notificationWriter is null) return;
+        var scope = await submissionRepository.GetNotificationScopeAsync(projectId, cancellationToken);
+        if (scope is null) return;
+
+        var type = isResubmit ? "SUBMISSION_RESUBMITTED" : "SUBMISSION_CREATED";
+        var title = isResubmit
+            ? $"Nhóm sinh viên vừa nộp lại sản phẩm (v{versionNumber}) cho dự án “{scope.Value.ProjectTitle}”"
+            : $"Có bài nộp sản phẩm mới cho dự án “{scope.Value.ProjectTitle}”";
+
+        foreach (var lecturerUserId in scope.Value.LecturerUserIds)
+        {
+            notificationWriter.Add(new NotificationMessage(
+                lecturerUserId,
+                type,
+                title,
+                JsonSerializer.Serialize(new { projectId, submissionId, versionNumber, projectTitle = scope.Value.ProjectTitle, url = $"/lecturer/workspace/{projectId}" })));
+        }
+
+        foreach (var companyUserId in scope.Value.CompanyUserIds)
+        {
+            notificationWriter.Add(new NotificationMessage(
+                companyUserId,
+                type,
+                title,
+                JsonSerializer.Serialize(new { projectId, submissionId, versionNumber, projectTitle = scope.Value.ProjectTitle, url = $"/company/workspace/{projectId}" })));
+        }
+    }
     private static SubmissionResponse Map(ProjectSubmission submission)
     {
         var currentVersion = submission.Versions.FirstOrDefault(v => v.VersionNumber == submission.CurrentVersionNumber);

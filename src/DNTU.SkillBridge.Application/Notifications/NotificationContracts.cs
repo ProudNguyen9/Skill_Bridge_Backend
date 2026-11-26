@@ -11,6 +11,11 @@ public interface INotificationWriter
     /// chưa có thì tạo mới. Cả hai trường hợp đều enqueue outbox để chuông realtime làm mới.
     /// </summary>
     Task UpsertUnreadChatNotificationAsync(Guid userId, string conversationId, string title, string payloadJson, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Đánh dấu đã đọc mọi thông báo CHAT_MESSAGE thuộc hội thoại khi người dùng đọc tin nhắn trong chat.
+    /// </summary>
+    Task MarkChatNotificationsReadAsync(Guid userId, string conversationId, CancellationToken cancellationToken = default) => Task.CompletedTask;
 }
 public interface IOutboxEnqueuer { void Enqueue(string type, string payloadJson); }
 

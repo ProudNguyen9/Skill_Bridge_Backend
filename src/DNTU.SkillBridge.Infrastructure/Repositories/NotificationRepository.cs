@@ -8,19 +8,62 @@ namespace DNTU.SkillBridge.Infrastructure.Repositories;
 /// <summary>EF Core implementation of the notification data operations.</summary>
 public sealed class NotificationRepository(AppDbContext dbContext) : INotificationRepository
 {
-    public async Task<IReadOnlyCollection<NotificationResponse>> ListAsync(Guid userId, CancellationToken cancellationToken) =>
-        await dbContext.Notifications.AsNoTracking().Where(x => x.UserId == userId).OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id).Select(MapExpression).ToListAsync(cancellationToken);
+    public async Task<IReadOnlyCollection<NotificationResponse>> ListAsync(
+        Guid userId,
+        int page = 1,
+        int pageSize = 30,
+        bool excludeChatMessages = false,
+        bool unreadOnly = false,
+        CancellationToken cancellationToken = default)
+    {
+        var safePage = Math.Max(1, page);
+        var safeSize = Math.Clamp(pageSize, 1, 100);
+        var query = dbContext.Notifications.AsNoTracking().Where(x => x.UserId == userId);
+
+        if (excludeChatMessages)
+        {
+            query = query.Where(x => x.Type != NotificationWriter.ChatMessageNotificationType);
+        }
+
+        if (unreadOnly)
+        {
+            query = query.Where(x => x.ReadAt == null);
+        }
+
+        return await query
+            .OrderByDescending(x => x.CreatedAt)
+            .ThenByDescending(x => x.Id)
+            .Skip((safePage - 1) * safeSize)
+            .Take(safeSize)
+            .Select(MapExpression)
+            .ToListAsync(cancellationToken);
+    }
 
     public Task<NotificationResponse?> GetAsync(Guid userId, Guid id, CancellationToken cancellationToken) =>
         dbContext.Notifications.AsNoTracking().Where(x => x.UserId == userId && x.Id == id).Select(MapExpression).SingleOrDefaultAsync(cancellationToken);
 
-    public Task<int> UnreadCountAsync(Guid userId, CancellationToken cancellationToken) => dbContext.Notifications.CountAsync(x => x.UserId == userId && x.ReadAt == null, cancellationToken);
+    public Task<int> UnreadCountAsync(Guid userId, bool excludeChatMessages = false, CancellationToken cancellationToken = default)
+    {
+        var query = dbContext.Notifications.Where(x => x.UserId == userId && x.ReadAt == null);
+        if (excludeChatMessages)
+        {
+            query = query.Where(x => x.Type != NotificationWriter.ChatMessageNotificationType);
+        }
+        return query.CountAsync(cancellationToken);
+    }
 
     public Task<Notification?> FindAsync(Guid userId, Guid id, CancellationToken cancellationToken) =>
         dbContext.Notifications.AsTracking().SingleOrDefaultAsync(x => x.UserId == userId && x.Id == id, cancellationToken);
 
-    public Task<List<Notification>> FindUnreadAsync(Guid userId, CancellationToken cancellationToken) =>
-        dbContext.Notifications.AsTracking().Where(x => x.UserId == userId && x.ReadAt == null).ToListAsync(cancellationToken);
+    public Task<List<Notification>> FindUnreadAsync(Guid userId, bool excludeChatMessages = false, CancellationToken cancellationToken = default)
+    {
+        var query = dbContext.Notifications.AsTracking().Where(x => x.UserId == userId && x.ReadAt == null);
+        if (excludeChatMessages)
+        {
+            query = query.Where(x => x.Type != NotificationWriter.ChatMessageNotificationType);
+        }
+        return query.ToListAsync(cancellationToken);
+    }
 
     public void Remove(Notification notification) => dbContext.Notifications.Remove(notification);
 

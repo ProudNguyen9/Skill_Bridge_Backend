@@ -1,4 +1,5 @@
 using System.Text.Json;
+using DNTU.SkillBridge.Application.Notifications;
 using DNTU.SkillBridge.Application.Workspaces;
 using DNTU.SkillBridge.Domain.Notifications;
 using DNTU.SkillBridge.Domain.Submissions;
@@ -6,7 +7,10 @@ using DNTU.SkillBridge.Domain.Submissions;
 namespace DNTU.SkillBridge.Application.Submissions;
 
 /// <summary>Records immutable company business decisions after independent lecturer technical approval.</summary>
-public sealed class BusinessReviewService(IBusinessReviewRepository reviewRepository, IProjectActivityWriter activityWriter) : IBusinessReviewService
+public sealed class BusinessReviewService(
+    IBusinessReviewRepository reviewRepository,
+    IProjectActivityWriter activityWriter,
+    INotificationWriter? notificationWriter = null) : IBusinessReviewService
 {
     public async Task<(BusinessReviewOutcome Outcome, BusinessReviewResponse? Review)> CreateAsync(
         Guid reviewerUserId,
@@ -102,6 +106,44 @@ public sealed class BusinessReviewService(IBusinessReviewRepository reviewReposi
             decision = request.Decision.ToString()
         });
         reviewRepository.AddOutboxMessage(new OutboxMessage("submission.business-review.completed", payload));
+
+        if (notificationWriter is not null)
+        {
+            var scope = await reviewRepository.GetNotificationScopeAsync(submission.ProjectId, cancellationToken);
+            if (scope is not null)
+            {
+                var accepted = request.Decision == BusinessReviewDecision.ACCEPTED;
+                var notifType = accepted ? "SUBMISSION_BUSINESS_ACCEPTED" : "SUBMISSION_BUSINESS_REVISION_REQUIRED";
+                var notifTitle = accepted
+                    ? $"Doanh nghiệp đã nghiệm thu sản phẩm dự án “{scope.Value.ProjectTitle}”"
+                    : $"Doanh nghiệp yêu cầu chỉnh sửa sản phẩm dự án “{scope.Value.ProjectTitle}”";
+                var studentPayload = JsonSerializer.Serialize(new
+                {
+                    projectId = submission.ProjectId,
+                    submissionId = submission.Id,
+                    projectTitle = scope.Value.ProjectTitle,
+                    feedback = request.RequirementsFeedback,
+                    url = $"/student/workspace/{submission.ProjectId}",
+                });
+                foreach (var studentUserId in scope.Value.StudentUserIds)
+                {
+                    notificationWriter.Add(new NotificationMessage(studentUserId, notifType, notifTitle, studentPayload));
+                }
+
+                var lecturerPayload = JsonSerializer.Serialize(new
+                {
+                    projectId = submission.ProjectId,
+                    submissionId = submission.Id,
+                    projectTitle = scope.Value.ProjectTitle,
+                    feedback = request.RequirementsFeedback,
+                    url = $"/lecturer/workspace/{submission.ProjectId}",
+                });
+                foreach (var lecturerUserId in scope.Value.LecturerUserIds)
+                {
+                    notificationWriter.Add(new NotificationMessage(lecturerUserId, notifType, notifTitle, lecturerPayload));
+                }
+            }
+        }
 
         if (!await reviewRepository.TrySaveChangesAsync(cancellationToken))
         {

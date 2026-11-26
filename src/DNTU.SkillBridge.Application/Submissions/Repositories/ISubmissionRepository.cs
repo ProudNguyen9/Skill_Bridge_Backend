@@ -40,4 +40,7 @@ public interface ISubmissionRepository
     Task<IReadOnlyCollection<SubmissionResponse>> ListLecturerAsync(Guid userId, CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<SubmissionResponse>> ListByProjectAsync(Guid projectId, CancellationToken cancellationToken);
+
+    Task<(string ProjectTitle, IReadOnlyCollection<Guid> LecturerUserIds, IReadOnlyCollection<Guid> CompanyUserIds)?> GetNotificationScopeAsync(
+        Guid projectId, CancellationToken cancellationToken) => Task.FromResult<(string, IReadOnlyCollection<Guid>, IReadOnlyCollection<Guid>)?>(null);
 }
