@@ -1,10 +1,14 @@
+using System.Text.Json;
 using DNTU.SkillBridge.Application.Abstractions;
+using DNTU.SkillBridge.Application.Notifications;
 using DNTU.SkillBridge.Domain.Academics;
 using DNTU.SkillBridge.Domain.Lecturers;
 
 namespace DNTU.SkillBridge.Application.Academics;
 
-public sealed class AcademicEvaluationService(IAcademicEvaluationRepository evaluationRepository) : IAcademicEvaluationService
+public sealed class AcademicEvaluationService(
+    IAcademicEvaluationRepository evaluationRepository,
+    INotificationWriter? notificationWriter = null) : IAcademicEvaluationService
 {
     private const decimal PassScore = 50m;
 
@@ -94,6 +98,27 @@ public sealed class AcademicEvaluationService(IAcademicEvaluationRepository eval
 
         try { evaluation.FinalizeEvaluation(DateTimeOffset.UtcNow); }
         catch (InvalidOperationException) { return null; }
+
+        if (notificationWriter is not null)
+        {
+            var info = await evaluationRepository.GetEvaluationNotificationInfoAsync(projectId, studentId, cancellationToken);
+            if (info is not null)
+            {
+                notificationWriter.Add(new NotificationMessage(
+                    info.Value.StudentUserId,
+                    "EVALUATION_FINALIZED",
+                    $"Giảng viên đã chốt điểm Rubric ABET cho dự án “{info.Value.ProjectTitle}” ({evaluation.TotalScore:0.#} điểm)",
+                    JsonSerializer.Serialize(new
+                    {
+                        projectId,
+                        projectTitle = info.Value.ProjectTitle,
+                        score = evaluation.TotalScore,
+                        isPassed = evaluation.IsPassed,
+                        url = $"/student/workspace/{projectId}",
+                    })));
+            }
+        }
+
         if (!await evaluationRepository.TrySaveChangesAsync(cancellationToken))
         {
             return null;

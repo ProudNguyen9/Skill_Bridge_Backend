@@ -51,4 +51,8 @@ public interface IAdministrationRepository
 
     /// <summary>Hồ sơ chi tiết giảng viên kèm tài khoản, phục vụ màn duyệt chi tiết.</summary>
     Task<AdminLecturerDetailResponse?> GetLecturerDetailAsync(Guid lecturerId, CancellationToken cancellationToken);
+
+    /// <summary>Danh sách UserId của các thành viên thuộc một doanh nghiệp.</summary>
+    Task<IReadOnlyCollection<Guid>> ListCompanyMemberUserIdsAsync(Guid companyId, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyCollection<Guid>>([]);
 }

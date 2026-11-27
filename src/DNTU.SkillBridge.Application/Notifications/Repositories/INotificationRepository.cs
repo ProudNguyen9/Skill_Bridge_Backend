@@ -5,17 +5,23 @@ namespace DNTU.SkillBridge.Application.Notifications;
 /// <summary>Data operations for user notifications and notification preferences.</summary>
 public interface INotificationRepository
 {
-    Task<IReadOnlyCollection<NotificationResponse>> ListAsync(Guid userId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<NotificationResponse>> ListAsync(
+        Guid userId,
+        int page = 1,
+        int pageSize = 30,
+        bool excludeChatMessages = false,
+        bool unreadOnly = false,
+        CancellationToken cancellationToken = default);
 
     Task<NotificationResponse?> GetAsync(Guid userId, Guid id, CancellationToken cancellationToken);
 
-    Task<int> UnreadCountAsync(Guid userId, CancellationToken cancellationToken);
+    Task<int> UnreadCountAsync(Guid userId, bool excludeChatMessages = false, CancellationToken cancellationToken = default);
 
     /// <summary>Reads a user notification as a tracked entity so mutations are persisted.</summary>
     Task<Notification?> FindAsync(Guid userId, Guid id, CancellationToken cancellationToken);
 
     /// <summary>Reads all unread notifications of a user as tracked entities so mutations are persisted.</summary>
-    Task<List<Notification>> FindUnreadAsync(Guid userId, CancellationToken cancellationToken);
+    Task<List<Notification>> FindUnreadAsync(Guid userId, bool excludeChatMessages = false, CancellationToken cancellationToken = default);
 
     void Remove(Notification notification);
 

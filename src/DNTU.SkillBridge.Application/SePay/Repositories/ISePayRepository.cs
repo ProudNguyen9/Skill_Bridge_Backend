@@ -22,4 +22,7 @@ public interface ISePayRepository
     void AddSePayIpnEvent(SePayIpnEvent ipnEvent);
 
     void AddPaymentTransaction(PaymentTransaction transaction);
+
+    Task<(string ProjectTitle, IReadOnlyCollection<Guid> CompanyUserIds)?> GetProjectFundingNotificationScopeAsync(
+        Guid projectId, CancellationToken cancellationToken) => Task.FromResult<(string, IReadOnlyCollection<Guid>)?>(null);
 }

@@ -466,6 +466,11 @@ public sealed class ChatService(
         if (targetId is null) return (ChatOutcome.Success, null);
 
         var changed = participant.MarkRead(targetId.Value);
+        if (notificationWriter is not null)
+        {
+            await notificationWriter.MarkChatNotificationsReadAsync(userId, conversationId.ToString(), cancellationToken);
+        }
+
         if (changed)
         {
             await chatRepository.SaveAsync(cancellationToken);
@@ -475,6 +480,10 @@ public sealed class ChatService(
                 .ToList();
             await realtimeNotifier.NotifyConversationReadAsync(conversationId, userId, participant.LastReadAt ?? DateTimeOffset.UtcNow, others, cancellationToken);
             await realtimeNotifier.NotifyUnreadCountChangedAsync(conversationId, userId, 0, cancellationToken);
+        }
+        else if (notificationWriter is not null)
+        {
+            await chatRepository.SaveAsync(cancellationToken);
         }
 
         return (ChatOutcome.Success, null);

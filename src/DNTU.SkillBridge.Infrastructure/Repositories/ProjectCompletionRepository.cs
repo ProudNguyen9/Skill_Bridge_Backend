@@ -1,4 +1,5 @@
 using System.Text.Json;
+using DNTU.SkillBridge.Application.Notifications;
 using DNTU.SkillBridge.Application.Projects;
 using DNTU.SkillBridge.Application.Workspaces;
 using DNTU.SkillBridge.Domain.Applications;
@@ -13,7 +14,10 @@ using Microsoft.EntityFrameworkCore;
 namespace DNTU.SkillBridge.Infrastructure.Repositories;
 
 /// <summary>Coordinates the irreversible project completion transaction and its downstream records.</summary>
-public sealed class ProjectCompletionRepository(AppDbContext dbContext, IProjectActivityWriter activityWriter) : IProjectCompletionRepository
+public sealed class ProjectCompletionRepository(
+    AppDbContext dbContext,
+    IProjectActivityWriter activityWriter,
+    INotificationWriter? notificationWriter = null) : IProjectCompletionRepository
 {
     public async Task<(ProjectCompletionOutcome Outcome, ProjectCompletionResponse? Completion)> CompleteAsync(
         Guid actorUserId,
@@ -86,6 +90,50 @@ public sealed class ProjectCompletionRepository(AppDbContext dbContext, IProject
 
             activityWriter.Append(projectId, "PROJECT_COMPLETED", actorUserId, new { completionId = completion.Id });
             dbContext.OutboxMessages.Add(new OutboxMessage("project.completed", evidenceJson));
+
+            if (notificationWriter is not null)
+            {
+                var studentUserIds = await dbContext.ProjectMembers.AsNoTracking()
+                    .Where(m => m.ProjectId == projectId && m.IsActive)
+                    .Select(m => m.Student.UserId)
+                    .Distinct()
+                    .ToListAsync(cancellationToken);
+                var studentPayload = JsonSerializer.Serialize(new
+                {
+                    projectId,
+                    projectTitle = project.Title,
+                    url = "/student/portfolio",
+                });
+                foreach (var studentUserId in studentUserIds)
+                {
+                    notificationWriter.Add(new NotificationMessage(
+                        studentUserId,
+                        "PROJECT_COMPLETED",
+                        $"Dự án “{project.Title}” đã hoàn thành nghiệm thu!",
+                        studentPayload));
+                }
+
+                var companyUserIds = await dbContext.CompanyMembers.AsNoTracking()
+                    .Where(m => m.CompanyId == project.CompanyId)
+                    .Select(m => m.UserId)
+                    .Distinct()
+                    .ToListAsync(cancellationToken);
+                var companyPayload = JsonSerializer.Serialize(new
+                {
+                    projectId,
+                    projectTitle = project.Title,
+                    url = $"/company/projects/{projectId}",
+                });
+                foreach (var companyUserId in companyUserIds)
+                {
+                    notificationWriter.Add(new NotificationMessage(
+                        companyUserId,
+                        "PROJECT_COMPLETED",
+                        $"Dự án “{project.Title}” đã hoàn tất và đóng sổ nghiệm thu",
+                        companyPayload));
+                }
+            }
+
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return (ProjectCompletionOutcome.Success, Map(completion));

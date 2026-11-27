@@ -35,4 +35,7 @@ public interface IAcademicEvaluationRepository
 
     /// <summary>Saves pending changes; returns false when a concurrency conflict was detected.</summary>
     Task<bool> TrySaveChangesAsync(CancellationToken cancellationToken);
+
+    Task<(Guid StudentUserId, string ProjectTitle)?> GetEvaluationNotificationInfoAsync(
+        Guid projectId, Guid studentId, CancellationToken cancellationToken) => Task.FromResult<(Guid, string)?>(null);
 }

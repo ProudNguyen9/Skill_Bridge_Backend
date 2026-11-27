@@ -29,4 +29,7 @@ public interface IBusinessReviewRepository
     Task<IReadOnlyCollection<BusinessReviewResponse>> ListForSubmissionAsync(Guid submissionId, CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<BusinessReviewResponse>> ListMineAsync(Guid userId, CancellationToken cancellationToken);
+
+    Task<(string ProjectTitle, IReadOnlyCollection<Guid> StudentUserIds, IReadOnlyCollection<Guid> LecturerUserIds)?> GetNotificationScopeAsync(
+        Guid projectId, CancellationToken cancellationToken) => Task.FromResult<(string, IReadOnlyCollection<Guid>, IReadOnlyCollection<Guid>)?>(null);
 }

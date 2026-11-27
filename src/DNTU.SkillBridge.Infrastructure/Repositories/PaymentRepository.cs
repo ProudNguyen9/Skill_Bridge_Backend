@@ -89,4 +89,16 @@ public sealed class PaymentRepository(AppDbContext dbContext) : IPaymentReposito
 
         return new PagedResponse<AdminDisbursementListItemResponse>(items, metadata);
     }
+
+    public async Task<(Guid StudentUserId, string ProjectTitle)?> GetDisbursementNotificationScopeAsync(
+        Guid disbursementId, CancellationToken cancellationToken)
+    {
+        var row = await (from disbursement in dbContext.Disbursements.AsNoTracking()
+                         join project in dbContext.Projects.AsNoTracking() on disbursement.ProjectId equals project.Id
+                         join student in dbContext.StudentProfiles.AsNoTracking() on disbursement.StudentId equals student.Id
+                         where disbursement.Id == disbursementId
+                         select new { student.UserId, project.Title })
+            .SingleOrDefaultAsync(cancellationToken);
+        return row is null ? null : (row.UserId, row.Title);
+    }
 }

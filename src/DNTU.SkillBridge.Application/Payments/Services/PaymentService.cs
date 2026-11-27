@@ -1,10 +1,15 @@
+using System.Text.Json;
 using DNTU.SkillBridge.Application.Abstractions;
 using DNTU.SkillBridge.Application.Common;
+using DNTU.SkillBridge.Application.Notifications;
 using DNTU.SkillBridge.Domain.Payments;
 
 namespace DNTU.SkillBridge.Application.Payments;
 
-public sealed class PaymentService(IPaymentRepository paymentRepository, IUnitOfWork unitOfWork) : IPaymentService
+public sealed class PaymentService(
+    IPaymentRepository paymentRepository,
+    IUnitOfWork unitOfWork,
+    INotificationWriter? notificationWriter = null) : IPaymentService
 {
     public async Task<FundingOrder?> CreateFundingOrderAsync(Guid companyUserId, Guid projectId, long amount, CancellationToken cancellationToken)
     {
@@ -76,6 +81,27 @@ public sealed class PaymentService(IPaymentRepository paymentRepository, IUnitOf
             var changed = disbursement.MarkPaid(idempotencyKey, bankReference, null, DateTimeOffset.UtcNow);
             if (changed)
             {
+                if (notificationWriter is not null)
+                {
+                    var scope = await paymentRepository.GetDisbursementNotificationScopeAsync(disbursementId, cancellationToken);
+                    if (scope is not null)
+                    {
+                        notificationWriter.Add(new NotificationMessage(
+                            scope.Value.StudentUserId,
+                            "ALLOWANCE_DISBURSED",
+                            $"Bạn đã nhận giải ngân phụ cấp {disbursement.Amount:N0} {disbursement.Currency} (dự án “{scope.Value.ProjectTitle}”)",
+                            JsonSerializer.Serialize(new
+                            {
+                                projectId = disbursement.ProjectId,
+                                projectTitle = scope.Value.ProjectTitle,
+                                amount = disbursement.Amount,
+                                currency = disbursement.Currency,
+                                bankReference,
+                                url = "/student/my-projects",
+                            })));
+                    }
+                }
+
                 await unitOfWork.SaveChangesAsync(cancellationToken);
             }
 
@@ -95,6 +121,26 @@ public sealed class PaymentService(IPaymentRepository paymentRepository, IUnitOf
         try
         {
             disbursement.MarkFailed(note);
+            if (notificationWriter is not null)
+            {
+                var scope = await paymentRepository.GetDisbursementNotificationScopeAsync(disbursementId, cancellationToken);
+                if (scope is not null)
+                {
+                    notificationWriter.Add(new NotificationMessage(
+                        scope.Value.StudentUserId,
+                        "ALLOWANCE_FAILED",
+                        $"Giải ngân phụ cấp cho dự án “{scope.Value.ProjectTitle}” gặp sự cố — đang chờ xử lý lại",
+                        JsonSerializer.Serialize(new
+                        {
+                            projectId = disbursement.ProjectId,
+                            projectTitle = scope.Value.ProjectTitle,
+                            amount = disbursement.Amount,
+                            currency = disbursement.Currency,
+                            note,
+                            url = "/student/my-projects",
+                        })));
+                }
+            }
             await unitOfWork.SaveChangesAsync(cancellationToken);
             return true;
         }

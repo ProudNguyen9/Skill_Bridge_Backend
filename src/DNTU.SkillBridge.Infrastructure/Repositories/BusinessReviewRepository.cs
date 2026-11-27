@@ -95,4 +95,32 @@ public sealed class BusinessReviewRepository(AppDbContext dbContext) : IBusiness
         review.RequirementsFeedback,
         review.CollaborationFeedback,
         review.CreatedAt);
+
+    public async Task<(string ProjectTitle, IReadOnlyCollection<Guid> StudentUserIds, IReadOnlyCollection<Guid> LecturerUserIds)?> GetNotificationScopeAsync(
+        Guid projectId, CancellationToken cancellationToken)
+    {
+        var projectTitle = await dbContext.Projects.AsNoTracking()
+            .Where(p => p.Id == projectId)
+            .Select(p => p.Title)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (projectTitle is null) return null;
+
+        var studentUserIds = await dbContext.ProjectMembers.AsNoTracking()
+            .Where(m => m.ProjectId == projectId && m.IsActive)
+            .Select(m => m.Student.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var lecturerUserIds = await dbContext.LecturerAssignments.AsNoTracking()
+            .Join(dbContext.LecturerProfiles.AsNoTracking(),
+                assignment => assignment.LecturerId,
+                lecturer => lecturer.Id,
+                (assignment, lecturer) => new { assignment, lecturer })
+            .Where(row => row.assignment.ProjectId == projectId && row.assignment.Status == LecturerAssignmentStatus.ACTIVE && row.lecturer.IsActive)
+            .Select(row => row.lecturer.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return (projectTitle, studentUserIds, lecturerUserIds);
+    }
 }

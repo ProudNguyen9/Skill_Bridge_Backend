@@ -95,6 +95,33 @@ public sealed class SkillVerificationsController(
             request.StudentNote);
 
         dbContext.SkillVerificationRequests.Add(verificationRequest);
+
+        if (notificationWriter is not null && lecturerId.HasValue)
+        {
+            var lecturerUserId = await dbContext.LecturerProfiles.AsNoTracking()
+                .Where(lp => lp.Id == lecturerId.Value && lp.IsActive)
+                .Select(lp => (Guid?)lp.UserId)
+                .SingleOrDefaultAsync(cancellationToken);
+            if (lecturerUserId.HasValue)
+            {
+                var studentName = await dbContext.Users.AsNoTracking()
+                    .Where(u => u.Id == currentUser.UserId!.Value)
+                    .Select(u => u.DisplayName)
+                    .SingleOrDefaultAsync(cancellationToken) ?? "Sinh viên";
+                notificationWriter.Add(new DNTU.SkillBridge.Application.Notifications.NotificationMessage(
+                    lecturerUserId.Value,
+                    "SKILL_VERIFICATION_REQUESTED",
+                    $"{studentName} gửi yêu cầu xác thực kỹ năng {skill.Name}",
+                    JsonSerializer.Serialize(new
+                    {
+                        skillId = skill.Id,
+                        skillName = skill.Name,
+                        senderName = studentName,
+                        url = "/lecturer/skills/verification",
+                    })));
+            }
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var responses = await MapRequestsAsync([verificationRequest], cancellationToken);
@@ -250,7 +277,35 @@ public sealed class SkillVerificationsController(
         if (entity is null) return NotFound();
 
         var lecturerUserId = currentUser.UserId!.Value;
-        entity.RequestChanges(lecturerUserId, request.Feedback ?? "Vui lòng bổ sung thêm minh chứng hình ảnh/link sản phẩm.");
+        var feedbackText = request.Feedback ?? "Vui lòng bổ sung thêm minh chứng hình ảnh/link sản phẩm.";
+        entity.RequestChanges(lecturerUserId, feedbackText);
+
+        if (notificationWriter is not null)
+        {
+            var studentUserId = await dbContext.StudentProfiles.AsNoTracking()
+                .Where(sp => sp.Id == entity.StudentId)
+                .Select(sp => (Guid?)sp.UserId)
+                .SingleOrDefaultAsync(cancellationToken);
+            var skillName = await dbContext.Skills.AsNoTracking()
+                .Where(s => s.Id == entity.SkillId)
+                .Select(s => s.Name)
+                .SingleOrDefaultAsync(cancellationToken) ?? "kỹ năng";
+            if (studentUserId.HasValue)
+            {
+                notificationWriter.Add(new DNTU.SkillBridge.Application.Notifications.NotificationMessage(
+                    studentUserId.Value,
+                    "SKILL_CHANGES_REQUESTED",
+                    $"Kỹ năng {skillName} cần bổ sung thêm minh chứng",
+                    JsonSerializer.Serialize(new
+                    {
+                        skillId = entity.SkillId,
+                        skillName,
+                        feedback = feedbackText,
+                        url = "/student/portfolio",
+                    })));
+            }
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var responses = await MapRequestsAsync([entity], cancellationToken);
@@ -270,7 +325,35 @@ public sealed class SkillVerificationsController(
         if (entity is null) return NotFound();
 
         var lecturerUserId = currentUser.UserId!.Value;
-        entity.Reject(lecturerUserId, request.Feedback ?? "Hồ sơ không đáp ứng tiêu chuẩn thẩm định.");
+        var feedbackText = request.Feedback ?? "Hồ sơ không đáp ứng tiêu chuẩn thẩm định.";
+        entity.Reject(lecturerUserId, feedbackText);
+
+        if (notificationWriter is not null)
+        {
+            var studentUserId = await dbContext.StudentProfiles.AsNoTracking()
+                .Where(sp => sp.Id == entity.StudentId)
+                .Select(sp => (Guid?)sp.UserId)
+                .SingleOrDefaultAsync(cancellationToken);
+            var skillName = await dbContext.Skills.AsNoTracking()
+                .Where(s => s.Id == entity.SkillId)
+                .Select(s => s.Name)
+                .SingleOrDefaultAsync(cancellationToken) ?? "kỹ năng";
+            if (studentUserId.HasValue)
+            {
+                notificationWriter.Add(new DNTU.SkillBridge.Application.Notifications.NotificationMessage(
+                    studentUserId.Value,
+                    "SKILL_REJECTED",
+                    $"Yêu cầu xác thực kỹ năng {skillName} chưa được chấp nhận",
+                    JsonSerializer.Serialize(new
+                    {
+                        skillId = entity.SkillId,
+                        skillName,
+                        feedback = feedbackText,
+                        url = "/student/portfolio",
+                    })));
+            }
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var responses = await MapRequestsAsync([entity], cancellationToken);

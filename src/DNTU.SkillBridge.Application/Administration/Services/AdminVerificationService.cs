@@ -1,4 +1,6 @@
+using System.Text.Json;
 using DNTU.SkillBridge.Application.Abstractions;
+using DNTU.SkillBridge.Application.Notifications;
 using DNTU.SkillBridge.Domain.Administration;
 using DNTU.SkillBridge.Domain.Companies;
 using DNTU.SkillBridge.Domain.Lecturers;
@@ -42,7 +44,10 @@ public interface IAdminVerificationService
 /// Duyệt hồ sơ giảng viên tự đăng ký và xác minh công ty đối tác.
 /// Ghi AuditLog cho mỗi quyết định để phục vụ truy vết.
 /// </summary>
-public sealed class AdminVerificationService(IAdministrationRepository administrationRepository, IUnitOfWork unitOfWork) : IAdminVerificationService
+public sealed class AdminVerificationService(
+    IAdministrationRepository administrationRepository,
+    IUnitOfWork unitOfWork,
+    INotificationWriter? notificationWriter = null) : IAdminVerificationService
 {
     public Task<IReadOnlyCollection<AdminLecturerReviewItem>> ListLecturersAsync(string? status, CancellationToken cancellationToken) =>
         administrationRepository.ListLecturersForReviewAsync(status, cancellationToken);
@@ -68,6 +73,11 @@ public sealed class AdminVerificationService(IAdministrationRepository administr
 
             lecturer.Approve(now);
             administrationRepository.AddAuditLog(new AuditLog(actorUserId, AuditActions.LecturerApproved, nameof(LecturerProfile), lecturer.Id.ToString(), null, null, null, null, null, "{}", now));
+            notificationWriter?.Add(new NotificationMessage(
+                lecturer.UserId,
+                "LECTURER_APPROVED",
+                "Hồ sơ giảng viên của bạn đã được Khoa/Admin phê duyệt",
+                JsonSerializer.Serialize(new { lecturerId = lecturer.Id, note, url = "/lecturer/dashboard" })));
             await unitOfWork.SaveChangesAsync(cancellationToken);
             return LecturerReviewOutcome.Approved;
         }
@@ -78,7 +88,12 @@ public sealed class AdminVerificationService(IAdministrationRepository administr
         }
 
         lecturer.Reject(now, note!);
-        administrationRepository.AddAuditLog(new AuditLog(actorUserId, AuditActions.LecturerRejected, nameof(LecturerProfile), lecturer.Id.ToString(), null, null, null, null, null, $"{{\"note\":{System.Text.Json.JsonSerializer.Serialize(note ?? string.Empty)}}}", now));
+        administrationRepository.AddAuditLog(new AuditLog(actorUserId, AuditActions.LecturerRejected, nameof(LecturerProfile), lecturer.Id.ToString(), null, null, null, null, null, $"{{\"note\":{JsonSerializer.Serialize(note ?? string.Empty)}}}", now));
+        notificationWriter?.Add(new NotificationMessage(
+            lecturer.UserId,
+            "LECTURER_REJECTED",
+            "Hồ sơ giảng viên của bạn cần bổ sung / chưa được phê duyệt",
+            JsonSerializer.Serialize(new { lecturerId = lecturer.Id, note, url = "/lecturer/pending" })));
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return LecturerReviewOutcome.Rejected;
     }
@@ -101,6 +116,7 @@ public sealed class AdminVerificationService(IAdministrationRepository administr
 
             company.MarkVerified(now, note);
             administrationRepository.AddAuditLog(new AuditLog(actorUserId, AuditActions.CompanyVerified, nameof(Company), company.Id.ToString(), company.Id, null, null, null, null, "{}", now));
+            await NotifyCompanyMembersAsync(company.Id, "COMPANY_VERIFIED", $"Doanh nghiệp “{company.Name}” đã được xác minh chính thức", note, cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
             return CompanyReviewOutcome.Verified;
         }
@@ -112,7 +128,8 @@ public sealed class AdminVerificationService(IAdministrationRepository administr
 
         var normalizedNote = note?.Trim();
         company.MarkRejected(now, normalizedNote);
-        administrationRepository.AddAuditLog(new AuditLog(actorUserId, AuditActions.CompanyRejected, nameof(Company), company.Id.ToString(), company.Id, null, null, null, null, $"{{\"note\":{System.Text.Json.JsonSerializer.Serialize(normalizedNote ?? string.Empty)}}}", now));
+        administrationRepository.AddAuditLog(new AuditLog(actorUserId, AuditActions.CompanyRejected, nameof(Company), company.Id.ToString(), company.Id, null, null, null, null, $"{{\"note\":{JsonSerializer.Serialize(normalizedNote ?? string.Empty)}}}", now));
+        await NotifyCompanyMembersAsync(company.Id, "COMPANY_REJECTED", $"Hồ sơ doanh nghiệp “{company.Name}” cần bổ sung thông tin xác minh", normalizedNote, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return CompanyReviewOutcome.Rejected;
     }
@@ -135,7 +152,8 @@ public sealed class AdminVerificationService(IAdministrationRepository administr
 
         var now = DateTimeOffset.UtcNow;
         company.MarkSuspended(now, note);
-        administrationRepository.AddAuditLog(new AuditLog(actorUserId, AuditActions.CompanySuspended, nameof(Company), company.Id.ToString(), company.Id, null, null, null, null, $"{{\"note\":{System.Text.Json.JsonSerializer.Serialize(note)}}}", now));
+        administrationRepository.AddAuditLog(new AuditLog(actorUserId, AuditActions.CompanySuspended, nameof(Company), company.Id.ToString(), company.Id, null, null, null, null, $"{{\"note\":{JsonSerializer.Serialize(note)}}}", now));
+        await NotifyCompanyMembersAsync(company.Id, "COMPANY_SUSPENDED", $"Tài khoản doanh nghiệp “{company.Name}” đã bị tạm ngưng", note, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return CompanyReviewOutcome.Suspended;
     }
@@ -156,7 +174,19 @@ public sealed class AdminVerificationService(IAdministrationRepository administr
         var now = DateTimeOffset.UtcNow;
         company.MarkVerified(now, note);
         administrationRepository.AddAuditLog(new AuditLog(actorUserId, AuditActions.CompanyResumed, nameof(Company), company.Id.ToString(), company.Id, null, null, null, null, "{}", now));
+        await NotifyCompanyMembersAsync(company.Id, "COMPANY_RESUMED", $"Tài khoản doanh nghiệp “{company.Name}” đã được khôi phục hoạt động", note, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return CompanyReviewOutcome.Resumed;
+    }
+
+    private async Task NotifyCompanyMembersAsync(Guid companyId, string type, string title, string? note, CancellationToken cancellationToken)
+    {
+        if (notificationWriter is null) return;
+        var memberUserIds = await administrationRepository.ListCompanyMemberUserIdsAsync(companyId, cancellationToken);
+        var payload = JsonSerializer.Serialize(new { companyId, note, url = "/company/profile" });
+        foreach (var uid in memberUserIds)
+        {
+            notificationWriter.Add(new NotificationMessage(uid, type, title, payload));
+        }
     }
 }

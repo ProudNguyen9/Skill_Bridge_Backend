@@ -29,6 +29,9 @@ public interface ITechnicalReviewRepository
     Task<TechnicalReviewLookupRow?> FindReviewRowAsync(Guid reviewId, CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<TechnicalReviewResponse>> ListMineAsync(Guid lecturerUserId, CancellationToken cancellationToken);
+
+    Task<(string ProjectTitle, IReadOnlyCollection<Guid> StudentUserIds, IReadOnlyCollection<Guid> CompanyUserIds)?> GetNotificationScopeAsync(
+        Guid projectId, CancellationToken cancellationToken) => Task.FromResult<(string, IReadOnlyCollection<Guid>, IReadOnlyCollection<Guid>)?>(null);
 }
 
 /// <summary>Projection row pairing a technical review response with its submission id.</summary>

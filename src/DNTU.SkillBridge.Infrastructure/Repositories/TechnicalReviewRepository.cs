@@ -91,4 +91,28 @@ public sealed class TechnicalReviewRepository(AppDbContext dbContext) : ITechnic
         review.Feedback,
         review.CriteriaNotes,
         review.CreatedAt);
+
+    public async Task<(string ProjectTitle, IReadOnlyCollection<Guid> StudentUserIds, IReadOnlyCollection<Guid> CompanyUserIds)?> GetNotificationScopeAsync(
+        Guid projectId, CancellationToken cancellationToken)
+    {
+        var project = await dbContext.Projects.AsNoTracking()
+            .Where(p => p.Id == projectId)
+            .Select(p => new { p.Title, p.CompanyId })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (project is null) return null;
+
+        var studentUserIds = await dbContext.ProjectMembers.AsNoTracking()
+            .Where(m => m.ProjectId == projectId && m.IsActive)
+            .Select(m => m.Student.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var companyUserIds = await dbContext.CompanyMembers.AsNoTracking()
+            .Where(m => m.CompanyId == project.CompanyId)
+            .Select(m => m.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return (project.Title, studentUserIds, companyUserIds);
+    }
 }
