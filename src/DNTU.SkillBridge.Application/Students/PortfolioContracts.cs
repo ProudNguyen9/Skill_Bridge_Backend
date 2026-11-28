@@ -30,7 +30,8 @@ public sealed record VerifiedSkillResponse(
     Guid? EvidenceSubmissionId,
     Guid? EvidenceEvaluationId,
     string? ProofHash = null,
-    string? BadgeImageUrl = null);
+    string? BadgeImageUrl = null,
+    string? VerifiedByLecturerName = null);
 
 public sealed record PortfolioEntryResponse(
     Guid Id,

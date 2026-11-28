@@ -164,12 +164,20 @@ public sealed class PortfolioRepository(AppDbContext dbContext) : IPortfolioRepo
             : [];
         var evalHashMap = evaluations.ToDictionary(e => e.Id, e => e.ProofHash);
 
+        var lecturerUserIds = rows.Select(r => r.verified.VerifiedByUserId).Where(id => id != Guid.Empty).Distinct().ToList();
+        var lecturerNames = lecturerUserIds.Count > 0
+            ? await dbContext.Users.AsNoTracking()
+                .Where(u => lecturerUserIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.DisplayName, cancellationToken)
+            : [];
+
         return rows.Select(row => {
             string? hash = null;
             if (row.verified.EvidenceEvaluationId.HasValue)
             {
                 evalHashMap.TryGetValue(row.verified.EvidenceEvaluationId.Value, out hash);
             }
+            lecturerNames.TryGetValue(row.verified.VerifiedByUserId, out var verifiedByLecturerName);
             return new VerifiedSkillResponse(
                 row.verified.Id,
                 row.verified.StudentId,
@@ -184,7 +192,8 @@ public sealed class PortfolioRepository(AppDbContext dbContext) : IPortfolioRepo
                 row.verified.EvidenceSubmissionId,
                 row.verified.EvidenceEvaluationId,
                 hash,
-                row.SkillBadgeImageUrl);
+                row.SkillBadgeImageUrl,
+                verifiedByLecturerName);
         }).ToList();
     }
 

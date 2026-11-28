@@ -51,7 +51,54 @@ public sealed class SkillVerificationsController(
         var studentId = currentUser.StudentId!.Value;
 
         var skill = await dbContext.Skills.AsNoTracking().FirstOrDefaultAsync(s => s.Id == request.SkillId, cancellationToken);
-        if (skill is null) return NotFound(new ApiResponse<string>("Không tìm thấy kỹ năng trong danh mục chuẩn."));
+        if (skill is null)
+        {
+            return Problem(
+                title: "Không tìm thấy kỹ năng",
+                detail: "Không tìm thấy kỹ năng trong danh mục chuẩn.",
+                statusCode: StatusCodes.Status404NotFound);
+        }
+
+        if (!skill.IsActive)
+        {
+            return Problem(
+                title: "Kỹ năng đã ngừng áp dụng",
+                detail: "Kỹ năng/chứng chỉ này đã ngừng áp dụng trong danh mục.",
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var normalizedFileUrls = (request.EvidenceFileUrls ?? [])
+            .Where(u => !string.IsNullOrWhiteSpace(u))
+            .Select(u => u.Trim())
+            .Distinct()
+            .ToList();
+
+        if (string.IsNullOrWhiteSpace(request.EvidenceUrl)
+            && normalizedFileUrls.Count == 0
+            && string.IsNullOrWhiteSpace(request.StudentNote))
+        {
+            return Problem(
+                title: "Thiếu minh chứng",
+                detail: "Vui lòng cung cấp ít nhất một đường dẫn minh chứng, tệp đính kèm hoặc mô tả giải trình.",
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var hasActiveRequest = await dbContext.SkillVerificationRequests.AsNoTracking()
+            .AnyAsync(r => r.StudentId == studentId
+                           && r.SkillId == request.SkillId
+                           && (r.Status == SkillVerificationStatus.PENDING
+                               || r.Status == SkillVerificationStatus.CHANGES_REQUESTED
+                               || r.Status == SkillVerificationStatus.APPROVED),
+                cancellationToken);
+        var hasVerifiedSkill = await dbContext.VerifiedSkills.AsNoTracking()
+            .AnyAsync(v => v.StudentId == studentId && v.SkillId == request.SkillId && !v.IsRevoked, cancellationToken);
+        if (hasActiveRequest || hasVerifiedSkill)
+        {
+            return Problem(
+                title: "Trùng yêu cầu xác thực",
+                detail: "Bạn đã có yêu cầu đang chờ thẩm định hoặc đã được xác thực kỹ năng này.",
+                statusCode: StatusCodes.Status409Conflict);
+        }
 
         // Xác định ProjectId và Giảng viên hướng dẫn nếu sinh viên chưa truyền
         var projectId = request.ProjectId;
@@ -80,8 +127,8 @@ public sealed class SkillVerificationsController(
             }
         }
 
-        var filesJson = request.EvidenceFileUrls is not null && request.EvidenceFileUrls.Count > 0
-            ? JsonSerializer.Serialize(request.EvidenceFileUrls)
+        var filesJson = normalizedFileUrls.Count > 0
+            ? JsonSerializer.Serialize(normalizedFileUrls)
             : null;
 
         var verificationRequest = new SkillVerificationRequest(
@@ -141,11 +188,72 @@ public sealed class SkillVerificationsController(
         var entity = await dbContext.SkillVerificationRequests.FirstOrDefaultAsync(r => r.Id == id && r.StudentId == studentId, cancellationToken);
         if (entity is null) return NotFound();
 
-        var filesJson = request.EvidenceFileUrls is not null && request.EvidenceFileUrls.Count > 0
-            ? JsonSerializer.Serialize(request.EvidenceFileUrls)
-            : entity.EvidenceFileUrlsJson;
+        if (entity.Status is not (SkillVerificationStatus.PENDING or SkillVerificationStatus.CHANGES_REQUESTED))
+        {
+            return Problem(
+                title: "Không thể cập nhật",
+                detail: "Chỉ có thể cập nhật minh chứng khi hồ sơ đang chờ thẩm định hoặc được yêu cầu bổ sung.",
+                statusCode: StatusCodes.Status409Conflict);
+        }
 
+        string? filesJson;
+        if (request.EvidenceFileUrls is not null)
+        {
+            var normalizedFiles = request.EvidenceFileUrls
+                .Where(u => !string.IsNullOrWhiteSpace(u))
+                .Select(u => u.Trim())
+                .Distinct()
+                .ToList();
+            filesJson = normalizedFiles.Count > 0 ? JsonSerializer.Serialize(normalizedFiles) : null;
+        }
+        else
+        {
+            filesJson = entity.EvidenceFileUrlsJson;
+        }
+
+        if (string.IsNullOrWhiteSpace(request.EvidenceUrl)
+            && string.IsNullOrWhiteSpace(filesJson)
+            && string.IsNullOrWhiteSpace(request.StudentNote))
+        {
+            return Problem(
+                title: "Thiếu minh chứng",
+                detail: "Vui lòng cung cấp ít nhất một đường dẫn minh chứng, tệp đính kèm hoặc mô tả giải trình.",
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var wasChangesRequested = entity.Status == SkillVerificationStatus.CHANGES_REQUESTED;
         entity.UpdateEvidence(request.Level, request.EvidenceUrl, filesJson, request.StudentNote);
+
+        if (wasChangesRequested && notificationWriter is not null && entity.AssignedLecturerId.HasValue)
+        {
+            var lecturerUserId = await dbContext.LecturerProfiles.AsNoTracking()
+                .Where(lp => lp.Id == entity.AssignedLecturerId.Value && lp.IsActive)
+                .Select(lp => (Guid?)lp.UserId)
+                .SingleOrDefaultAsync(cancellationToken);
+            if (lecturerUserId.HasValue)
+            {
+                var studentName = await dbContext.Users.AsNoTracking()
+                    .Where(u => u.Id == currentUser.UserId!.Value)
+                    .Select(u => u.DisplayName)
+                    .SingleOrDefaultAsync(cancellationToken) ?? "Sinh viên";
+                var skillName = await dbContext.Skills.AsNoTracking()
+                    .Where(s => s.Id == entity.SkillId)
+                    .Select(s => s.Name)
+                    .SingleOrDefaultAsync(cancellationToken) ?? "kỹ năng";
+                notificationWriter.Add(new DNTU.SkillBridge.Application.Notifications.NotificationMessage(
+                    lecturerUserId.Value,
+                    "SKILL_VERIFICATION_REQUESTED",
+                    $"{studentName} đã bổ sung minh chứng cho kỹ năng {skillName}",
+                    JsonSerializer.Serialize(new
+                    {
+                        skillId = entity.SkillId,
+                        skillName,
+                        senderName = studentName,
+                        url = "/lecturer/skills/verification",
+                    })));
+            }
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var responses = await MapRequestsAsync([entity], cancellationToken);
@@ -201,8 +309,16 @@ public sealed class SkillVerificationsController(
         var entity = await dbContext.SkillVerificationRequests.FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
         if (entity is null) return NotFound();
 
+        if (entity.Status == SkillVerificationStatus.APPROVED)
+        {
+            return Problem(
+                title: "Hồ sơ đã được phê duyệt",
+                detail: "Yêu cầu xác thực này đã được phê duyệt trước đó.",
+                statusCode: StatusCodes.Status409Conflict);
+        }
+
         var lecturerUserId = currentUser.UserId!.Value;
-        entity.Approve(lecturerUserId, request.Feedback);
+        entity.Approve(lecturerUserId, request.Feedback, request.Level);
 
         // Cấp huy hiệu VerifiedSkill cho sinh viên
         var skillLevel = ParseSkillLevel(request.Level ?? entity.Level);
@@ -276,6 +392,14 @@ public sealed class SkillVerificationsController(
         var entity = await dbContext.SkillVerificationRequests.FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
         if (entity is null) return NotFound();
 
+        if (entity.Status == SkillVerificationStatus.APPROVED)
+        {
+            return Problem(
+                title: "Hồ sơ đã được phê duyệt",
+                detail: "Không thể thay đổi trạng thái hồ sơ đã được phê duyệt.",
+                statusCode: StatusCodes.Status409Conflict);
+        }
+
         var lecturerUserId = currentUser.UserId!.Value;
         var feedbackText = request.Feedback ?? "Vui lòng bổ sung thêm minh chứng hình ảnh/link sản phẩm.";
         entity.RequestChanges(lecturerUserId, feedbackText);
@@ -323,6 +447,14 @@ public sealed class SkillVerificationsController(
 
         var entity = await dbContext.SkillVerificationRequests.FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
         if (entity is null) return NotFound();
+
+        if (entity.Status == SkillVerificationStatus.APPROVED)
+        {
+            return Problem(
+                title: "Hồ sơ đã được phê duyệt",
+                detail: "Không thể thay đổi trạng thái hồ sơ đã được phê duyệt.",
+                statusCode: StatusCodes.Status409Conflict);
+        }
 
         var lecturerUserId = currentUser.UserId!.Value;
         var feedbackText = request.Feedback ?? "Hồ sơ không đáp ứng tiêu chuẩn thẩm định.";
@@ -393,6 +525,7 @@ public sealed class SkillVerificationsController(
         var skillIds = requests.Select(r => r.SkillId).Distinct().ToList();
         var projectIds = requests.Where(r => r.ProjectId.HasValue).Select(r => r.ProjectId!.Value).Distinct().ToList();
         var lecturerIds = requests.Where(r => r.AssignedLecturerId.HasValue).Select(r => r.AssignedLecturerId!.Value).Distinct().ToList();
+        var reviewerUserIds = requests.Where(r => r.ReviewedByLecturerId.HasValue).Select(r => r.ReviewedByLecturerId!.Value).Distinct().ToList();
 
         var students = await dbContext.StudentProfiles.AsNoTracking()
             .Where(s => studentIds.Contains(s.Id))
@@ -414,6 +547,12 @@ public sealed class SkillVerificationsController(
                 .ToDictionaryAsync(l => l.Id, l => l.FullName, cancellationToken)
             : [];
 
+        var reviewers = reviewerUserIds.Count > 0
+            ? await dbContext.Users.AsNoTracking()
+                .Where(u => reviewerUserIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.DisplayName, cancellationToken)
+            : [];
+
         var list = new List<SkillVerificationRequestResponse>(requests.Count);
         foreach (var r in requests)
         {
@@ -422,7 +561,11 @@ public sealed class SkillVerificationsController(
             projects.TryGetValue(r.ProjectId ?? Guid.Empty, out var project);
 
             string? lecturerName = null;
-            if (r.AssignedLecturerId.HasValue)
+            if (r.ReviewedByLecturerId.HasValue)
+            {
+                reviewers.TryGetValue(r.ReviewedByLecturerId.Value, out lecturerName);
+            }
+            if (string.IsNullOrWhiteSpace(lecturerName) && r.AssignedLecturerId.HasValue)
             {
                 lecturers.TryGetValue(r.AssignedLecturerId.Value, out lecturerName);
             }
