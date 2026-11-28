@@ -60,8 +60,12 @@ public sealed class SkillVerificationRequest : AuditableEntity
         SubmittedAt = DateTimeOffset.UtcNow;
     }
 
-    public void Approve(Guid reviewerLecturerId, string? feedback)
+    public void Approve(Guid reviewerLecturerId, string? feedback, string? approvedLevel = null)
     {
+        if (!string.IsNullOrWhiteSpace(approvedLevel))
+        {
+            Level = approvedLevel.Trim();
+        }
         ReviewedByLecturerId = reviewerLecturerId;
         LecturerFeedback = string.IsNullOrWhiteSpace(feedback) ? null : feedback.Trim();
         ReviewedAt = DateTimeOffset.UtcNow;
